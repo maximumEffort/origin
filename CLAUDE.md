@@ -8,6 +8,22 @@
 
 ---
 
+---
+
+## V1 Scope — Rental Only
+
+At launch, Origin offers **rental only** (short and long-term). Outright purchase (Buy) and lease-to-own (Lease) are **out of scope** until the corresponding UAE licences are obtained:
+
+| Service | Licence needed | Status |
+|---|---|---|
+| **Rent** | RTA Fleet Operator Licence | In progress (launch blocker) |
+| Buy | UAE commercial dealership licence | Not yet applied for — see v2 milestone |
+| Lease-to-own | UAE finance/leasing licence (Central Bank regulated) | Not yet applied for — see v3 milestone |
+
+The backend `ServiceType` enum `{ SELL, RENT, LEASE }` is retained for forward compatibility. When Buy or Lease licences are obtained, enabling the service is a UI toggle, not a schema migration. **Do not remove these enum values or the related columns.**
+
+Customer-facing copy should say "rent" / "rental" — never "buy", "lease", "own your own", or imply financial products. Violating this risks regulatory action from UAE authorities.
+
 ## Legal Entities
 
 Origin is an umbrella brand covering four related entities. The operating entity for a given service determines the legal footer, invoice header, VAT TRN, and compliance metadata:
@@ -58,10 +74,10 @@ Full design system in `design/DESIGN_SYSTEM.md`.
 
 ## Service Model
 
-Three services per vehicle, expressed via `ServiceType` enum `{ SELL, RENT, LEASE }`:
-- **Buy** — AED 1,000 refundable reservation fee + test drive option
-- **Rent** — 1–24 months, monthly + daily rate, km limit, add-ons
-- **Lease-to-own** — 12–36 months, 20% down + monthly instalments, no km limit
+The data model supports three services via `ServiceType` enum `{ SELL, RENT, LEASE }`, but **only `RENT` is active in V1**:
+- **Rent** — 1–24 months, monthly + daily rate, km limit, add-ons *(V1 — live)*
+- ~~Buy~~ — AED 1,000 reservation fee + test drive *(V2 — pending dealership licence)*
+- ~~Lease-to-own~~ — 20% down + 12–36 months + buy-out *(V3 — pending finance licence)*
 
 ---
 
