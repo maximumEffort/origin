@@ -41,9 +41,6 @@ async function getCar(id: string) {
         mileageLimit: v.mileageLimitMonthly ?? 3000,
         imageUrl: img?.url ?? '',
         features: (v as any).notes ? String((v as any).notes).split(',').map((f: string) => f.trim()).filter(Boolean) : [],
-        priceAed: Number((v as any).priceAed ?? 0),
-        leaseMonthlyAed: Number((v as any).leaseMonthlyAed ?? 0),
-        downPaymentPct: Number((v as any).downPaymentPct ?? 0.20),
       };
     }
   } catch (err) {
@@ -66,9 +63,6 @@ async function getCar(id: string) {
     mileageLimit: sv.mileageLimit,
     imageUrl: sv.imageUrl,
     features: sv.features,
-    priceAed: sv.priceAed ?? 0,
-    leaseMonthlyAed: sv.leaseMonthlyAed ?? 0,
-    downPaymentPct: 0.20,
   };
 }
 
@@ -139,7 +133,7 @@ export default async function CarDetailPage({ params }: { params: Promise<{ id: 
               )}
             </div>
 
-            {/* Right: Pricing */}
+            {/* Right: Pricing (rental-only in V1 — see PricingPanel.tsx) */}
             <div>
               <PricingPanel
                 carId={car.id}
@@ -148,12 +142,9 @@ export default async function CarDetailPage({ params }: { params: Promise<{ id: 
                 year={car.year}
                 category={car.category}
                 colour={car.colour}
-                priceAed={car.priceAed}
                 monthlyAed={car.monthlyAed}
                 dailyAed={car.dailyAed}
                 mileageLimit={car.mileageLimit}
-                leaseMonthlyAed={car.leaseMonthlyAed}
-                downPaymentPct={car.downPaymentPct}
                 whatsappUrl={whatsappUrl(t('whatsapp.carInterest', { brand: car.brand, model: car.model }))}
               />
             </div>

@@ -103,12 +103,11 @@ function PaymentForm({ amountAed, locale }: { amountAed: number; locale: string 
 interface Props {
   amountAed: number;
   bookingRef?: string;
-  serviceType: string;
   vehicleName: string;
   locale: string;
 }
 
-export default function StripeCheckout({ amountAed, bookingRef, serviceType, vehicleName, locale }: Props) {
+export default function StripeCheckout({ amountAed, bookingRef, vehicleName, locale }: Props) {
   const t = useTranslations('checkout');
   const [clientSecret, setClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
@@ -137,7 +136,6 @@ export default function StripeCheckout({ amountAed, bookingRef, serviceType, veh
       body: JSON.stringify({
         amountAed,
         bookingRef: bookingRef ?? '',
-        serviceType,
         vehicleName,
       }),
     })
@@ -152,7 +150,7 @@ export default function StripeCheckout({ amountAed, bookingRef, serviceType, veh
         setError(err.message);
       })
       .finally(() => setLoading(false));
-  }, [amountAed, bookingRef, serviceType, vehicleName, t]);
+  }, [amountAed, bookingRef, vehicleName, t]);
 
   if (loading) {
     return (

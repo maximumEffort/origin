@@ -309,9 +309,10 @@ export default function FleetPage() {
             <input type="number" value={form.seats} onChange={e => setForm({...form, seats: +e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
           <div className="col-span-2 mt-2 mb-1">
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pricing</h4>
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rental Pricing</h4>
           </div>
-          <div>
+          {/* V1 rental-only: Selling Price hidden — re-enable when UAE commercial dealership licence is obtained (see CLAUDE.md § V1 Scope). */}
+          <div className="hidden">
             <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (AED)</label>
             <input type="number" value={form.priceAed || ''} onChange={e => setForm({...form, priceAed: +e.target.value})} placeholder="e.g. 240000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
@@ -323,7 +324,8 @@ export default function FleetPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Rent — Daily (AED)</label>
             <input type="number" value={form.dailyAed || ''} onChange={e => setForm({...form, dailyAed: +e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
-          <div>
+          {/* V1 rental-only: Lease Monthly hidden — re-enable when UAE finance licence is obtained (see CLAUDE.md § V1 Scope). */}
+          <div className="hidden">
             <label className="block text-sm font-medium text-gray-700 mb-1">Lease — Monthly (AED)</label>
             <input type="number" value={form.leaseMonthlyAed || ''} onChange={e => setForm({...form, leaseMonthlyAed: +e.target.value})} placeholder="36-month instalment" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>

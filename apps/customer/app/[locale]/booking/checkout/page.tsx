@@ -39,16 +39,14 @@ export default async function CheckoutPage({
   const car = sp.car ?? '—';
   const duration = sp.duration ? `${sp.duration} ${t('months')}` : '—';
   const startDate = sp.startDate ?? '—';
-  const serviceType = sp.service ?? 'rent';
+  // V1: rental only. Buy's AED 1,000 reservation fee flow returns in V2.
   const depositNum = Number(sp.deposit ?? 0);
   const vatNum = Number(sp.vat ?? 0);
   const totalNum = Number(sp.total ?? 0);
   const deposit = depositNum ? `AED ${depositNum.toLocaleString()}` : '—';
   const vat = vatNum ? `AED ${vatNum.toFixed(2)}` : '—';
   const total = totalNum ? `AED ${totalNum.toLocaleString()}` : '—';
-
-  // For buy service, the payment is the AED 1,000 reservation fee
-  const paymentAmount = serviceType === 'buy' ? 1000 : totalNum;
+  const paymentAmount = totalNum;
 
   return (
     <>
@@ -73,40 +71,30 @@ export default async function CheckoutPage({
                 <span className="text-neutral-500">{t('vehicle')}</span>
                 <span className="font-medium text-neutral-900">{car}</span>
               </div>
-              {serviceType !== 'buy' && (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-500">{t('leasePeriod')}</span>
-                    <span className="font-medium text-neutral-900">{duration}</span>
-                  </div>
-                  {startDate !== '—' && (
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">{t('startDate')}</span>
-                      <span className="font-medium text-neutral-900">{startDate}</span>
-                    </div>
-                  )}
-                  <div className="border-t border-neutral-100 pt-3 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">{t('deposit')}</span>
-                      <span className="font-medium text-neutral-900">{deposit}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-neutral-500">{t('vat')}</span>
-                      <span className="font-medium text-neutral-900">{vat}</span>
-                    </div>
-                  </div>
-                  <div className="border-t border-neutral-100 pt-3 flex justify-between">
-                    <span className="font-bold text-neutral-900">{t('totalDue')}</span>
-                    <span className="font-bold text-brand text-lg">{total}</span>
-                  </div>
-                </>
-              )}
-              {serviceType === 'buy' && (
-                <div className="border-t border-neutral-100 pt-3 flex justify-between">
-                  <span className="font-bold text-neutral-900">{t('reservationFee')}</span>
-                  <span className="font-bold text-brand text-lg">AED 1,000</span>
+              <div className="flex justify-between">
+                <span className="text-neutral-500">{t('leasePeriod')}</span>
+                <span className="font-medium text-neutral-900">{duration}</span>
+              </div>
+              {startDate !== '—' && (
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">{t('startDate')}</span>
+                  <span className="font-medium text-neutral-900">{startDate}</span>
                 </div>
               )}
+              <div className="border-t border-neutral-100 pt-3 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">{t('deposit')}</span>
+                  <span className="font-medium text-neutral-900">{deposit}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">{t('vat')}</span>
+                  <span className="font-medium text-neutral-900">{vat}</span>
+                </div>
+              </div>
+              <div className="border-t border-neutral-100 pt-3 flex justify-between">
+                <span className="font-bold text-neutral-900">{t('totalDue')}</span>
+                <span className="font-bold text-brand text-lg">{total}</span>
+              </div>
             </div>
           </div>
 
@@ -114,7 +102,6 @@ export default async function CheckoutPage({
           <StripeCheckout
             amountAed={paymentAmount}
             bookingRef={sp.ref}
-            serviceType={serviceType}
             vehicleName={car}
             locale={locale}
           />
