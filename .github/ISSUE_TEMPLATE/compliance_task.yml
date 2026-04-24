@@ -1,0 +1,49 @@
+name: Compliance task
+description: A regulatory / legal / audit item (RTA, VAT, PDPL, KYC, etc.)
+labels: ["type:compliance", "status:needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for anything required by UAE regulators or company legal. These often block launch, so they deserve first-class tracking.
+  - type: textarea
+    id: requirement
+    attributes:
+      label: What's required
+      description: Describe the regulatory or legal requirement
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Compliance area
+      options:
+        - RTA (Roads and Transport Authority)
+        - VAT / FTA (Federal Tax Authority)
+        - PDPL (Personal Data Protection Law)
+        - KYC
+        - Licensing / Commercial Registration
+        - Insurance
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source / citation
+      description: Link to regulation, email, or document
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What does "done" look like? (e.g. "TRN shown in footer on all pages across all 3 locales, itemised on invoices")
+    validations:
+      required: true
+  - type: input
+    id: deadline
+    attributes:
+      label: Deadline (if any)
+    validations:
+      required: false

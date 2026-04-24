@@ -1,0 +1,62 @@
+name: Bug report
+description: Something's broken or behaving unexpectedly
+labels: ["type:bug", "status:needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please fill in as much as you can — "works on my machine" debugging wastes time for everyone.
+
+        **Do not paste customer PII** (phone numbers, Emirates IDs, names, emails). Use internal IDs.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do, and what went wrong?
+      placeholder: |
+        1. Opened /cars/abc123
+        2. Clicked "Book now"
+        3. Got a 500 error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface?
+      options:
+        - Customer site
+        - Admin dashboard
+        - Both
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: locale
+    attributes:
+      label: Locale (if language-specific)
+      options:
+        - N/A — not language-specific
+        - English (en)
+        - Arabic (ar)
+        - Simplified Chinese (zh-CN)
+    validations:
+      required: false
+  - type: input
+    id: browser
+    attributes:
+      label: Browser / device
+      placeholder: Chrome 123 on macOS / Safari on iPhone 14
+    validations:
+      required: false
+  - type: textarea
+    id: console
+    attributes:
+      label: Console / network errors
+      description: Paste any red errors from browser DevTools or server logs
+      render: shell
