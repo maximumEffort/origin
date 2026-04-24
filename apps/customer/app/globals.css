@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-noto-arabic: 'Noto Sans Arabic', system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Arabic RTL font */
+  html[lang='ar'] {
+    font-family: var(--font-noto-arabic);
+  }
+
+  /* Chinese CJK font stack */
+  html[lang='zh'],
+  html[lang='zh-CN'] {
+    font-family: 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei',
+      'WenQuanYi Micro Hei', system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-white text-neutral-900 antialiased;
+  }
+}
+
+@layer utilities {
+  /* RTL-flip: only flip when the document direction is RTL */
+  [dir='rtl'] .rtl-flip {
+    transform: scaleX(-1);
+  }
+
+  /* Hero section dot-grid background */
+  .hero-grid {
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      rgba(255, 255, 255, 0.12) 1px,
+      transparent 0
+    );
+    background-size: 32px 32px;
+  }
+
+  /* Gold underline accent bar */
+  .gold-bar::after {
+    content: '';
+    display: block;
+    width: 48px;
+    height: 3px;
+    background: #f5c200;
+    border-radius: 2px;
+    margin-top: 8px;
+  }
+
+  /* Brand pill hover effect */
+  .brand-pill {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .brand-pill:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(22, 52, 120, 0.12);
+  }
+
+  /* Car card hover lift */
+  .car-card-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .car-card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(22, 52, 120, 0.1);
+  }
+}
+
+/* WhatsApp floating button pulse animation */
+@keyframes wa-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(37, 211, 102, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0);
+  }
+}
+
+.wa-pulse {
+  animation: wa-pulse 2.5s ease-in-out infinite;
+}

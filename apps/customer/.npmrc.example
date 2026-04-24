@@ -1,0 +1,14 @@
+# Figma private npm registry
+# ─────────────────────────────────────────────────────────────────────────────
+# Copy this file to .npmrc and replace YOUR_FIGMA_AUTH_TOKEN with your real
+# personal access token from Figma (Settings → Personal access tokens).
+#
+# IMPORTANT: .npmrc is in .gitignore — NEVER commit the file with a real token.
+#
+# @car-leasing scoped packages (e.g. @car-leasing/tokens) are published from
+# the Origin Figma file registry (file key: faa9d53c-f887-4e10-9a92-bd6d29f04451).
+# @figma/code-connect itself installs from the public npm registry.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@car-leasing:registry=https://registry.figma.com/npm/faa9d53c-f887-4e10-9a92-bd6d29f04451/registry/
+//registry.figma.com/npm/faa9d53c-f887-4e10-9a92-bd6d29f04451/registry/:_authToken=YOUR_FIGMA_AUTH_TOKEN

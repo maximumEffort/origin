@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Detect which apps changed so we don't rebuild everything every push ──
+  changes:
+    name: Detect changed apps
+    runs-on: ubuntu-latest
+    outputs:
+      customer: ${{ steps.filter.outputs.customer }}
+      admin: ${{ steps.filter.outputs.admin }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            customer:
+              - 'apps/customer/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/ci.yml'
+            admin:
+              - 'apps/admin/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/ci.yml'
+
+  # ─── Customer site ───────────────────────────────────────────────────────
+  customer:
+    name: Customer — type-check, lint, test, build
+    needs: changes
+    if: needs.changes.outputs.customer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check --workspace=customer
+      - run: npm run lint --workspace=customer
+      - run: npm test --workspace=customer --if-present
+      - run: npm run build --workspace=customer
+        env:
+          NEXT_PUBLIC_API_URL: https://example.com/v1
+          NEXT_PUBLIC_SITE_URL: https://originleasing.net
+
+  # ─── Admin dashboard ─────────────────────────────────────────────────────
+  admin:
+    name: Admin — type-check, lint, test, build
+    needs: changes
+    if: needs.changes.outputs.admin == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check --workspace=admin
+      - run: npm run lint --workspace=admin
+      - run: npm test --workspace=admin --if-present
+      - run: npm run build --workspace=admin
+        env:
+          NEXT_PUBLIC_API_URL: https://example.com/v1
+          ADMIN_SECRET: placeholder-ci-secret-not-used-for-auth-just-for-build

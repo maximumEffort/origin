@@ -1,0 +1,47 @@
+# ── Dependencies ──
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build output ──
+.next/
+out/
+dist/
+build/
+
+# ── Environment ──
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ── Test / coverage ──
+coverage/
+*.lcov
+.nyc_output
+
+# ── Logs ──
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# ── IDE / OS ──
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Vercel ──
+.vercel
+
+# ── TypeScript ──
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Misc ──
+.turbo
+.cache/
