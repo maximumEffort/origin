@@ -52,8 +52,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+      # TODO: once package-lock.json is committed at repo root (see issue #29), switch back to:
+      #   with:
+      #     node-version: 22
+      #     cache: npm
+      # and replace `npm install` with `npm ci` for deterministic + cached installs.
+      - run: npm install --no-audit --no-fund
       - run: npm run type-check --workspace=customer
       - run: npm run lint --workspace=customer
       - run: npm test --workspace=customer --if-present
@@ -73,8 +77,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+      # TODO: once package-lock.json is committed at repo root (see issue #29), switch back to:
+      #   with:
+      #     node-version: 22
+      #     cache: npm
+      # and replace `npm install` with `npm ci` for deterministic + cached installs.
+      - run: npm install --no-audit --no-fund
       - run: npm run type-check --workspace=admin
       - run: npm run lint --workspace=admin
       - run: npm test --workspace=admin --if-present
