@@ -11,6 +11,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# paths-filter action needs to read PR files via GitHub API
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   # ─── Detect which apps changed so we don't rebuild everything every push ──
   changes:
