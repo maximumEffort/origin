@@ -85,7 +85,7 @@ describe('Health check route', () => {
   it('includes service check details with latency', async () => {
     mockFetch.mockResolvedValue(mockServiceResponse(true, { status: 'ok' }));
 
-    const response = (await GET()) as { body: Record<string, unknown> };
+    const response = (await GET()) as unknown as { body: Record<string, unknown> };
     const services = response.body.services as Array<{
       name: string;
       status: string;
@@ -105,7 +105,7 @@ describe('Health check route', () => {
   it('handles fetch failures gracefully (service returns down)', async () => {
     mockFetch.mockRejectedValue(new Error('Network error'));
 
-    const response = (await GET()) as { body: Record<string, unknown> };
+    const response = (await GET()) as unknown as { body: Record<string, unknown> };
     const services = response.body.services as Array<{ status: string }>;
 
     // Backend is down due to network error, so status should be unhealthy
