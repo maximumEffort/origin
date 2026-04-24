@@ -39,7 +39,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
-  const response = intlMiddleware(request);
+  // Workspace hoisting quirk: customer (Next 15) and admin (Next 14) each install
+  // their own next/, so NextRequest ends up with two distinct type origins. The
+  // cast-through-unknown makes TS accept our request for the intl middleware.
+  const response = intlMiddleware(request as unknown as Parameters<typeof intlMiddleware>[0]);
 
   // Generate a unique nonce for this request
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');

@@ -10,9 +10,9 @@
     "cta": "获取报价"
   },
   "hero": {
-    "badge": "迪拜中国汽车租赁",
-    "headline": "购买、租赁或分期拥有高端中国电动汽车",
-    "subheadline": "迪拜蔚来、岚图、极氪和比亚迪电动车——全款购买、短期租赁或融资分期，灵活选择。",
+    "badge": "迪拜中国电动汽车",
+    "headline": "迪拜高端中国电动汽车，立即可租",
+    "subheadline": "蔚来、岚图、极氪和比亚迪——月租含保险、灵活的里程套餐、迪拜境内送车上门。",
     "ctaBrowse": "浏览车辆",
     "ctaCalculator": "租赁计算器",
     "trustBadge1": "符合交通局法规",
@@ -252,15 +252,15 @@
     "carInterest": "你好，我对租赁 {brand} {model} 感兴趣。"
   },
   "home": {
-    "heroBadge": "迪拜首选中国汽车租赁",
+    "heroBadge": "迪拜中国电动汽车月租",
     "fleetEyebrow": "我们的车队",
     "viewAll": "查看所有车辆",
     "processEyebrow": "简单流程",
     "processTitle": "如何使用",
     "step1Title": "浏览并选择",
     "step1Desc": "探索我们的精品中国汽车车队。按品牌、类别或预算筛选，找到最适合您的车辆。",
-    "step2Title": "选择方案",
-    "step2Desc": "全款购买、短期租赁含灵活里程套餐，或首付20%分36期融资租赁。",
+    "step2Title": "选择您的方案",
+    "step2Desc": "选择您的租期（1至24个月）和里程套餐。可选添加保险、额外驾驶员或GPS。查看含增值税的综合月费。",
     "step3Title": "立即出发",
     "step3Desc": "我们可送车至迪拜任意地点，或到展厅自提。当天即可驾车出发。",
     "waTitle": "有问题吗？通过 WhatsApp 联系我们",

@@ -32,7 +32,6 @@ function staticCars(): CarOption[] {
 }
 
 const RENT_DURATIONS = [1, 3, 6, 12, 24];
-const LEASE_DURATIONS = [12, 24, 36];
 
 interface Addons {
   insurance: boolean;
@@ -56,16 +55,15 @@ export default function BookingFlow({ locale }: { locale: string }) {
   const t = useTranslations('booking');
   const tAuth = useTranslations('auth');
   const tCommon = useTranslations('common');
-  const tServices = useTranslations('services');
   const { customer, loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
 
   const [CARS, setCars] = useState<CarOption[]>(() => staticCars());
 
   // Pre-select car and skip to Step 2 when ?car= is in the URL
+  // V1: rental only. Service type is forced to 'rent' — Buy/Lease are
+  // hidden from UX pending UAE dealership / finance licences (see CLAUDE.md).
   const preselectedCar = searchParams.get('car') || '';
-  const preselectedService = (searchParams.get('service') || 'rent') as 'buy' | 'rent' | 'lease';
-  const isTestDrive = searchParams.get('testdrive') === '1';
   const validPreselection = CARS.some((c) => c.id === preselectedCar);
 
   const [step, setStep] = useState(validPreselection ? 2 : 1);
@@ -95,12 +93,8 @@ export default function BookingFlow({ locale }: { locale: string }) {
       })
       .catch(() => {});
   }, [preselectedCar, carId]);
-  const [serviceType, setServiceType] = useState<'buy' | 'rent' | 'lease'>(preselectedService);
   const [startDate, setStartDate] = useState('');
-  const [preferredTime, setPreferredTime] = useState('');
-  const [testDriveLocation, setTestDriveLocation] = useState('');
-  const [testDriveSubmitted, setTestDriveSubmitted] = useState(false);
-  const [duration, setDuration] = useState(serviceType === 'lease' ? 36 : 6);
+  const [duration, setDuration] = useState(6);
   const [pickupAddress, setPickupAddress] = useState('');
   const [addons, setAddons] = useState<Addons>({ insurance: false, driver: false, gps: false });
   const [docs, setDocs] = useState<Docs>({ emiratesId: null, drivingLicence: null, visa: null, passport: null });
@@ -188,7 +182,7 @@ export default function BookingFlow({ locale }: { locale: string }) {
         car: `${selectedCar.brand} ${selectedCar.model}`,
         duration: String(duration),
         startDate,
-        service: serviceType,
+        service: 'rent',
         monthlyRate: String(booking.quotedTotalAed ? Math.round(booking.quotedTotalAed / duration) : monthlyRate),
         deposit: String(booking.depositAmountAed ?? deposit),
         vat: String(booking.vatAmountAed ?? vat),
@@ -256,78 +250,8 @@ export default function BookingFlow({ locale }: { locale: string }) {
         </div>
       </section>
 
-      {/* ── Test Drive Form ── */}
-      {isTestDrive && (
-        <section className="py-12 bg-neutral-50 min-h-[60vh]">
-          <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
-            {testDriveSubmitted ? (
-              <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-8 text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
-                  <Check className="text-green-600" size={32} />
-                </div>
-                <h2 className="text-2xl font-bold text-neutral-900 mb-2">{tServices('testDriveSubmitted')}</h2>
-                <p className="text-neutral-500 text-sm mb-6">{tServices('testDriveSubmittedDesc')}</p>
-                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-3 bg-[#25D366] text-white font-semibold rounded-lg hover:bg-[#20bd5a] transition-colors">
-                  <MessageCircle size={16} /> WhatsApp
-                </a>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-8">
-                <h2 className="text-xl font-bold text-neutral-900 mb-1">{tServices('testDriveTitle')}</h2>
-                {selectedCar && (
-                  <p className="text-brand font-medium text-sm mb-6">{selectedCar.brand} {selectedCar.model}</p>
-                )}
-                <div className="space-y-5">
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">{tServices('preferredDate')}</label>
-                      <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">{tServices('preferredTime')}</label>
-                      <select value={preferredTime} onChange={(e) => setPreferredTime(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand">
-                        <option value="">{tServices('selectTime')}</option>
-                        <option value="09:00">09:00 AM</option>
-                        <option value="10:00">10:00 AM</option>
-                        <option value="11:00">11:00 AM</option>
-                        <option value="12:00">12:00 PM</option>
-                        <option value="13:00">01:00 PM</option>
-                        <option value="14:00">02:00 PM</option>
-                        <option value="15:00">03:00 PM</option>
-                        <option value="16:00">04:00 PM</option>
-                        <option value="17:00">05:00 PM</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">{tServices('testDriveLocation')}</label>
-                    <input type="text" value={testDriveLocation} onChange={(e) => setTestDriveLocation(e.target.value)}
-                      placeholder={tServices('testDriveLocationPlaceholder')}
-                      className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
-                  </div>
-                  <button
-                    disabled={!startDate || !preferredTime}
-                    onClick={() => setTestDriveSubmitted(true)}
-                    className="w-full py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-40"
-                  >
-                    {tServices('submitTestDrive')}
-                  </button>
-                  <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-3 bg-[#25D366] text-white font-semibold rounded-lg hover:bg-[#20bd5a] transition-colors">
-                    <MessageCircle size={16} /> {tServices('orCallWhatsApp')}
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
       {/* Step content */}
-      {!isTestDrive && <section className="py-12 bg-neutral-50 min-h-[60vh]">
+      <section className="py-12 bg-neutral-50 min-h-[60vh]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
 
           {/* ── Step 1: Select Vehicle ── */}
@@ -381,103 +305,55 @@ export default function BookingFlow({ locale }: { locale: string }) {
             </div>
           )}
 
-          {/* ── Step 2: Service & Details ── */}
+          {/* ── Step 2: Rental Details ── */}
           {step === 2 && (
             <div>
               <h2 className="text-xl font-bold text-neutral-900 mb-8">{t('detailsTitle')}</h2>
               <div className="bg-white rounded-xl border border-neutral-100 shadow-sm p-6 space-y-6">
 
-                {/* Service type selector */}
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-3">{tServices('chooseService')}</label>
-                  <div className="flex border border-neutral-200 rounded-lg p-1">
-                    {(['buy', 'lease', 'rent'] as const).map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => {
-                          setServiceType(s);
-                          if (s === 'lease' && ![12, 24, 36].includes(duration)) setDuration(36);
-                          if (s === 'buy') setDuration(0);
-                        }}
-                        className={`flex-1 py-2.5 text-sm font-medium rounded-md transition-all ${
-                          serviceType === s
-                            ? 'bg-brand text-white shadow-sm'
-                            : 'text-neutral-500 hover:text-neutral-700'
-                        }`}
-                      >
-                        {tServices(s)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Buy: just pickup location */}
-                {serviceType === 'buy' && (
+                <div className="grid sm:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">{t('pickupLabel')}</label>
-                    <input type="text" placeholder={t('pickupPlaceholder')} value={pickupAddress}
-                      onChange={(e) => setPickupAddress(e.target.value)}
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">{t('startDate')}</label>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                       className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
                   </div>
-                )}
-
-                {/* Rent / Lease: start date + duration */}
-                {serviceType !== 'buy' && (
-                  <>
-                    <div className="grid sm:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">{t('startDate')}</label>
-                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">{t('duration')}</label>
-                        <div className="flex gap-2 flex-wrap">
-                          {(serviceType === 'lease' ? LEASE_DURATIONS : RENT_DURATIONS).map((d) => (
-                            <button key={d} onClick={() => setDuration(d)}
-                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                duration === d ? 'bg-brand text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                              }`}>
-                              {d} {t('months')}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">{t('pickupLabel')}</label>
-                      <input type="text" placeholder={t('pickupPlaceholder')} value={pickupAddress}
-                        onChange={(e) => setPickupAddress(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
-                    </div>
-                  </>
-                )}
-
-                {/* Rent only: add-ons */}
-                {serviceType === 'rent' && (
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-3">{t('addonsLabel')}</label>
-                    <div className="space-y-3">
-                      {([
-                        { key: 'insurance' as const, label: t('addonInsurance') },
-                        { key: 'driver'    as const, label: t('addonDriver') },
-                        { key: 'gps'       as const, label: t('addonGPS') },
-                      ]).map(({ key, label }) => (
-                        <label key={key} className="flex items-center gap-3 cursor-pointer">
-                          <input type="checkbox" checked={addons[key]} onChange={() => toggleAddon(key)} className="w-4 h-4 accent-brand" />
-                          <span className="text-sm text-neutral-700">{label}</span>
-                        </label>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">{t('duration')}</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {RENT_DURATIONS.map((d) => (
+                        <button key={d} onClick={() => setDuration(d)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            duration === d ? 'bg-brand text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                          }`}>
+                          {d} {t('months')}
+                        </button>
                       ))}
                     </div>
                   </div>
-                )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">{t('pickupLabel')}</label>
+                  <input type="text" placeholder={t('pickupPlaceholder')} value={pickupAddress}
+                    onChange={(e) => setPickupAddress(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
+                </div>
 
-                {/* Lease: info note */}
-                {serviceType === 'lease' && (
-                  <div className="bg-brand/5 border border-brand/20 rounded-lg p-4 text-sm text-brand">
-                    {tServices('leaseDesc')}
+                {/* Add-ons */}
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-3">{t('addonsLabel')}</label>
+                  <div className="space-y-3">
+                    {([
+                      { key: 'insurance' as const, label: t('addonInsurance') },
+                      { key: 'driver'    as const, label: t('addonDriver') },
+                      { key: 'gps'       as const, label: t('addonGPS') },
+                    ]).map(({ key, label }) => (
+                      <label key={key} className="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" checked={addons[key]} onChange={() => toggleAddon(key)} className="w-4 h-4 accent-brand" />
+                        <span className="text-sm text-neutral-700">{label}</span>
+                      </label>
+                    ))}
                   </div>
-                )}
+                </div>
               </div>
               <div className="mt-8 flex justify-between">
                 <button onClick={() => setStep(1)}
@@ -485,8 +361,8 @@ export default function BookingFlow({ locale }: { locale: string }) {
                   <ArrowLeft size={16} />{t('back')}
                 </button>
                 <button
-                  disabled={serviceType !== 'buy' && !startDate}
-                  onClick={() => serviceType === 'buy' ? setStep(4) : setStep(3)}
+                  disabled={!startDate}
+                  onClick={() => setStep(3)}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-40"
                 >
                   {t('next')} <ArrowRight size={16} />
@@ -624,7 +500,7 @@ export default function BookingFlow({ locale }: { locale: string }) {
               )}
 
               <div className="flex justify-between items-center">
-                <button onClick={() => { setBookingError(''); setStep(serviceType === 'buy' ? 2 : 3); }}
+                <button onClick={() => { setBookingError(''); setStep(3); }}
                   className="inline-flex items-center gap-2 px-5 py-2.5 border border-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-50 transition-colors text-sm font-medium">
                   <ArrowLeft size={16} />{t('back')}
                 </button>
@@ -647,7 +523,7 @@ export default function BookingFlow({ locale }: { locale: string }) {
           )}
 
         </div>
-      </section>}
+      </section>
     </>
   );
 }
