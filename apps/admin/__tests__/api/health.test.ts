@@ -37,7 +37,7 @@ describe('Health check route', () => {
   it('returns healthy status when all services are up', async () => {
     mockFetch.mockResolvedValue(mockServiceResponse(true, { status: 'ok' }));
 
-    const response = (await GET()) as { body: Record<string, unknown>; status: number };
+    const response = (await GET()) as unknown as { body: Record<string, unknown>; status: number };
 
     expect(response.body).toMatchObject({
       service: 'origin-admin',
@@ -63,7 +63,7 @@ describe('Health check route', () => {
       .mockResolvedValueOnce(mockServiceResponse(true))
       .mockResolvedValueOnce(mockServiceResponse(true));
 
-    const response = (await GET()) as { body: Record<string, unknown>; status: number };
+    const response = (await GET()) as unknown as { body: Record<string, unknown>; status: number };
 
     expect(response.body.status).toBe('unhealthy');
     expect(response.status).toBe(503);
@@ -76,7 +76,7 @@ describe('Health check route', () => {
       .mockResolvedValueOnce(mockServiceResponse(false))
       .mockResolvedValueOnce(mockServiceResponse(true));
 
-    const response = (await GET()) as { body: Record<string, unknown>; status: number };
+    const response = (await GET()) as unknown as { body: Record<string, unknown>; status: number };
 
     expect(response.body.status).toBe('degraded');
     expect(response.status).toBe(200);
