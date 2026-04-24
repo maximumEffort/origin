@@ -20,7 +20,7 @@ jobs:
       customer: ${{ steps.filter.outputs.customer }}
       admin: ${{ steps.filter.outputs.admin }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -43,7 +43,7 @@ jobs:
     if: needs.changes.outputs.customer == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -64,7 +64,7 @@ jobs:
     if: needs.changes.outputs.admin == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22
