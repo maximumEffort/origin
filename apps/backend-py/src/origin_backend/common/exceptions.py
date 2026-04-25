@@ -25,9 +25,7 @@ async def http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSO
     code = exc.detail if isinstance(exc.detail, str) else None
     return JSONResponse(
         status_code=exc.status_code,
-        content=_error_payload(
-            exc.status_code, str(exc.detail), code=code
-        ),
+        content=_error_payload(exc.status_code, str(exc.detail), code=code),
     )
 
 
