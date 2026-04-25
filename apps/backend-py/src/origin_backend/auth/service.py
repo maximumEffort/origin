@@ -133,7 +133,7 @@ async def admin_login(db: Prisma, email: str, password: str) -> dict[str, object
     admin = await db.adminuser.find_unique(where={"email": email})
 
     # Constant-time bcrypt compare even when user not found — prevents timing attacks.
-    dummy_hash = "$2b$12$invalidhashfortimingattackprevention000000000000000000000"
+    dummy_hash = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
     target_hash = admin.password if admin else dummy_hash
     password_valid = bcrypt.verify(password, target_hash)
 

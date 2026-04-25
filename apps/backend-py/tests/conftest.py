@@ -48,13 +48,12 @@ def mock_prisma() -> MagicMock:
 @pytest_asyncio.fixture
 async def client(mock_prisma: MagicMock) -> AsyncIterator[TestClient]:
     """FastAPI test client with a mocked Prisma client wired in."""
-    # Patch the module-level _prisma so get_db() returns our mock.
     prisma_module._prisma = mock_prisma  # type: ignore[assignment]
-
     # Import here (after env vars are set) so settings validation passes.
     from origin_backend.main import app
-
-    with TestClient(app) as c:
-        yield c
-
+    # NOTE: Do NOT use `with TestClient(app) as c:` — the context manager
+    # triggers FastAPI's lifespan, which calls connect_prisma() and
+    # overwrites our mock with a real Prisma instance. Bare TestClient
+    # skips lifespan entirely, which is what we want for unit tests.
+    yield TestClient(app)
     prisma_module._prisma = None  # type: ignore[assignment]

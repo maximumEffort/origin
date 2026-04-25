@@ -48,3 +48,8 @@ next-env.d.ts
 
 # Backend Prisma generated client
 apps/backend/src/generated/
+
+# Misplaced or local-only
+.aws/
+pytest_output.txt
+

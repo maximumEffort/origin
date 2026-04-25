@@ -50,7 +50,8 @@ def test_issue_pair_returns_two_distinct_tokens():
 
 def test_tampered_token_rejected():
     token = issue_access_token(sub="user-6", role="customer")
-    # Flip a character in the signature
-    tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    # Replace the signature with clearly-bogus bytes (more reliable than 1-char flip)
+    parts = token.split(".")
+    tampered = parts[0] + "." + parts[1] + ".AAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     with pytest.raises(ValueError):
         verify_access_token(tampered)
