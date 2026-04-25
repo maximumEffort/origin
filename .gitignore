@@ -45,3 +45,6 @@ next-env.d.ts
 # ── Misc ──
 .turbo
 .cache/
+
+# Backend Prisma generated client
+apps/backend/src/generated/

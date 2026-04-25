@@ -2,7 +2,7 @@
   "name": "origin",
   "version": "0.1.0",
   "private": true,
-  "description": "Origin — Chinese EV car rental platform for Dubai/UAE. Customer + admin web apps.",
+  "description": "Origin \u2014 Chinese EV car rental platform for Dubai/UAE. Customer site, admin dashboard, and backend API.",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -15,7 +15,9 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present",
-    "test": "npm test --workspaces --if-present"
+    "test": "npm test --workspaces --if-present",
+    "backend:dev": "npm run dev --workspace=backend",
+    "backend:build": "npm run build --workspace=backend"
   },
   "engines": {
     "node": ">=20.0.0"

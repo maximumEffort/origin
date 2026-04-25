@@ -12,8 +12,9 @@ Customer site and admin dashboard for **Shanghai Car Rental LLC** (Abu Dhabi), u
 |---|---|---|---|
 | Customer site | `apps/customer/` | 3000 | Trilingual customer website (EN / AR / ZH-CN). Browse fleet, calculator, booking, customer portal. |
 | Admin dashboard | `apps/admin/` | 3002 | Internal ops tool. Fleet, customers, KYC, bookings, leases, reports. |
+| Backend API | `apps/backend/` | 3001 | NestJS + Prisma + PostgreSQL. Auth, vehicles, bookings, leases, payments, integrations. |
 
-Both apps consume the backend API via `NEXT_PUBLIC_API_URL`.
+Both frontends consume the backend API via `NEXT_PUBLIC_API_URL`.
 
 ---
 

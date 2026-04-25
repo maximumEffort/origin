@@ -115,8 +115,9 @@ Supported: **English** (en), **Arabic** (ar, RTL), **Simplified Chinese** (zh-CN
 |---|---|---|
 | Customer site | `apps/customer/` | Next.js 15 (App Router), next-intl, Tailwind, Stripe, Sentry |
 | Admin dashboard | `apps/admin/` | Next.js 14 (App Router), jose (JWT), httpOnly-cookie proxy to backend |
+| Backend API | `apps/backend/` | NestJS 10, Prisma 5, PostgreSQL, JWT, Stripe webhooks, Twilio Verify, SendGrid |
 
-Both apps consume the existing backend API via `NEXT_PUBLIC_API_URL`. The backend is currently hosted on Railway (US) and will migrate to UAE infrastructure.
+All three apps live in this monorepo. Both frontends consume the backend via `NEXT_PUBLIC_API_URL`. The backend is currently hosted on Railway (US) — migration to UAE infrastructure (AWS Lightsail me-central-1) is tracked in issue #21.
 
 ---
 
@@ -125,10 +126,11 @@ Both apps consume the existing backend API via `NEXT_PUBLIC_API_URL`. The backen
 This is an **npm workspace**. From the repo root:
 
 ```bash
-npm install                 # install all deps for both apps
+npm install                 # install all deps for all three apps
 
 npm run customer:dev        # customer site on :3000
 npm run admin:dev           # admin on :3002
+npm run backend:dev         # backend API on :3001 (needs DATABASE_URL set)
 
 npm run -w customer lint    # lint one app
 npm run type-check          # type-check all apps
