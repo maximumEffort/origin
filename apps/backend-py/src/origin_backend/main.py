@@ -24,6 +24,7 @@ from origin_backend.common.exceptions import register_exception_handlers
 from origin_backend.common.prisma import connect_prisma, disconnect_prisma
 from origin_backend.config import settings
 from origin_backend.health.router import router as health_router
+from origin_backend.vehicles.router import router as vehicles_router
 
 logger = logging.getLogger("origin_backend")
 
@@ -38,7 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await connect_prisma()
     logger.info("origin-backend %s ready on port %s", __version__, settings.app_port)
     yield
-    logger.info("shutting down — disconnecting database")
+    logger.info("shutting down â€” disconnecting database")
     await disconnect_prisma()
 
 
@@ -54,7 +55,7 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# ── Middleware ──────────────────────────────────────────────────────
+# â”€â”€ Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 app.add_middleware(
@@ -66,16 +67,17 @@ app.add_middleware(
     max_age=86400,
 )
 
-# ── Exception handlers (uniform error envelope) ─────────────────────
+# â”€â”€ Exception handlers (uniform error envelope) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 register_exception_handlers(app)
 
-# ── Routers ─────────────────────────────────────────────────────────
-# Health endpoints are mounted at /health (NOT under /v1) — same as NestJS.
+# â”€â”€ Routers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Health endpoints are mounted at /health (NOT under /v1) â€” same as NestJS.
 app.include_router(health_router)
 
 # All API endpoints under /v1 prefix to match NestJS routing.
 app.include_router(auth_router, prefix="/v1")
+app.include_router(vehicles_router, prefix="/v1")
 
-# ── Startup validation — fail fast if required config is missing ────
+# â”€â”€ Startup validation â€” fail fast if required config is missing â”€â”€â”€â”€
 if not settings.jwt_secret or len(settings.jwt_secret) < 16:
     raise RuntimeError("JWT_SECRET environment variable must be set and at least 16 characters.")

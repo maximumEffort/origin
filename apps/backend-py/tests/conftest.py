@@ -52,7 +52,7 @@ async def client(mock_prisma: MagicMock) -> AsyncIterator[TestClient]:
     # Import here (after env vars are set) so settings validation passes.
     from origin_backend.main import app
 
-    # NOTE: Do NOT use `with TestClient(app) as c:` — the context manager
+    # NOTE: Do NOT use `with TestClient(app) as c:` â€” the context manager
     # triggers FastAPI's lifespan, which calls connect_prisma() and
     # overwrites our mock with a real Prisma instance. Bare TestClient
     # skips lifespan entirely, which is what we want for unit tests.
