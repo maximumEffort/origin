@@ -1,7 +1,7 @@
 # API Integration Guide — Origin Leasing
 
 **Project:** Origin Car Leasing Platform  
-**Domain:** originleasing.ae  
+**Domain:** origin-auto.ae  
 **Company:** Origin (Shanghai Car Rental LLC)  
 **Tech Stack:** NestJS Backend | Next.js Frontend | Flutter Mobile App  
 **Region:** Dubai, UAE  
@@ -84,7 +84,7 @@ Webhooks deliver real-time notifications of payment events to your backend.
 
 1. In the Checkout.com dashboard, navigate to **Settings > Webhooks**
 2. Click **"Add Webhook Endpoint"**
-3. Enter webhook URL: `https://api.originleasing.ae/v1/webhooks/checkout`
+3. Enter webhook URL: `https://api.origin-auto.ae/v1/webhooks/checkout`
 4. Select events to subscribe to:
    - `payment_approved` — successful payment
    - `payment_declined` — declined payment
@@ -128,7 +128,7 @@ Webhooks deliver real-time notifications of payment events to your backend.
 CHECKOUT_PUBLIC_KEY_LIVE=pk_live_xxxxx
 CHECKOUT_SECRET_KEY_LIVE=sk_live_xxxxx
 CHECKOUT_WEBHOOK_SECRET=whsk_xxxxx
-CHECKOUT_WEBHOOK_URL=https://api.originleasing.ae/v1/webhooks/checkout
+CHECKOUT_WEBHOOK_URL=https://api.origin-auto.ae/v1/webhooks/checkout
 CHECKOUT_CURRENCY=AED
 CHECKOUT_ENVIRONMENT=live
 ```
@@ -186,7 +186,7 @@ Twilio provides SMS and OTP verification services. In the UAE market, a local nu
 #### 1. Sign Up for Twilio Paid Account
 
 1. Visit [twilio.com](https://twilio.com)
-2. Click **"Sign Up"** and create account using company email (origin@originleasing.ae preferred)
+2. Click **"Sign Up"** and create account using company email (origin@origin-auto.ae preferred)
 3. During signup, Twilio will ask:
    - **Primary use case:** Select "Two-Factor Authentication" or "SMS"
    - **Phone number country:** United Arab Emirates
@@ -318,8 +318,8 @@ SendGrid is the email service provider for Origin Leasing. All transactional and
 ### Prerequisites
 
 - SendGrid account (free tier exists; will upgrade to paid plan)
-- Domain ownership: `originleasing.ae` (DNS access required)
-- Email address for contact: origin@originleasing.ae
+- Domain ownership: `origin-auto.ae` (DNS access required)
+- Email address for contact: origin@origin-auto.ae
 - SMTP credentials or API integration planned
 
 ### Step-by-Step Instructions
@@ -344,18 +344,18 @@ SendGrid is the email service provider for Origin Leasing. All transactional and
    - **Pro Plan:** Recommended for production; pay-as-you-go at ~USD 10 per 1,000 emails
 3. Add credit card and upgrade
 
-#### 3. Verify Domain: originleasing.ae
+#### 3. Verify Domain: origin-auto.ae
 
 Domain verification proves you own the email domain and is critical for deliverability.
 
 1. Navigate to **Settings > Sender Verification > Domain Authentication**
 2. Click **"Authenticate Your Domain"**
-3. Enter domain: `originleasing.ae`
+3. Enter domain: `origin-auto.ae`
 4. Select **"Advanced Settings"** (recommended for production)
 5. SendGrid generates DNS records to add to your domain:
-   - **CNAME for email sending** (e.g., `s1._domainkey.originleasing.ae → sendgrid.net`)
-   - **CNAME for opens/clicks tracking** (e.g., `link.originleasing.ae → sendgrid.net`)
-   - **CNAME for bounce handling** (e.g., `bounce.originleasing.ae → sendgrid.net`)
+   - **CNAME for email sending** (e.g., `s1._domainkey.origin-auto.ae → sendgrid.net`)
+   - **CNAME for opens/clicks tracking** (e.g., `link.origin-auto.ae → sendgrid.net`)
+   - **CNAME for bounce handling** (e.g., `bounce.origin-auto.ae → sendgrid.net`)
 6. Add these CNAME records to your domain registrar's DNS settings
 7. Return to SendGrid and click **"Verify"**
 8. Verification typically completes within 24 hours
@@ -374,7 +374,7 @@ SPF (Sender Policy Framework) tells email servers which IPs are authorized to se
 
 1. Add the SPF record to your domain DNS:
    ```
-   originleasing.ae TXT "v=spf1 sendgrid.net ~all"
+   origin-auto.ae TXT "v=spf1 sendgrid.net ~all"
    ```
 2. Wait for DNS propagation (typically 1 hour, up to 24 hours)
 3. Test SPF using [mxtoolbox.com](https://mxtoolbox.com) or similar SPF checker
@@ -409,7 +409,7 @@ Dynamic templates allow you to manage content in SendGrid's editor and pass vari
    2. Final payment due 3 days before lease start
    3. Vehicle will be delivered to your address on {{startDate}}
    
-   Questions? Contact us at support@originleasing.ae or WhatsApp +971 50 123 4567
+   Questions? Contact us at support@origin-auto.ae or WhatsApp +971 50 123 4567
    ```
 6. Save and publish template
 7. Copy the **Template ID** (e.g., `d-abc123...`)
@@ -480,7 +480,7 @@ A dedicated IP improves email deliverability and prevents your emails from being
 1. Navigate to **Settings > Bounce Management**
 2. Ensure bounced emails are automatically suppressed from future sends
 3. Set up webhook (optional) to track bounces in your database:
-   - **Webhook URL:** `https://api.originleasing.ae/v1/webhooks/sendgrid`
+   - **Webhook URL:** `https://api.origin-auto.ae/v1/webhooks/sendgrid`
    - **Events:** bounce, complaint, unsubscribe
 4. Copy the webhook verification token
 
@@ -488,7 +488,7 @@ A dedicated IP improves email deliverability and prevents your emails from being
 
 ```bash
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-SENDGRID_FROM_EMAIL=noreply@originleasing.ae
+SENDGRID_FROM_EMAIL=noreply@origin-auto.ae
 SENDGRID_FROM_NAME=Origin Leasing
 SENDGRID_TEMPLATE_ID_BOOKING_CONFIRMATION_EN=d-xxxxx
 SENDGRID_TEMPLATE_ID_BOOKING_CONFIRMATION_AR=d-xxxxx
@@ -505,9 +505,9 @@ SENDGRID_TEMPLATE_ID_KYC_REMINDER_ZH=d-xxxxx
 SENDGRID_TEMPLATE_ID_WELCOME_EN=d-xxxxx
 SENDGRID_TEMPLATE_ID_WELCOME_AR=d-xxxxx
 SENDGRID_TEMPLATE_ID_WELCOME_ZH=d-xxxxx
-SENDGRID_WEBHOOK_URL=https://api.originleasing.ae/v1/webhooks/sendgrid
+SENDGRID_WEBHOOK_URL=https://api.origin-auto.ae/v1/webhooks/sendgrid
 SENDGRID_WEBHOOK_TOKEN=whvk_xxxxx
-SENDGRID_DOMAIN=originleasing.ae
+SENDGRID_DOMAIN=origin-auto.ae
 SENDGRID_SPF_RECORD="v=spf1 sendgrid.net ~all"
 ```
 
@@ -571,7 +571,7 @@ WhatsApp is the primary customer communication channel for Origin Leasing in the
 3. Fill in:
    - Business name: `Origin (Shanghai Car Rental LLC)`
    - Your name: [Authorized signatory]
-   - Business email: origin@originleasing.ae
+   - Business email: origin@origin-auto.ae
    - Country: `United Arab Emirates`
    - Business type: `Vehicle Rental & Leasing`
 4. Accept terms and create account
@@ -610,13 +610,13 @@ The WhatsApp Business Profile is the public-facing identity customers see.
    - **Business Name:** Origin Leasing
    - **Category:** Car Rental & Leasing
    - **Description:** Premium car leasing in Dubai. Short-term and long-term vehicle rental for UAE residents and expats. English, Arabic, Chinese support.
-   - **Website:** https://originleasing.ae
+   - **Website:** https://origin-auto.ae
    - **Business Address:** [Dubai office address]
    - **Business Hours:** [e.g., 09:00 – 18:00 GST, 6 days/week]
    - **Profile Picture:** [Upload Origin logo]
    - **Call Button:** Enable (links to phone number +971 50 123 4567)
    - **Message Button:** Enable (customers can message directly)
-   - **Email:** support@originleasing.ae
+   - **Email:** support@origin-auto.ae
 3. Save and publish profile
 
 #### 5. Create Message Templates
@@ -723,7 +723,7 @@ WhatsApp will send incoming customer messages to your backend via webhook.
 2. Select your app (or create one if needed)
 3. Navigate to **Webhooks**
 4. Configure:
-   - **Webhook URL:** `https://api.originleasing.ae/v1/webhooks/whatsapp`
+   - **Webhook URL:** `https://api.origin-auto.ae/v1/webhooks/whatsapp`
    - **Verify Token:** [Generate a secure random string, e.g., `whvk_abc123xyz789`]
    - **Subscribe to events:**
      - `messages` — incoming customer messages
@@ -762,7 +762,7 @@ META_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 META_PHONE_NUMBER_ID=xxxxxxxxxxxxxxxx
 META_ACCESS_TOKEN=EAAxxxxxxxxxxxxxxxxxxxxxxxx
 META_VERIFY_TOKEN=whvk_abc123xyz789
-WHATSAPP_WEBHOOK_URL=https://api.originleasing.ae/v1/webhooks/whatsapp
+WHATSAPP_WEBHOOK_URL=https://api.origin-auto.ae/v1/webhooks/whatsapp
 WHATSAPP_BUSINESS_PHONE=+97150123456
 WHATSAPP_TEMPLATE_ID_BOOKING_CONFIRMATION_EN=booking_confirmation_en
 WHATSAPP_TEMPLATE_ID_BOOKING_CONFIRMATION_AR=booking_confirmation_ar
@@ -830,7 +830,7 @@ Firebase provides push notifications (FCM for Android, APNs for iOS), real-time 
 ### Prerequisites
 
 - Google Cloud Console account with billing enabled
-- Ownership of domain originleasing.ae (for verification, if needed)
+- Ownership of domain origin-auto.ae (for verification, if needed)
 - iOS app identifier: `com.origin.leasing`
 - Android app identifier: `com.origin.leasing`
 - Apple Developer account (for iOS APNs certificate)
@@ -1152,7 +1152,7 @@ Tabby sends webhooks for payment status updates (authorized, captured, failed).
 
 1. In Tabby Merchant Portal, navigate to **Settings > Webhooks**
 2. Add webhook endpoint:
-   - **URL:** `https://api.originleasing.ae/v1/webhooks/tabby`
+   - **URL:** `https://api.origin-auto.ae/v1/webhooks/tabby`
    - **Events:** `payment.authorized`, `payment.captured`, `payment.declined`, `payment.cancelled`
 3. Copy the **Webhook Secret** (for signature validation)
 4. Test webhook by triggering a manual test event in the portal
@@ -1171,7 +1171,7 @@ Tabby sends webhooks for payment status updates (authorized, captured, failed).
 TABBY_PUBLIC_KEY=pk_live_xxxxxxxxxxxxxxxx
 TABBY_SECRET_KEY=sk_live_xxxxxxxxxxxxxxxx
 TABBY_WEBHOOK_SECRET=whsk_xxxxxxxxxxxxxxxx
-TABBY_WEBHOOK_URL=https://api.originleasing.ae/v1/webhooks/tabby
+TABBY_WEBHOOK_URL=https://api.origin-auto.ae/v1/webhooks/tabby
 TABBY_CURRENCY=AED
 TABBY_ENVIRONMENT=live
 TABBY_API_BASE_URL=https://api.tabby.ai
@@ -1290,9 +1290,9 @@ Google Maps integration provides location selection (pickup/drop-off), fleet tra
 3. Under **Key restrictions**, select **HTTP referrers (web sites)**
 4. Add allowed HTTP referrers:
    ```
-   https://originleasing.ae/*
-   https://www.originleasing.ae/*
-   https://*.originleasing.ae/*
+   https://origin-auto.ae/*
+   https://www.origin-auto.ae/*
+   https://*.origin-auto.ae/*
    ```
 5. Under **API restrictions**, restrict to:
    - Maps JavaScript API
@@ -1431,7 +1431,7 @@ Below is a comprehensive list of all environment variables required across the O
 CHECKOUT_PUBLIC_KEY_LIVE=pk_live_xxxxx
 CHECKOUT_SECRET_KEY_LIVE=sk_live_xxxxx
 CHECKOUT_WEBHOOK_SECRET=whsk_xxxxx
-CHECKOUT_WEBHOOK_URL=https://api.originleasing.ae/v1/webhooks/checkout
+CHECKOUT_WEBHOOK_URL=https://api.origin-auto.ae/v1/webhooks/checkout
 CHECKOUT_CURRENCY=AED
 CHECKOUT_ENVIRONMENT=live
 ```
@@ -1451,7 +1451,7 @@ TWILIO_REGION=ae
 
 ```bash
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-SENDGRID_FROM_EMAIL=noreply@originleasing.ae
+SENDGRID_FROM_EMAIL=noreply@origin-auto.ae
 SENDGRID_FROM_NAME=Origin Leasing
 SENDGRID_TEMPLATE_ID_BOOKING_CONFIRMATION_EN=d-xxxxx
 SENDGRID_TEMPLATE_ID_BOOKING_CONFIRMATION_AR=d-xxxxx
@@ -1468,9 +1468,9 @@ SENDGRID_TEMPLATE_ID_KYC_REMINDER_ZH=d-xxxxx
 SENDGRID_TEMPLATE_ID_WELCOME_EN=d-xxxxx
 SENDGRID_TEMPLATE_ID_WELCOME_AR=d-xxxxx
 SENDGRID_TEMPLATE_ID_WELCOME_ZH=d-xxxxx
-SENDGRID_WEBHOOK_URL=https://api.originleasing.ae/v1/webhooks/sendgrid
+SENDGRID_WEBHOOK_URL=https://api.origin-auto.ae/v1/webhooks/sendgrid
 SENDGRID_WEBHOOK_TOKEN=whvk_xxxxx
-SENDGRID_DOMAIN=originleasing.ae
+SENDGRID_DOMAIN=origin-auto.ae
 SENDGRID_SPF_RECORD="v=spf1 sendgrid.net ~all"
 ```
 
@@ -1483,7 +1483,7 @@ META_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 META_PHONE_NUMBER_ID=xxxxxxxxxxxxxxxx
 META_ACCESS_TOKEN=EAAxxxxxxxxxxxxxxxxxxxxxxxx
 META_VERIFY_TOKEN=whvk_abc123xyz789
-WHATSAPP_WEBHOOK_URL=https://api.originleasing.ae/v1/webhooks/whatsapp
+WHATSAPP_WEBHOOK_URL=https://api.origin-auto.ae/v1/webhooks/whatsapp
 WHATSAPP_BUSINESS_PHONE=+97150123456
 WHATSAPP_TEMPLATE_ID_BOOKING_CONFIRMATION_EN=booking_confirmation_en
 WHATSAPP_TEMPLATE_ID_BOOKING_CONFIRMATION_AR=booking_confirmation_ar
@@ -1523,7 +1523,7 @@ APPLE_APN_KEY_PATH=/path/to/AuthKey_XXXXX.p8
 TABBY_PUBLIC_KEY=pk_live_xxxxxxxxxxxxxxxx
 TABBY_SECRET_KEY=sk_live_xxxxxxxxxxxxxxxx
 TABBY_WEBHOOK_SECRET=whsk_xxxxxxxxxxxxxxxx
-TABBY_WEBHOOK_URL=https://api.originleasing.ae/v1/webhooks/tabby
+TABBY_WEBHOOK_URL=https://api.origin-auto.ae/v1/webhooks/tabby
 TABBY_CURRENCY=AED
 TABBY_ENVIRONMENT=live
 TABBY_API_BASE_URL=https://api.tabby.ai
@@ -1566,12 +1566,12 @@ DATABASE_URL=postgresql://user:password@localhost:5432/origin_leasing
 DATABASE_SSL=true
 
 # Backend API
-API_BASE_URL=https://api.originleasing.ae
+API_BASE_URL=https://api.origin-auto.ae
 API_PORT=3000
 
 # Frontend
-NEXT_PUBLIC_API_BASE_URL=https://api.originleasing.ae
-NEXT_PUBLIC_APP_URL=https://originleasing.ae
+NEXT_PUBLIC_API_BASE_URL=https://api.origin-auto.ae
+NEXT_PUBLIC_APP_URL=https://origin-auto.ae
 
 # Security & Encryption
 JWT_SECRET=your_super_secret_jwt_key_here
@@ -1635,6 +1635,6 @@ DATA_RETENTION_DAYS=2555
 ---
 
 **Prepared for:** Origin (Shanghai Car Rental LLC)  
-**Domain:** originleasing.ae  
+**Domain:** origin-auto.ae  
 **Region:** Dubai, UAE  
 **Tech Stack:** NestJS | Next.js | Flutter

@@ -10,7 +10,7 @@ const locales = ['en', 'ar', 'zh-CN'];
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
-  'https://originleasing.net';
+  'https://origin-auto.ae';
 
 const metaByLocale: Record<string, { title: string; description: string; ogLocale: string }> = {
   en: {

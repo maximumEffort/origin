@@ -40,8 +40,8 @@ When a service is added for a different entity, introduce an `entities.ts` confi
 **Key contact:** Bella Ma, General Manager of MENA Region
 **Office:** Creek Harbour, Horizon Tower 2, Unit 2502, Dubai
 **Phone (UAE):** +971 52 143 9746
-**Admin email:** admin@originleasing.ae
-**Primary domain:** originleasing.ae (also live: originleasing.net)
+**Admin email:** admin@originleasing.ae *(backend login username; separate from new domain — see issue)*
+**Primary domain:** origin-auto.ae (registered with Etisalat, DNS via Etisalat nameservers)
 
 ---
 

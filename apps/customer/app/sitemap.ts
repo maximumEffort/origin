@@ -14,7 +14,7 @@ const staticPaths = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://originleasing.net';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://origin-auto.ae';
   const lastModified = new Date();
 
   return locales.flatMap((locale) =>
