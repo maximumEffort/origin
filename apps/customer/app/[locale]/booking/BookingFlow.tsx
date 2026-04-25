@@ -9,11 +9,9 @@ import { Check, ArrowRight, ArrowLeft, Upload, MessageCircle, LogIn } from 'luci
 import { WHATSAPP_NUMBER } from '@/lib/constants';
 import { STATIC_VEHICLES } from '@/lib/static-vehicles';
 import { useAuth } from '@/components/AuthProvider';
-import { getAccessToken } from '@/lib/auth';
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ??
-  'https://car-leasing-business-production.up.railway.app/v1';
+// Booking calls go through the customer site's own /api/backend/* proxy,
+// which forwards to the backend with the httpOnly session cookie.
+const API_PROXY = '/api/backend';
 
 interface CarOption {
   id: string;
@@ -131,15 +129,10 @@ export default function BookingFlow({ locale }: { locale: string }) {
       end.setMonth(end.getMonth() + duration);
       const endDateStr = end.toISOString().split('T')[0];
 
-      const token = getAccessToken();
-
       // Step 1: Create booking (DRAFT)
-      const createRes = await fetch(`${API_BASE}/bookings`, {
+      const createRes = await fetch(`${API_PROXY}/bookings`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vehicle_id: selectedCar.id,
           start_date: startDate,
@@ -162,12 +155,9 @@ export default function BookingFlow({ locale }: { locale: string }) {
       const booking = await createRes.json();
 
       // Step 2: Submit booking for review
-      const submitRes = await fetch(`${API_BASE}/bookings/${booking.id}/submit`, {
+      const submitRes = await fetch(`${API_PROXY}/bookings/${booking.id}/submit`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!submitRes.ok) {

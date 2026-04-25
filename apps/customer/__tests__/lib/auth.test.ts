@@ -1,49 +1,30 @@
 /**
- * Tests for auth helpers (lib/auth.ts).
+ * Tests for auth helpers (lib/auth.ts) — cookie-based proxy edition.
+ *
+ * Tokens are now in httpOnly cookies (set by the API route on /api/auth/otp/verify).
+ * The browser never sees them, so there's no token storage to test.
+ * Tests focus on: correct proxy URL, correct payload shape, error propagation.
  */
 import {
-  getAccessToken,
-  getRefreshToken,
-  setTokens,
-  clearTokens,
   sendOtp,
   verifyOtp,
   fetchProfile,
   updateProfile,
   authFetch,
+  logoutSession,
 } from '@/lib/auth';
-
-// ── Setup ───────────────────────────────────────────────────────────────────
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-// Mock localStorage
-const store: Record<string, string> = {};
-const localStorageMock = {
-  getItem: jest.fn((key: string) => store[key] ?? null),
-  setItem: jest.fn((key: string, value: string) => { store[key] = value; }),
-  removeItem: jest.fn((key: string) => { delete store[key]; }),
-  clear: jest.fn(() => { Object.keys(store).forEach((k) => delete store[k]); }),
-  length: 0,
-  key: jest.fn(),
-};
-Object.defineProperty(global, 'localStorage', { value: localStorageMock, writable: true });
-
 beforeEach(() => {
   mockFetch.mockReset();
-  localStorageMock.getItem.mockClear();
-  localStorageMock.setItem.mockClear();
-  localStorageMock.removeItem.mockClear();
-  Object.keys(store).forEach((k) => delete store[k]);
 });
 
-const API_BASE = 'https://car-leasing-business-production.up.railway.app/v1';
-
-function okJson(body: unknown) {
+function okJson(body: unknown, status = 200) {
   return Promise.resolve({
-    ok: true,
-    status: 200,
+    ok: status >= 200 && status < 300,
+    status,
     json: () => Promise.resolve(body),
     text: () => Promise.resolve(JSON.stringify(body)),
   });
@@ -54,48 +35,21 @@ function errResponse(status: number, body = '') {
     ok: false,
     status,
     statusText: 'Error',
+    json: () => Promise.resolve({}),
     text: () => Promise.resolve(body),
   });
 }
 
-// ── Token storage ───────────────────────────────────────────────────────────
-
-describe('token storage', () => {
-  it('setTokens stores access and refresh tokens', () => {
-    setTokens('access123', 'refresh456');
-    expect(store['origin_access_token']).toBe('access123');
-    expect(store['origin_refresh_token']).toBe('refresh456');
-  });
-
-  it('getAccessToken returns stored token', () => {
-    store['origin_access_token'] = 'mytoken';
-    expect(getAccessToken()).toBe('mytoken');
-  });
-
-  it('getRefreshToken returns stored token', () => {
-    store['origin_refresh_token'] = 'myrefresh';
-    expect(getRefreshToken()).toBe('myrefresh');
-  });
-
-  it('clearTokens removes both tokens', () => {
-    store['origin_access_token'] = 'a';
-    store['origin_refresh_token'] = 'b';
-    clearTokens();
-    expect(store['origin_access_token']).toBeUndefined();
-    expect(store['origin_refresh_token']).toBeUndefined();
-  });
-});
-
 // ── sendOtp ─────────────────────────────────────────────────────────────────
 
 describe('sendOtp', () => {
-  it('sends POST to /auth/otp/send', async () => {
+  it('POSTs phone to /api/auth/otp/send (proxy, not direct backend)', async () => {
     mockFetch.mockReturnValue(okJson({ message: 'OTP sent' }));
 
     const result = await sendOtp('+971501234567');
 
     const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe(`${API_BASE}/auth/otp/send`);
+    expect(url).toBe('/api/auth/otp/send');
     expect(opts.method).toBe('POST');
     expect(JSON.parse(opts.body)).toEqual({ phone: '+971501234567' });
     expect(result).toEqual({ message: 'OTP sent' });
@@ -110,42 +64,57 @@ describe('sendOtp', () => {
 // ── verifyOtp ───────────────────────────────────────────────────────────────
 
 describe('verifyOtp', () => {
-  it('sends POST to /auth/otp/verify with phone and otp', async () => {
+  it('POSTs to /api/auth/otp/verify and returns customer (no tokens in body)', async () => {
     const response = {
-      access_token: 'at',
-      refresh_token: 'rt',
-      customer: { id: '1', phone: '+971501234567', fullName: null, kycStatus: null, preferredLanguage: null },
+      customer: {
+        id: '1',
+        phone: '+971501234567',
+        fullName: null,
+        kycStatus: null,
+        preferredLanguage: null,
+      },
     };
     mockFetch.mockReturnValue(okJson(response));
 
     const result = await verifyOtp('+971501234567', '123456');
 
     const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe(`${API_BASE}/auth/otp/verify`);
+    expect(url).toBe('/api/auth/otp/verify');
     expect(JSON.parse(opts.body)).toEqual({ phone: '+971501234567', otp: '123456' });
     expect(result).toEqual(response);
+    // tokens never reach the client
+    expect(result).not.toHaveProperty('access_token');
+    expect(result).not.toHaveProperty('refresh_token');
+  });
+});
+
+// ── logoutSession ───────────────────────────────────────────────────────────
+
+describe('logoutSession', () => {
+  it('POSTs to /api/auth/logout', async () => {
+    mockFetch.mockReturnValue(okJson({ ok: true }));
+    await logoutSession();
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toBe('/api/auth/logout');
+    expect(opts.method).toBe('POST');
+  });
+
+  it('swallows errors silently', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('network'));
+    await expect(logoutSession()).resolves.toBeUndefined();
   });
 });
 
 // ── authFetch ───────────────────────────────────────────────────────────────
 
 describe('authFetch', () => {
-  it('includes Authorization header when token exists', async () => {
-    store['origin_access_token'] = 'bearertoken';
+  it('routes through /api/backend proxy (cookie travels automatically)', async () => {
     mockFetch.mockReturnValue(okJson({ ok: true }));
-
-    await authFetch('/some/path');
-
-    const [, opts] = mockFetch.mock.calls[0];
-    expect(opts.headers['Authorization']).toBe('Bearer bearertoken');
-  });
-
-  it('omits Authorization header when no token', async () => {
-    mockFetch.mockReturnValue(okJson({ ok: true }));
-
-    await authFetch('/some/path');
-
-    const [, opts] = mockFetch.mock.calls[0];
+    await authFetch('/bookings');
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toBe('/api/backend/bookings');
+    expect(opts.headers['Content-Type']).toBe('application/json');
+    // The client never sets Authorization — it's the proxy's job.
     expect(opts.headers['Authorization']).toBeUndefined();
   });
 
@@ -158,32 +127,38 @@ describe('authFetch', () => {
 // ── fetchProfile ────────────────────────────────────────────────────────────
 
 describe('fetchProfile', () => {
-  it('maps backend fullName to frontend name', async () => {
-    store['origin_access_token'] = 'token';
+  it('GETs /api/auth/me and unwraps customer', async () => {
     mockFetch.mockReturnValue(
       okJson({
-        id: '1',
-        phone: '+971501234567',
-        fullName: 'Bella Ma',
-        email: 'bella@origin.ae',
-        preferredLanguage: 'en',
-        kycStatus: 'approved',
+        customer: {
+          id: '1',
+          phone: '+971501234567',
+          name: 'Bella Ma',
+          email: 'bella@origin.ae',
+          language: 'en',
+          kycStatus: 'approved',
+        },
       }),
     );
 
     const profile = await fetchProfile();
 
-    expect(profile.name).toBe('Bella Ma');
-    expect(profile.language).toBe('en');
-    expect(profile.email).toBe('bella@origin.ae');
+    expect(profile?.name).toBe('Bella Ma');
+    expect(profile?.language).toBe('en');
+    expect(profile?.email).toBe('bella@origin.ae');
+  });
+
+  it('returns null on 401 (no session)', async () => {
+    mockFetch.mockReturnValue(okJson({ customer: null }, 401));
+    const profile = await fetchProfile();
+    expect(profile).toBeNull();
   });
 });
 
 // ── updateProfile ───────────────────────────────────────────────────────────
 
 describe('updateProfile', () => {
-  it('maps frontend name to backend fullName', async () => {
-    store['origin_access_token'] = 'token';
+  it('maps frontend name to backend fullName, PATCHes via /api/backend', async () => {
     mockFetch.mockReturnValue(
       okJson({
         id: '1',
@@ -195,10 +170,12 @@ describe('updateProfile', () => {
       }),
     );
 
-    await updateProfile({ name: 'New Name' });
+    const result = await updateProfile({ name: 'New Name' });
 
-    const [, opts] = mockFetch.mock.calls[0];
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toBe('/api/backend/customers/me');
     expect(opts.method).toBe('PATCH');
     expect(JSON.parse(opts.body)).toEqual({ fullName: 'New Name' });
+    expect(result.name).toBe('New Name');
   });
 });
