@@ -69,7 +69,7 @@ export default function BookingFlow({ locale }: { locale: string }) {
 
   // Fetch real cars from API
   useEffect(() => {
-    fetch(`${API_BASE}/vehicles?limit=50`)
+    fetch(`${API_PROXY}/vehicles?limit=50`)
       .then(res => res.ok ? res.json() : null)
       .then(json => {
         if (json?.data?.length) {
