@@ -92,7 +92,7 @@ Why AWS Lightsail:
 - AWS account with me-central-1 region enabled
 - SSH key pair for server access
 - Current Supabase database credentials (from `.env`)
-- Domain `originleasing.ae` registered
+- Domain `origin-auto.ae` registered
 
 ### Step 1: Provision the Server
 
@@ -198,10 +198,10 @@ services:
     ports:
       - "5678:5678"
     environment:
-      N8N_HOST: n8n.originleasing.ae
+      N8N_HOST: n8n.origin-auto.ae
       N8N_PORT: 5678
       N8N_PROTOCOL: https
-      WEBHOOK_URL: https://n8n.originleasing.ae/
+      WEBHOOK_URL: https://n8n.origin-auto.ae/
       DB_TYPE: postgresdb
       DB_POSTGRESDB_HOST: postgres
       DB_POSTGRESDB_PORT: 5432
@@ -242,11 +242,11 @@ volumes:
 Create `~/origin/Caddyfile`:
 
 ```
-api.originleasing.ae {
+api.origin-auto.ae {
     reverse_proxy backend:3001
 }
 
-n8n.originleasing.ae {
+n8n.origin-auto.ae {
     reverse_proxy n8n:5678
 }
 ```
@@ -297,8 +297,8 @@ cp backend/.env.example .env
 # Edit .env with production values:
 # - DATABASE_URL and DIRECT_URL: point to local postgres container
 # - All API keys (WhatsApp, Checkout, Twilio, SendGrid, etc.)
-# - APP_URL=https://api.originleasing.ae
-# - FRONTEND_URL=https://originleasing.ae
+# - APP_URL=https://api.origin-auto.ae
+# - FRONTEND_URL=https://origin-auto.ae
 nano .env
 
 # Run Prisma migrations
@@ -321,10 +321,10 @@ docker compose logs -f
 # Update the API URL to point to the new UAE backend
 # Vercel Dashboard → origin-car-leasing-website → Settings → Environment Variables
 # Change:
-NEXT_PUBLIC_API_URL=https://api.originleasing.ae
+NEXT_PUBLIC_API_URL=https://api.origin-auto.ae
 
 # Also update when custom domain is ready:
-NEXT_PUBLIC_SITE_URL=https://originleasing.ae
+NEXT_PUBLIC_SITE_URL=https://origin-auto.ae
 ```
 
 #### Vercel — Admin Dashboard
@@ -332,7 +332,7 @@ NEXT_PUBLIC_SITE_URL=https://originleasing.ae
 ```bash
 # Vercel Dashboard → admin project → Settings → Environment Variables
 # Change:
-NEXT_PUBLIC_API_URL=https://api.originleasing.ae
+NEXT_PUBLIC_API_URL=https://api.origin-auto.ae
 ```
 
 #### Backend .env (on UAE server)
@@ -341,19 +341,19 @@ NEXT_PUBLIC_API_URL=https://api.originleasing.ae
 # Key changes from current .env:
 NODE_ENV=production
 PORT=3001
-APP_URL=https://api.originleasing.ae
-FRONTEND_URL=https://originleasing.ae
-ADMIN_URL=https://admin.originleasing.ae
+APP_URL=https://api.origin-auto.ae
+FRONTEND_URL=https://origin-auto.ae
+ADMIN_URL=https://admin.origin-auto.ae
 
 # Database now points to local Docker PostgreSQL:
 DATABASE_URL=postgresql://origin_admin:${DB_PASSWORD}@postgres:5432/origin
 DIRECT_URL=postgresql://origin_admin:${DB_PASSWORD}@postgres:5432/origin
 
 # CORS — update with new domains:
-CORS_ALLOWED_ORIGINS=https://originleasing.ae,https://admin.originleasing.ae,https://www.originleasing.ae
+CORS_ALLOWED_ORIGINS=https://origin-auto.ae,https://admin.origin-auto.ae,https://www.origin-auto.ae
 ```
 
-### Step 7: DNS Setup for originleasing.ae
+### Step 7: DNS Setup for origin-auto.ae
 
 ```
 # DNS Records to configure at your .ae registrar:
@@ -380,19 +380,19 @@ TXT   @              v=spf1 include:sendgrid.net ~all
 
 ```bash
 # 1. Check backend health
-curl https://api.originleasing.ae/health
+curl https://api.origin-auto.ae/health
 
 # 2. Check API docs
-open https://api.originleasing.ae/docs
+open https://api.origin-auto.ae/docs
 
 # 3. Check n8n is accessible
-open https://n8n.originleasing.ae
+open https://n8n.origin-auto.ae
 
 # 4. Check website loads and connects to API
-open https://originleasing.ae
+open https://origin-auto.ae
 
 # 5. Test a vehicle search endpoint
-curl https://api.originleasing.ae/v1/vehicles?limit=5
+curl https://api.origin-auto.ae/v1/vehicles?limit=5
 
 # 6. Verify database latency (should be <5ms since it's local)
 docker exec origin-db psql -U origin_admin -d origin \
@@ -404,8 +404,8 @@ docker exec origin-db psql -U origin_admin -d origin \
 ## Post-Migration Checklist
 
 - [ ] Database migrated and row counts verified
-- [ ] Backend responding on `api.originleasing.ae`
-- [ ] n8n accessible on `n8n.originleasing.ae`
+- [ ] Backend responding on `api.origin-auto.ae`
+- [ ] n8n accessible on `n8n.origin-auto.ae`
 - [ ] Vercel env vars updated to point to new API
 - [ ] Website loads and fetches data from UAE backend
 - [ ] Admin dashboard loads and connects to UAE backend

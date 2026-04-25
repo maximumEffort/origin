@@ -20,7 +20,7 @@
 ### C1. Placeholder text in legal pages
 **Files:** `website/app/[locale]/privacy/page.tsx`, `website/app/[locale]/terms/page.tsx`, `website/app/[locale]/rta/page.tsx`
 - `[Company Name]`, `[domain]`, `[Licence Number]` placeholders throughout
-- Must be replaced with "Origin", "originleasing.ae", actual RTA licence number
+- Must be replaced with "Origin", "origin-auto.ae", actual RTA licence number
 - **Labels:** `launch-blocker`, `compliance`
 
 ### C2. Incomplete Chinese locale (zh.json)
@@ -39,7 +39,7 @@
 - **Labels:** `launch-blocker`, `compliance`
 
 ### C4. Placeholder contact info across website
-- `website/app/[locale]/contact/ContactForm.tsx:79` — `info@companydomain.ae` (should be `info@originleasing.ae`)
+- `website/app/[locale]/contact/ContactForm.tsx:79` — `info@companydomain.ae` (should be `info@origin-auto.ae`)
 - `website/components/Footer.tsx:106,116` — Hardcoded `971500000000` phone
 - `website/app/[locale]/page.tsx:306` — Same hardcoded phone number
 - Multiple inconsistent phone numbers across site vs CLAUDE.md (`+971 52 143 9746`)

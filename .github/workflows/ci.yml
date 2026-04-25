@@ -60,7 +60,7 @@ jobs:
       - run: npm run build --workspace=customer
         env:
           NEXT_PUBLIC_API_URL: https://example.com/v1
-          NEXT_PUBLIC_SITE_URL: https://originleasing.net
+          NEXT_PUBLIC_SITE_URL: https://origin-auto.ae
 
   # ─── Admin dashboard ─────────────────────────────────────────────────────
   admin:

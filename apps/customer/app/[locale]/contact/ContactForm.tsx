@@ -76,7 +76,7 @@ export default function ContactForm() {
                 </div>
                 <div className="flex items-start gap-3 text-sm text-neutral-600">
                   <Mail size={16} className="text-brand shrink-0 mt-0.5" />
-                  <a href="mailto:info@originleasing.ae" className="hover:text-brand">info@originleasing.ae</a>
+                  <a href="mailto:info@origin-auto.ae" className="hover:text-brand">info@origin-auto.ae</a>
                 </div>
               </div>
             </div>
