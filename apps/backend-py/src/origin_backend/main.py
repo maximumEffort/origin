@@ -11,8 +11,8 @@ Or directly:
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -78,6 +78,4 @@ app.include_router(auth_router, prefix="/v1")
 
 # ── Startup validation — fail fast if required config is missing ────
 if not settings.jwt_secret or len(settings.jwt_secret) < 16:
-    raise RuntimeError(
-        "JWT_SECRET environment variable must be set and at least 16 characters."
-    )
+    raise RuntimeError("JWT_SECRET environment variable must be set and at least 16 characters.")

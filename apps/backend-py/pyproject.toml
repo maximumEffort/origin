@@ -67,7 +67,8 @@ select = [
     "RUF", # ruff-specific rules
 ]
 ignore = [
-    "E501",  # line too long — formatter handles it
+    "E501",   # line too long — formatter handles it
+    "B008",   # function call in defaults — FastAPI's Depends() is the established pattern
 ]
 
 [tool.mypy]

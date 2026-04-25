@@ -37,7 +37,9 @@ class Settings(BaseSettings):
 
     # ── Database ──
     database_url: str = Field(..., description="Postgres URL (pooled). Required.")
-    direct_url: str | None = Field(default=None, description="Direct (non-pooled) URL for migrations.")
+    direct_url: str | None = Field(
+        default=None, description="Direct (non-pooled) URL for migrations."
+    )
 
     # ── JWT ──
     jwt_secret: str = Field(..., min_length=16, description="JWT signing secret. Required.")

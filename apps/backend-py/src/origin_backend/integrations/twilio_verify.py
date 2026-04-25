@@ -36,9 +36,9 @@ async def send_otp(phone: str) -> None:
         raise RuntimeError("Twilio is not configured")
 
     try:
-        client.verify.v2.services(
-            settings.twilio_verify_service_sid
-        ).verifications.create(to=phone, channel="sms")
+        client.verify.v2.services(settings.twilio_verify_service_sid).verifications.create(
+            to=phone, channel="sms"
+        )
     except TwilioRestException as e:
         logger.error("twilio send_otp failed: %s", e)
         raise

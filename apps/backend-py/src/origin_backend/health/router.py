@@ -18,9 +18,9 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
-from prisma import Prisma
 
 from origin_backend.common.prisma import get_db
+from prisma import Prisma
 
 router = APIRouter(prefix="/health", tags=["health"])
 
@@ -40,7 +40,7 @@ async def ready(db: Prisma = Depends(get_db)) -> JSONResponse:
         # Cheapest possible round-trip query
         await db.execute_raw("SELECT 1")
         return JSONResponse(status_code=200, content={"status": "ready"})
-    except Exception as e:  # noqa: BLE001 — we want any DB error to return 503
+    except Exception:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={"status": "unready", "error": "database_unreachable"},
@@ -56,7 +56,7 @@ async def full_health(db: Prisma = Depends(get_db)) -> JSONResponse:
         t0 = time.perf_counter()
         await db.execute_raw("SELECT 1")
         db_latency_ms = int((time.perf_counter() - t0) * 1000)
-    except Exception:  # noqa: BLE001
+    except Exception:
         db_status = "down"
 
     overall = "healthy" if db_status == "up" else "degraded"

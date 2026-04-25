@@ -11,8 +11,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-
 # ── Request schemas ──────────────────────────────────────────────
+
 
 class SendOtpRequest(BaseModel):
     phone: str = Field(..., description="UAE mobile in +971XXXXXXXXX format")
@@ -22,7 +22,11 @@ class SendOtpRequest(BaseModel):
     def validate_uae_phone(cls, v: str) -> str:
         cleaned = v.replace(" ", "")
         # +971 followed by 8 or 9 digits (some legacy numbers are 8)
-        if not cleaned.startswith("+971") or not cleaned[4:].isdigit() or not (8 <= len(cleaned[4:]) <= 9):
+        if (
+            not cleaned.startswith("+971")
+            or not cleaned[4:].isdigit()
+            or not (8 <= len(cleaned[4:]) <= 9)
+        ):
             raise ValueError("Phone must be a valid UAE number (+971XXXXXXXXX)")
         return cleaned
 
@@ -42,6 +46,7 @@ class AdminLoginRequest(BaseModel):
 
 
 # ── Response schemas ─────────────────────────────────────────────
+
 
 class CustomerSummary(BaseModel):
     id: str

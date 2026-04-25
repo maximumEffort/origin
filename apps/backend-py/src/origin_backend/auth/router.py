@@ -10,7 +10,6 @@ Auth endpoints — mirrors apps/backend/src/auth/auth.controller.ts:
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status
-from prisma import Prisma
 
 from origin_backend.auth import service
 from origin_backend.auth.schemas import (
@@ -24,6 +23,7 @@ from origin_backend.auth.schemas import (
     VerifyOtpRequest,
 )
 from origin_backend.common.prisma import get_db
+from prisma import Prisma
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

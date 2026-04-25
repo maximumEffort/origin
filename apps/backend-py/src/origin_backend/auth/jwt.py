@@ -7,7 +7,7 @@ Two token types: access (short-lived) and refresh (long-lived).
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Literal, TypedDict
 
 from jose import JWTError, jwt
@@ -18,14 +18,14 @@ ALGORITHM = "HS256"
 
 
 class TokenPayload(TypedDict):
-    sub: str            # User ID
-    role: str           # 'customer' | 'SUPER_ADMIN' | 'FLEET_MANAGER' | etc.
+    sub: str  # User ID
+    role: str  # 'customer' | 'SUPER_ADMIN' | 'FLEET_MANAGER' | etc.
     type: Literal["access", "refresh"]
-    exp: int            # Unix timestamp
+    exp: int  # Unix timestamp
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _sign(payload: dict[str, object], secret: str) -> str:

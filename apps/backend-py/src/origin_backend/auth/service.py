@@ -19,20 +19,21 @@ import hashlib
 import hmac
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from passlib.hash import bcrypt
-from prisma import Prisma
 
 from origin_backend.auth.jwt import issue_pair, verify_refresh_token
 from origin_backend.config import settings
 from origin_backend.integrations import twilio_verify
+from prisma import Prisma
 
 logger = logging.getLogger(__name__)
 
 
 # ── OTP helpers (dev mode only) ──────────────────────────────────
+
 
 def _hash_otp(otp: str) -> str:
     """SHA-256 hash so plaintext is never stored."""
@@ -45,6 +46,7 @@ def _generate_otp(length: int = 6) -> str:
 
 
 # ── Public API ───────────────────────────────────────────────────
+
 
 async def send_otp(db: Prisma, phone: str) -> dict[str, object]:
     """
@@ -65,7 +67,7 @@ async def send_otp(db: Prisma, phone: str) -> dict[str, object]:
 
     # Dev fallback — generate locally
     otp = _generate_otp()
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    expires_at = datetime.now(UTC) + timedelta(minutes=5)
 
     # Wipe any prior OTPs for this phone to avoid races
     await db.otpcode.delete_many(where={"phone": phone})
@@ -93,12 +95,14 @@ async def verify_otp(db: Prisma, phone: str, otp: str) -> dict[str, object]:
             where={
                 "phone": phone,
                 "verified": False,
-                "expiresAt": {"gt": datetime.now(timezone.utc)},
+                "expiresAt": {"gt": datetime.now(UTC)},
             },
             order={"createdAt": "desc"},
         )
         if record is None:
-            raise HTTPException(status_code=401, detail="No OTP found for this number. Request a new one.")
+            raise HTTPException(
+                status_code=401, detail="No OTP found for this number. Request a new one."
+            )
         if not hmac.compare_digest(record.otpHash, _hash_otp(otp)):
             raise HTTPException(status_code=401, detail="Invalid OTP.")
         await db.otpcode.delete(where={"id": record.id})

@@ -25,13 +25,17 @@ async def http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSO
     code = exc.detail if isinstance(exc.detail, str) else None
     return JSONResponse(
         status_code=exc.status_code,
-        content=_error_payload(exc.status_code, str(exc.detail), code=None if code is None else None),
+        content=_error_payload(
+            exc.status_code, str(exc.detail), code=code
+        ),
     )
 
 
 async def validation_exception_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
     """Pydantic validation errors come back as 400 with a per-field message list."""
-    errors = [{"field": ".".join(str(p) for p in e["loc"]), "message": e["msg"]} for e in exc.errors()]
+    errors = [
+        {"field": ".".join(str(p) for p in e["loc"]), "message": e["msg"]} for e in exc.errors()
+    ]
     return JSONResponse(
         status_code=400,
         content={

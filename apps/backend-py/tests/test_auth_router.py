@@ -8,13 +8,12 @@ shapes, and happy paths.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 from fastapi.testclient import TestClient
 
-
 # ── /auth/otp/send ───────────────────────────────────────────────
+
 
 def test_send_otp_rejects_non_uae_phone(client: TestClient):
     r = client.post("/v1/auth/otp/send", json={"phone": "+1234567890"})
@@ -45,10 +44,12 @@ def test_send_otp_dev_mode_creates_record(client: TestClient, mock_prisma: Magic
 
 # ── /auth/otp/verify ─────────────────────────────────────────────
 
+
 def test_verify_otp_dev_mode_happy_path(client: TestClient, mock_prisma: MagicMock):
     """Dev: OTP record found, hash matches → returns tokens + customer."""
     # Set up: OtpCode hash that matches "123456"
     import hashlib
+
     record = MagicMock()
     record.id = "otp-1"
     record.otpHash = hashlib.sha256(b"123456").hexdigest()
@@ -83,6 +84,7 @@ def test_verify_otp_no_record_returns_401(client: TestClient, mock_prisma: Magic
 
 def test_verify_otp_wrong_code_returns_401(client: TestClient, mock_prisma: MagicMock):
     import hashlib
+
     record = MagicMock()
     record.otpHash = hashlib.sha256(b"123456").hexdigest()
     mock_prisma.otpcode.find_first.return_value = record
@@ -93,6 +95,7 @@ def test_verify_otp_wrong_code_returns_401(client: TestClient, mock_prisma: Magi
 
 
 # ── /auth/refresh ────────────────────────────────────────────────
+
 
 def test_refresh_with_valid_token_returns_new_pair(client: TestClient):
     from origin_backend.auth.jwt import issue_refresh_token
@@ -122,6 +125,7 @@ def test_refresh_with_access_token_rejected(client: TestClient):
 
 
 # ── /auth/admin/login ────────────────────────────────────────────
+
 
 def test_admin_login_missing_user_returns_401(client: TestClient, mock_prisma: MagicMock):
     """Should fail constant-time even when user doesn't exist (timing-safe)."""
