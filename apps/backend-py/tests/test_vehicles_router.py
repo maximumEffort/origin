@@ -11,8 +11,8 @@ def _category() -> SimpleNamespace:
     return SimpleNamespace(
         id="cat-1",
         nameEn="Electric SUV",
-        nameAr="Ø³ÙŠØ§Ø±Ø© ÙƒÙ‡Ø±Ø¨Ø§Ø¦ÙŠØ© SUV",
-        nameZh="ç”µåŠ¨SUV",
+        nameAr="Ã˜Â³Ã™Å Ã˜Â§Ã˜Â±Ã˜Â© Ã™Æ’Ã™â€¡Ã˜Â±Ã˜Â¨Ã˜Â§Ã˜Â¦Ã™Å Ã˜Â© SUV",
+        nameZh="Ã§â€ÂµÃ¥Å Â¨SUV",
         icon="suv-icon",
     )
 
@@ -134,12 +134,12 @@ def test_list_vehicles_pagination_skip_take(client, mock_prisma: MagicMock):
 
 def test_list_vehicles_rejects_negative_min_price(client):
     r = client.get("/v1/vehicles?min_price=-1")
-    assert r.status_code == 422
+    assert r.status_code == 400
 
 
 def test_list_vehicles_rejects_limit_above_100(client):
     r = client.get("/v1/vehicles?limit=500")
-    assert r.status_code == 422
+    assert r.status_code == 400
 
 
 # Detail endpoint -------------------------------------------------------
