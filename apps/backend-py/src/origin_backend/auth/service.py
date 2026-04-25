@@ -32,7 +32,7 @@ from prisma import Prisma
 logger = logging.getLogger(__name__)
 
 
-# ── OTP helpers (dev mode only) ──────────────────────────────────
+# â”€â”€ OTP helpers (dev mode only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def _hash_otp(otp: str) -> str:
@@ -45,7 +45,7 @@ def _generate_otp(length: int = 6) -> str:
     return "".join(str(secrets.randbelow(10)) for _ in range(length))
 
 
-# ── Public API ───────────────────────────────────────────────────
+# â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 async def send_otp(db: Prisma, phone: str) -> dict[str, object]:
@@ -59,13 +59,13 @@ async def send_otp(db: Prisma, phone: str) -> dict[str, object]:
         return {"message": "OTP sent successfully", "expires_in": 300}
 
     if settings.is_production:
-        # Production with no Twilio is a misconfiguration — refuse explicitly.
+        # Production with no Twilio is a misconfiguration â€” refuse explicitly.
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="SMS service is not configured. Please contact support.",
         )
 
-    # Dev fallback — generate locally
+    # Dev fallback â€” generate locally
     otp = _generate_otp()
     expires_at = datetime.now(UTC) + timedelta(minutes=5)
 
@@ -90,7 +90,7 @@ async def verify_otp(db: Prisma, phone: str, otp: str) -> dict[str, object]:
         if not ok:
             raise HTTPException(status_code=401, detail="Invalid OTP.")
     else:
-        # Dev fallback — look up the hash in OtpCode table
+        # Dev fallback â€” look up the hash in OtpCode table
         record = await db.otpcode.find_first(
             where={
                 "phone": phone,
@@ -132,7 +132,7 @@ async def admin_login(db: Prisma, email: str, password: str) -> dict[str, object
     """Email/password login for admin users with constant-time bcrypt compare."""
     admin = await db.adminuser.find_unique(where={"email": email})
 
-    # Constant-time bcrypt compare even when user not found — prevents timing attacks.
+    # Constant-time bcrypt compare even when user not found â€” prevents timing attacks.
     dummy_hash = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
     target_hash = admin.password if admin else dummy_hash
     password_valid = bcrypt.verify(password, target_hash)

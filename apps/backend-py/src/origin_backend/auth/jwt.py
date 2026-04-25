@@ -7,8 +7,8 @@ Two token types: access (short-lived) and refresh (long-lived).
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
 import secrets
+from datetime import UTC, datetime, timedelta
 from typing import Literal, TypedDict
 
 from jose import JWTError, jwt
@@ -42,13 +42,25 @@ def _verify(token: str, secret: str) -> dict[str, object]:
 
 def issue_access_token(*, sub: str, role: str) -> str:
     expires = _now() + timedelta(minutes=settings.jwt_access_expires_minutes)
-    payload = {"sub": sub, "role": role, "type": "access", "exp": int(expires.timestamp()), "jti": secrets.token_urlsafe(16)}
+    payload = {
+        "sub": sub,
+        "role": role,
+        "type": "access",
+        "exp": int(expires.timestamp()),
+        "jti": secrets.token_urlsafe(16),
+    }
     return _sign(payload, settings.jwt_secret)
 
 
 def issue_refresh_token(*, sub: str, role: str) -> str:
     expires = _now() + timedelta(days=settings.jwt_refresh_expires_days)
-    payload = {"sub": sub, "role": role, "type": "refresh", "exp": int(expires.timestamp()), "jti": secrets.token_urlsafe(16)}
+    payload = {
+        "sub": sub,
+        "role": role,
+        "type": "refresh",
+        "exp": int(expires.timestamp()),
+        "jti": secrets.token_urlsafe(16),
+    }
     refresh_secret = settings.jwt_refresh_secret or settings.jwt_secret
     return _sign(payload, refresh_secret)
 
