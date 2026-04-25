@@ -25,6 +25,7 @@ jobs:
       customer: ${{ steps.filter.outputs.customer }}
       admin: ${{ steps.filter.outputs.admin }}
       backend: ${{ steps.filter.outputs.backend }}
+      backend_py: ${{ steps.filter.outputs.backend_py }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
@@ -45,6 +46,9 @@ jobs:
               - 'apps/backend/**'
               - 'package.json'
               - 'package-lock.json'
+              - '.github/workflows/ci.yml'
+            backend_py:
+              - 'apps/backend-py/**'
               - '.github/workflows/ci.yml'
 
   # ─── Customer site ───────────────────────────────────────────────────────
@@ -112,4 +116,42 @@ jobs:
           # which does NOT connect to the DB. Set a placeholder to satisfy any guards.
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
           JWT_SECRET: ci-placeholder-not-used-for-real-auth
+
+  # ─── Backend (Python) ───────────────────────────────────────────────────
+  backend-py:
+    name: Backend (Python) — ruff, mypy, pytest
+    needs: changes
+    if: needs.changes.outputs.backend_py == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend-py
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: '0.5.0'
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+      - name: Generate Prisma client
+        run: uv run prisma generate
+        env:
+          # prisma generate doesn't connect to the DB but errors without these set
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+      - name: Lint (ruff)
+        run: uv run ruff check .
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
+      - name: Type check (mypy)
+        run: uv run mypy src/
+        # mypy can be noisy on first runs — keep it advisory until we lock down all stubs.
+        continue-on-error: true
+      - name: Tests (pytest)
+        run: uv run pytest
+        env:
+          JWT_SECRET: test-secret-must-be-at-least-16-chars-long
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
 

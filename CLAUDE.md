@@ -115,7 +115,8 @@ Supported: **English** (en), **Arabic** (ar, RTL), **Simplified Chinese** (zh-CN
 |---|---|---|
 | Customer site | `apps/customer/` | Next.js 15 (App Router), next-intl, Tailwind, Stripe, Sentry |
 | Admin dashboard | `apps/admin/` | Next.js 14 (App Router), jose (JWT), httpOnly-cookie proxy to backend |
-| Backend API | `apps/backend/` | NestJS 10, Prisma 5, PostgreSQL, JWT, Stripe webhooks, Twilio Verify, SendGrid |
+| Backend API (Node) | `apps/backend/` | NestJS 10, Prisma 5, PostgreSQL — **archiving** during Python migration |
+| Backend API (Python) | `apps/backend-py/` | FastAPI, Prisma Python, PostgreSQL — **canonical, in active migration** |
 
 All three apps live in this monorepo. Both frontends consume the backend via `NEXT_PUBLIC_API_URL`. The backend is currently hosted on Railway (US) — migration to UAE infrastructure (AWS Lightsail me-central-1) is tracked in issue #21.
 

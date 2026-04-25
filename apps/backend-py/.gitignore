@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Prisma Python
+src/origin_backend/generated/
+
+# Environment
+.env
+.env.local
+
+# Distribution
+build/
+dist/
+*.egg-info/
