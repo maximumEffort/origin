@@ -6,10 +6,8 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { useTranslations } from 'next-intl';
 import { CreditCard, Lock, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import { getAccessToken } from '@/lib/auth';
 
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PK ?? '';
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://car-leasing-business-production.up.railway.app/v1';
 
 const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null;
 
@@ -126,13 +124,9 @@ export default function StripeCheckout({ amountAed, bookingRef, vehicleName, loc
       return;
     }
 
-    const token = getAccessToken();
-    fetch(`${API_BASE}/payments/create-intent`, {
+    fetch('/api/backend/payments/create-intent', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         amountAed,
         bookingRef: bookingRef ?? '',

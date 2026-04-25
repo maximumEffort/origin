@@ -70,7 +70,8 @@ export default function LoginForm({ locale }: { locale: string }) {
         language: result.customer.preferredLanguage,
         kycStatus: result.customer.kycStatus,
       };
-      login(result.access_token, result.refresh_token, cust);
+      // Tokens are set as httpOnly cookies by the proxy route; the customer is all we keep client-side.
+      login(cust);
 
       const urlParams = new URLSearchParams(window.location.search);
       const redirect = urlParams.get('redirect');

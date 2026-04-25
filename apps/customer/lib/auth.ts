@@ -1,13 +1,14 @@
 /**
- * Auth helpers for Origin Car Leasing customer authentication.
+ * Auth helpers for Origin customer authentication.
  *
- * Uses localStorage for token persistence and exposes helpers
- * consumed by the AuthProvider context.
+ * All requests go through Next.js API route proxies under /api/auth/* and
+ * /api/backend/*. The backend JWT is stored in an httpOnly cookie set
+ * server-side (see app/api/auth/otp/verify/route.ts) and travels
+ * automatically with cookie-included fetches. JS code in the browser
+ * cannot read or write the token — XSS-safe.
+ *
+ * Mirrors the admin pattern in apps/admin/lib/api.ts.
  */
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ??
-  'https://car-leasing-business-production.up.railway.app/v1';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,18 +21,12 @@ export interface Customer {
   kycStatus: string | null;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
 export interface OtpSendResponse {
   message: string;
 }
 
+/** Verify response — tokens are NOT returned to the client; they're set as httpOnly cookies. */
 export interface OtpVerifyResponse {
-  access_token: string;
-  refresh_token: string;
   customer: {
     id: string;
     phone: string;
@@ -53,60 +48,41 @@ interface BackendProfileUpdate {
   preferredLanguage?: string;
 }
 
-// ── Token storage ────────────────────────────────────────────────────────────
+// ── Authenticated fetch (via /api/backend proxy) ─────────────────────────────
 
-const ACCESS_TOKEN_KEY = 'origin_access_token';
-const REFRESH_TOKEN_KEY = 'origin_refresh_token';
-
-export function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
-}
-
-export function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-}
-
-export function setTokens(access: string, refresh: string) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, access);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-}
-
-export function clearTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-}
-
-// ── Authenticated fetch ──────────────────────────────────────────────────────
-
+/**
+ * Make an authenticated request against the backend API. Cookies travel
+ * automatically — no Authorization header to manage on the client.
+ *
+ * `path` is the backend path WITHOUT the /v1 prefix (e.g. '/bookings').
+ */
 export async function authFetch<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
-  const token = getAccessToken();
-  const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
+  const res = await fetch(`/api/backend${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
 
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== 'undefined') {
+      // Session lost — redirect to login from the calling page if it cares.
+      // We don't auto-redirect here so the caller can choose graceful UX.
+    }
     const body = await res.text().catch(() => '');
     throw new Error(`API ${res.status}: ${body || res.statusText}`);
   }
   return res.json();
 }
 
-// ── Auth API calls ───────────────────────────────────────────────────────────
+// ── Auth API calls (via /api/auth proxies) ───────────────────────────────────
 
 export async function sendOtp(phone: string): Promise<OtpSendResponse> {
-  const url = `${API_BASE}/auth/otp/send`;
-  const res = await fetch(url, {
+  const res = await fetch('/api/auth/otp/send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone }),
@@ -122,8 +98,7 @@ export async function verifyOtp(
   phone: string,
   code: string,
 ): Promise<OtpVerifyResponse> {
-  const url = `${API_BASE}/auth/otp/verify`;
-  const res = await fetch(url, {
+  const res = await fetch('/api/auth/otp/verify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone, otp: code }),
@@ -135,25 +110,28 @@ export async function verifyOtp(
   return res.json();
 }
 
+/** Clear the session cookies. */
+export async function logoutSession(): Promise<void> {
+  await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+}
+
 // ── Customer profile ─────────────────────────────────────────────────────────
 
-export async function fetchProfile(): Promise<Customer> {
-  // Backend returns fullName; frontend uses name
-  const raw = await authFetch<Record<string, unknown>>('/customers/me');
-  return {
-    id: raw.id as string,
-    phone: raw.phone as string,
-    name: (raw.fullName as string | null) ?? null,
-    email: (raw.email as string | null) ?? null,
-    language: (raw.preferredLanguage as string | null) ?? null,
-    kycStatus: (raw.kycStatus as string | null) ?? null,
-  };
+/** Fetch the current customer's profile. Returns null if the session is invalid/expired. */
+export async function fetchProfile(): Promise<Customer | null> {
+  const res = await fetch('/api/auth/me', { cache: 'no-store' });
+  if (res.status === 401) return null;
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`API ${res.status}: ${body || res.statusText}`);
+  }
+  const json = await res.json();
+  return json.customer ?? null;
 }
 
 export async function updateProfile(
   data: ProfileUpdatePayload,
 ): Promise<Customer> {
-  // Map frontend field names to backend field names
   const payload: BackendProfileUpdate = {};
   if (data.name !== undefined) payload.fullName = data.name;
   if (data.email !== undefined) payload.email = data.email;
