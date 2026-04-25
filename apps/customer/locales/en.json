@@ -210,7 +210,7 @@
     "successText": "Thank you for reaching out. We'll get back to you within 24 hours."
   },
   "footer": {
-    "companyName": "Origin Car Leasing LLC",
+    "companyName": "Origin",
     "tagline": "Buy, rent or lease Chinese EVs in Dubai.",
     "quickLinks": "Quick Links",
     "legal": "Legal",
@@ -218,10 +218,10 @@
     "terms": "Terms & Conditions",
     "cookies": "Cookie Settings",
     "rta": "RTA Compliance",
-    "copyright": "© 2026 Origin Car Leasing LLC. All rights reserved.",
+    "copyright": "© 2026 Origin — operated by Shanghai Car Rental LLC. All rights reserved.",
     "address": "Creek Harbour, Horizon Tower 2, Dubai",
     "addressSub": "Delivery across all Emirates",
-    "licence": "Licensed by Dubai Department of Economy and Tourism",
+    "licence": "Licensed in Abu Dhabi · RTA Fleet Operator (pending)",
     "ecoTagline": "Electric & hybrid options available.",
     "vatNote": "All prices exclude 5% VAT",
     "links": "Quick Links",
@@ -550,7 +550,7 @@
   "privacy": {
     "title": "Privacy Policy",
     "lastUpdated": "Last updated: March 2026",
-    "intro": "This Privacy Policy describes how Origin Car Leasing LLC (\"we\", \"us\", or \"our\") collects, uses, and protects your personal data in accordance with UAE Federal Decree-Law No. 45 of 2021 on Personal Data Protection (PDPL).",
+    "intro": "This Privacy Policy describes how Origin (operated by Shanghai Car Rental LLC, an Abu Dhabi mainland company) collects, uses, and protects your personal data in accordance with UAE Federal Decree-Law No. 45 of 2021 on Personal Data Protection (PDPL).",
     "dataCollect": "Data We Collect: We collect information you provide when enquiring about or booking a vehicle, including your name, Emirates ID or passport number, UAE mobile number, and payment details.",
     "dataUse": "How We Use Your Data: Your data is used solely to process lease applications, communicate booking confirmations, send payment reminders, and comply with RTA and UAE FTA regulatory requirements.",
     "retention": "Data Retention: We retain your personal data for the duration of your lease and for 5 years thereafter as required by UAE commercial law.",
@@ -560,7 +560,7 @@
   "terms": {
     "title": "Terms & Conditions",
     "lastUpdated": "Last updated: March 2026",
-    "intro": "These Terms & Conditions govern the lease of vehicles from Origin Car Leasing LLC (\"the Company\") to the lessee. By entering into a lease agreement, you agree to be bound by these terms.",
+    "intro": "These Terms & Conditions govern the rental of vehicles from Origin (operated by Shanghai Car Rental LLC, \"the Company\") to the lessee. By entering into a rental agreement, you agree to be bound by these terms.",
     "eligibility": "Eligibility: Lessees must hold a valid UAE driving licence or an international driving licence recognised in the UAE. Minimum age is 21 years.",
     "insurance": "Insurance: All vehicles are covered by comprehensive insurance. The lessee is responsible for any excess in the event of an at-fault accident.",
     "mileage": "Mileage: Monthly mileage limits apply as specified in your lease agreement. Excess mileage is charged at the rate shown on your quote.",
