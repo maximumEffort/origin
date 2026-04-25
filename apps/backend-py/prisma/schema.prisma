@@ -2,10 +2,13 @@ generator client {
   // Python Prisma client. Same schema file as the Node backend so the database
   // stays the single source of truth during the migration window.
   // Docs: https://prisma-client-py.readthedocs.io/
-  provider             = "prisma-client-py"
-  recursive_type_depth = 5
-  interface            = "asyncio"
-  partial_type_generator = "prisma/partials.py"
+  provider                   = "prisma-client-py"
+  recursive_type_depth       = 5
+  interface                  = "asyncio"
+  partial_type_generator     = "prisma/partials.py"
+  // Origin uses Decimal for currency fields (vehicle prices, payments, etc.).
+  // Prisma Python requires opt-in for Decimal support.
+  enable_experimental_decimal = "true"
 }
 
 datasource db {
