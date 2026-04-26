@@ -1,7 +1,52 @@
+import type { Metadata } from 'next';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { useTranslations } from 'next-intl';
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://origin-auto.ae';
+
+const metaByLocale: Record<string, { title: string; description: string }> = {
+  en: {
+    title: 'RTA Compliance — Dubai Fleet Operator | Origin',
+    description:
+      'Origin is a registered Dubai RTA fleet operator. All vehicles carry valid RTA registration, comprehensive insurance and pre-delivery inspection.',
+  },
+  ar: {
+    title: 'الامتثال لهيئة الطرق والمواصلات — مشغّل أسطول دبي | Origin',
+    description:
+      'Origin مشغّل أسطول مسجّل لدى هيئة الطرق والمواصلات في دبي. جميع المركبات تحمل تسجيلاً سارياً وتأميناً شاملاً وفحصاً قبل التسليم.',
+  },
+  'zh-CN': {
+    title: 'RTA合规 — 迪拜车队运营商 | Origin',
+    description:
+      'Origin 是迪拜 RTA 注册车队运营商。所有车辆都持有有效的 RTA 注册、综合保险及交付前检查。',
+  },
+};
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const meta = metaByLocale[locale] ?? metaByLocale.en;
+  const pageUrl = `${SITE_URL}/${locale}/rta`;
+  return {
+    title: meta.title,
+    description: meta.description,
+    alternates: {
+      canonical: pageUrl,
+      languages: {
+        en: `${SITE_URL}/en/rta`,
+        ar: `${SITE_URL}/ar/rta`,
+        'zh-CN': `${SITE_URL}/zh-CN/rta`,
+      },
+    },
+    openGraph: { title: meta.title, description: meta.description, url: pageUrl, type: 'website' },
+  };
+}
 
 export default function RtaPage() {
   const t = useTranslations('rta');

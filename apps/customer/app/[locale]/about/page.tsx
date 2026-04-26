@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { setRequestLocale } from 'next-intl/server';
@@ -6,6 +7,50 @@ import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { ArrowRight, Shield, Star, Users, Clock } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'https://origin-auto.ae';
+
+const metaByLocale: Record<string, { title: string; description: string }> = {
+  en: {
+    title: 'About Origin — Premium Chinese EV Rental in Dubai',
+    description:
+      'Operated by Shanghai Car Rental LLC. Premium Chinese electric vehicle rental in Dubai — transparent pricing, comprehensive insurance, RTA compliant.',
+  },
+  ar: {
+    title: 'عن Origin — تأجير سيارات صينية كهربائية فاخرة في دبي',
+    description:
+      'تشغّلها شركة شنغهاي لتأجير السيارات ذ.م.م. تأجير سيارات صينية كهربائية فاخرة في دبي — تسعير شفاف، تأمين شامل، ومتوافق مع هيئة الطرق.',
+  },
+  'zh-CN': {
+    title: '关于 Origin — 迪拜高端中国电动汽车租赁',
+    description:
+      '由上海汽车租赁有限公司运营。迪拜高端中国电动汽车租赁 — 透明定价、综合保险、符合RTA法规。',
+  },
+};
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const meta = metaByLocale[locale] ?? metaByLocale.en;
+  const pageUrl = `${SITE_URL}/${locale}/about`;
+  return {
+    title: meta.title,
+    description: meta.description,
+    alternates: {
+      canonical: pageUrl,
+      languages: {
+        en: `${SITE_URL}/en/about`,
+        ar: `${SITE_URL}/ar/about`,
+        'zh-CN': `${SITE_URL}/zh-CN/about`,
+      },
+    },
+    openGraph: { title: meta.title, description: meta.description, url: pageUrl, type: 'website' },
+  };
+}
 
 export function generateStaticParams() {
   return ['en', 'ar', 'zh-CN'].map((locale) => ({ locale }));
