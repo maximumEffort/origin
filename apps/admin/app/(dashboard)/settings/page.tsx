@@ -19,7 +19,7 @@ interface NotificationSettings {
 
 const defaultCompany: CompanySettings = {
   name: 'Origin',
-  email: 'admin@originleasing.ae',
+  email: 'admin@origin-auto.ae',
   phone: '+971 5X XXX XXXX',
   address: 'Creek Harbour, Horizon Tower 2, Unit 2502, Dubai',
   vatNumber: '',
