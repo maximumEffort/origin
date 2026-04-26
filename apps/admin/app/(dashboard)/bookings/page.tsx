@@ -157,7 +157,7 @@ export default function BookingsPage() {
                 <div className="font-semibold">{viewBooking.vehicle}</div>
               </div>
               <div>
-                <div className="text-gray-400 text-xs mb-1">Lease Period</div>
+                <div className="text-gray-400 text-xs mb-1">Rental Period</div>
                 <div>{viewBooking.start} to {viewBooking.end}</div>
               </div>
               <div>

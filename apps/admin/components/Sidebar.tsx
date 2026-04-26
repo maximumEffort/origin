@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 import {
   LayoutDashboard, Car, CalendarCheck, Users,
@@ -22,14 +22,16 @@ const nav = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   const handleSignOut = async () => {
     setSigningOut(true);
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    router.push('/login');
+    // Force a full page reload to clear in-memory state (DataProvider's
+    // cached vehicles/customers/bookings/leases). Otherwise a subsequent
+    // sign-in on the same browser briefly shows the previous session's data.
+    window.location.href = '/login';
   };
 
   const links = (
