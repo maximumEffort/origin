@@ -50,6 +50,16 @@ param cpuCores string = '0.5'
 @description('Memory per replica.')
 param memorySize string = '1Gi'
 
+// ── Constants ───────────────────────────────────────────────────────────────
+
+// Built-in role definition ID for "Key Vault Secrets User".
+// Hardcoded as a literal tenant-scoped path because both subscriptionResourceId()
+// and tenantResourceId() failed on this subscription with RoleDefinitionDoesNotExist
+// despite producing the canonical ARM path. Literal string eliminates any
+// function-output formatting weirdness.
+// https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#key-vault-secrets-user
+var keyVaultSecretsUserRoleId = '/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-4322-8e57-46e3aa55c8e0'
+
 // ── Lookups ─────────────────────────────────────────────────────────────────
 
 resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' existing = {
@@ -229,16 +239,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
 // ── Role assignments for the system-assigned identity ───────────────────────
 
 // Key Vault Secrets User — read secrets from KV.
-// Built-in role IDs live at TENANT scope (canonical /providers/.../roleDefinitions/{guid});
-// using subscriptionResourceId() resolves to a sub-scoped path that some
-// subscriptions don't accept. tenantResourceId() is the safer reference.
 resource roleKvSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: keyVault
   name: guid(keyVault.id, containerApp.id, 'KeyVaultSecretsUser')
   properties: {
     principalId: containerApp.identity.principalId
     principalType: 'ServicePrincipal'
-    roleDefinitionId: tenantResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-4322-8e57-46e3aa55c8e0')
+    roleDefinitionId: keyVaultSecretsUserRoleId
   }
 }
 
