@@ -67,6 +67,17 @@ class Settings(BaseSettings):
     # ── Google Maps ──
     google_maps_api_key: str | None = None
 
+    # ── WhatsApp Business (Meta Cloud API) ──
+    whatsapp_access_token: str | None = None
+    whatsapp_phone_number_id: str | None = None
+
+    @property
+    def whatsapp_configured(self) -> bool:
+        return bool(self.whatsapp_access_token and self.whatsapp_phone_number_id)
+
+    # ── Firebase (FCM push notifications) ──
+    firebase_service_account_json: str | None = None
+
     # ── CORS ──
     cors_allowed_origins: str = "http://localhost:3000,http://localhost:3002"
 
