@@ -48,6 +48,9 @@ param vatRate string = '0.05'
 @description('Built-in role GUID for "Key Vault Secrets User". Microsoft documents this as 4633458b-17de-4322-8e57-46e3aa55c8e0, but some subscriptions return a different GUID. Verify in your tenant with: az role definition list --name "Key Vault Secrets User"')
 param keyVaultSecretsUserRoleGuid string = '4633458b-17de-4322-8e57-46e3aa55c8e0'
 
+@description('Built-in role GUID for "AcrPull". Microsoft documents this as 7f951dda-4ed3-4680-a7ca-43fe172d538d. Same caveat as keyVaultSecretsUserRoleGuid — verify with: az role definition list --name AcrPull')
+param acrPullRoleGuid string = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+
 @description('Tags applied to all resources. Override only if you know what you are doing.')
 param tags object = {
   env: environment
@@ -145,13 +148,16 @@ module containerApp 'modules/containerapp.bicep' = {
     appName: containerAppName
     keyVaultName: keyVaultName
     logAnalyticsName: logAnalyticsName
+    containerRegistryName: containerRegistryName
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
     vatRate: vatRate
     keyVaultSecretsUserRoleGuid: keyVaultSecretsUserRoleGuid
+    acrPullRoleGuid: acrPullRoleGuid
     tags: tags
   }
   dependsOn: [
     keyVault                       // KV must exist + secrets seeded before app references them
+    acr                            // ACR must exist before role assignment + registry config bind to it
   ]
 }
 
