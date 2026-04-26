@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from origin_backend import __version__
+from origin_backend.admin.router import router as admin_router
 from origin_backend.auth.router import router as auth_router
 from origin_backend.bookings.router import router as bookings_router
 from origin_backend.calculator.router import router as calculator_router
@@ -89,6 +90,7 @@ app.include_router(bookings_router, prefix="/v1")
 app.include_router(leases_router, prefix="/v1")
 app.include_router(contact_router, prefix="/v1")
 app.include_router(payments_router, prefix="/v1")
+app.include_router(admin_router, prefix="/v1")
 
 # â”€â”€ Startup validation â€” fail fast if required config is missing â”€â”€â”€â”€
 if not settings.jwt_secret or len(settings.jwt_secret) < 16:

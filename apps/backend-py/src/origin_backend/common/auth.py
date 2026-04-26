@@ -1,21 +1,20 @@
 """
 FastAPI auth dependencies.
 
-Mirrors apps/backend/src/auth/strategies/jwt.strategy.ts + JwtAuthGuard.
+Mirrors apps/backend/src/auth/strategies/jwt.strategy.ts + JwtAuthGuard
+and the RolesGuard / @Roles decorator from common/guards.
 
-Two dependencies:
+Three dependencies:
     require_user      Resolve any authenticated user (customer or admin).
     require_customer  Resolve a customer specifically (rejects admin tokens).
-
-Both pull a Bearer token off the Authorization header, verify it as an
-access token, look the user up via Prisma, and hand back a typed
-`AuthenticatedUser` to the handler.
+    require_admin     Factory: require an admin in one of the given roles.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -82,3 +81,26 @@ async def require_customer(
     if user.kind != "customer":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     return user
+
+
+def require_admin(
+    *roles: str,
+) -> Callable[[AuthenticatedUser], Coroutine[Any, Any, AuthenticatedUser]]:
+    """
+    Build a FastAPI dependency that requires an admin in one of `roles`.
+
+    Mirrors the NestJS `@Roles(...)` decorator + RolesGuard combo. Pass
+    no roles to allow any admin role.
+
+        Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER"))
+    """
+    allowed = set(roles)
+
+    async def _dep(user: AuthenticatedUser = Depends(require_user)) -> AuthenticatedUser:
+        if user.kind != "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        if allowed and user.role not in allowed:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        return user
+
+    return _dep

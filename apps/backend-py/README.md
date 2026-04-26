@@ -71,6 +71,7 @@ apps/backend-py/
 ├── src/origin_backend/
 │   ├── main.py              # FastAPI app entrypoint
 │   ├── config.py            # Pydantic settings (env vars)
+│   ├── admin/               # Back-office: bookings, KYC, fleet, dashboard
 │   ├── auth/                # OTP + JWT + admin login
 │   ├── bookings/            # Customer booking lifecycle
 │   ├── calculator/          # Quote engine (VAT, mileage, add-ons)
@@ -137,6 +138,6 @@ uv run prisma generate
 - [x] Calculator (quote engine)
 - [x] Contact form
 - [ ] Integrations (Twilio, SendGrid, Stripe, Google Maps, WhatsApp)
-- [ ] Admin endpoints (full set)
+- [x] Admin endpoints (full set — 14 endpoints, role-gated)
 
 Each module gets its own PR.
