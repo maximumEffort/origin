@@ -1,14 +1,10 @@
 """
 Bookings business logic.
 
-Mirrors apps/backend/src/bookings/bookings.service.ts. Booking creation
-calls the calculator to derive duration + totals, then persists a DRAFT
-booking. Customers can submit a draft (DRAFT → SUBMITTED) or list/read
+Booking creation calls the calculator to derive duration + totals, then
+persists a DRAFT booking and fires a best-effort SendGrid confirmation
+email. Customers can submit a draft (DRAFT → SUBMITTED) or list/read
 their own bookings.
-
-The Node service fires a non-blocking SendGrid confirmation email on
-create. That side-effect is deferred until the SendGrid integration is
-ported (see apps/backend-py/README.md migration checklist).
 """
 
 from __future__ import annotations

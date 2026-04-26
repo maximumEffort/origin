@@ -24,7 +24,7 @@ jobs:
     outputs:
       customer: ${{ steps.filter.outputs.customer }}
       admin: ${{ steps.filter.outputs.admin }}
-      backend_py: ${{ steps.filter.outputs.backend_py }}
+      backend: ${{ steps.filter.outputs.backend }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
@@ -41,8 +41,8 @@ jobs:
               - 'package.json'
               - 'package-lock.json'
               - '.github/workflows/ci.yml'
-            backend_py:
-              - 'apps/backend-py/**'
+            backend:
+              - 'apps/backend/**'
               - '.github/workflows/ci.yml'
 
   # ─── Customer site ───────────────────────────────────────────────────────
@@ -87,15 +87,15 @@ jobs:
           NEXT_PUBLIC_API_URL: https://example.com/v1
           ADMIN_SECRET: placeholder-ci-secret-not-used-for-auth-just-for-build
 
-  # ─── Backend (Python) ───────────────────────────────────────────────────
-  backend-py:
+  # ─── Backend ────────────────────────────────────────────────────────────
+  backend:
     name: Backend — ruff, mypy, pytest
     needs: changes
-    if: needs.changes.outputs.backend_py == 'true'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/backend-py
+        working-directory: apps/backend
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
