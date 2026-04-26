@@ -45,6 +45,9 @@ param corsAllowedOrigins string = 'https://origin-auto.ae,https://www.origin-aut
 @description('VAT rate (UAE = 0.05).')
 param vatRate string = '0.05'
 
+@description('Built-in role GUID for "Key Vault Secrets User". Microsoft documents this as 4633458b-17de-4322-8e57-46e3aa55c8e0, but some subscriptions return a different GUID. Verify in your tenant with: az role definition list --name "Key Vault Secrets User"')
+param keyVaultSecretsUserRoleGuid string = '4633458b-17de-4322-8e57-46e3aa55c8e0'
+
 @description('Tags applied to all resources. Override only if you know what you are doing.')
 param tags object = {
   env: environment
@@ -144,11 +147,11 @@ module containerApp 'modules/containerapp.bicep' = {
     logAnalyticsName: logAnalyticsName
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
     vatRate: vatRate
+    keyVaultSecretsUserRoleGuid: keyVaultSecretsUserRoleGuid
     tags: tags
   }
   dependsOn: [
     keyVault                       // KV must exist + secrets seeded before app references them
-    observability                  // diagnostic settings need the workspace
   ]
 }
 
