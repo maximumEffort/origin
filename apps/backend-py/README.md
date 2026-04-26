@@ -83,7 +83,8 @@ apps/backend-py/
 │   ├── maps/                # Google Maps proxy (autocomplete, place-details)
 │   ├── payments/            # Stripe PaymentIntent creation
 │   ├── vehicles/            # Vehicle list + detail
-│   └── integrations/        # Twilio, SendGrid, Stripe wrappers
+│   ├── webhooks/            # Inbound webhooks (Checkout.com)
+│   └── integrations/        # Twilio, SendGrid, Stripe, Maps, WhatsApp, Firebase, Tabby, Checkout
 └── tests/
     ├── conftest.py          # Shared fixtures (mocked Prisma)
     ├── test_auth_jwt.py     # JWT round-trip tests
@@ -138,7 +139,7 @@ uv run prisma generate
 - [x] Payments (Stripe PaymentIntent — webhook deferred, none in Node either)
 - [x] Calculator (quote engine)
 - [x] Contact form
-- [ ] Integrations: Twilio, Stripe, SendGrid, Google Maps, WhatsApp, Firebase (all done); Tabby, Checkout.com remaining
+- [x] Integrations: Twilio, Stripe, SendGrid, Google Maps, WhatsApp, Firebase, Tabby, Checkout.com (all done; Checkout webhook receiver wired at /v1/webhooks/checkout)
 - [x] Admin endpoints (full set — 14 endpoints, role-gated)
 
 Each module gets its own PR.
