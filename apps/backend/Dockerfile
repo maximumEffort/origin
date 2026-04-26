@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir uv==0.5.0
 WORKDIR /app
 
 # Copy only what's needed to resolve deps (cache-friendly)
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
 COPY prisma ./prisma
 COPY src ./src
 COPY README.md ./
