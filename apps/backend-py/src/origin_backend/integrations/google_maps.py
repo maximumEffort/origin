@@ -61,7 +61,9 @@ def _api_key() -> str | None:
     return settings.google_maps_api_key or None
 
 
-async def _get(client: httpx.AsyncClient, path: str, params: dict[str, str]) -> dict[str, Any] | None:
+async def _get(
+    client: httpx.AsyncClient, path: str, params: dict[str, str]
+) -> dict[str, Any] | None:
     """Single retry-free GET against the Maps API; logs and returns None on failure."""
     try:
         r = await client.get(f"{BASE_URL}{path}", params=params, timeout=10.0)
@@ -102,9 +104,7 @@ async def autocomplete(input_text: str, session_token: str | None = None) -> lis
     ]
 
 
-async def get_place_details(
-    place_id: str, session_token: str | None = None
-) -> PlaceDetails | None:
+async def get_place_details(place_id: str, session_token: str | None = None) -> PlaceDetails | None:
     """Resolve a Place ID to its coordinates + formatted address."""
     api_key = _api_key()
     if not api_key:

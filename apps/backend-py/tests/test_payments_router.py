@@ -33,9 +33,7 @@ def stripe_create(monkeypatch):
     """Replace stripe_payments.create_payment_intent with an AsyncMock."""
     from origin_backend.integrations import stripe_payments
 
-    fake = AsyncMock(
-        return_value={"clientSecret": "cs_test_xyz", "paymentIntentId": "pi_test_123"}
-    )
+    fake = AsyncMock(return_value={"clientSecret": "cs_test_xyz", "paymentIntentId": "pi_test_123"})
     monkeypatch.setattr(stripe_payments, "create_payment_intent", fake)
     return fake
 

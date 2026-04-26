@@ -46,9 +46,7 @@ async def list_all_bookings(db: Prisma, status_filter: str | None) -> list[Any]:
     return await db.booking.find_many(
         where=where,
         include={
-            "customer": {
-                "select": {"fullName": True, "phone": True, "kycStatus": True}
-            },
+            "customer": {"select": {"fullName": True, "phone": True, "kycStatus": True}},
             "vehicle": {
                 "select": {"brand": True, "model": True, "year": True, "plateNumber": True}
             },
@@ -111,9 +109,7 @@ async def list_all_customers(db: Prisma, kyc_status: str | None) -> list[Any]:
     return await db.customer.find_many(
         where=where,
         include={
-            "documents": {
-                "select": {"type": True, "status": True, "fileUrl": True}
-            },
+            "documents": {"select": {"type": True, "status": True, "fileUrl": True}},
         },
         order={"createdAt": "desc"},
     )
@@ -303,7 +299,11 @@ async def create_vehicle(db: Prisma, dto: CreateVehicleRequest) -> Any:
     category_id = dto.category_id
     if not category_id:
         category_name = (
-            "Electric" if fuel_type == "ELECTRIC" else "Hybrid" if fuel_type == "HYBRID" else "Standard"
+            "Electric"
+            if fuel_type == "ELECTRIC"
+            else "Hybrid"
+            if fuel_type == "HYBRID"
+            else "Standard"
         )
         category = await db.vehiclecategory.find_first(
             where={"nameEn": {"contains": category_name}},

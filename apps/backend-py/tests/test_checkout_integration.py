@@ -50,9 +50,7 @@ def test_verify_webhook_signature_rejects_when_unconfigured(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_create_payment_session_converts_amount_to_fils(
-    configured_checkout, monkeypatch
-):
+async def test_create_payment_session_converts_amount_to_fils(configured_checkout, monkeypatch):
     captured: dict[str, object] = {}
 
     async def fake_post(self, url, json=None, headers=None):
@@ -127,13 +125,13 @@ def test_webhook_rejects_invalid_signature(signed_post):
 
 
 def test_webhook_rejects_missing_signature(client: TestClient, configured_checkout):
-    r = client.post("/v1/webhooks/checkout", content=b"{}", headers={"Content-Type": "application/json"})
+    r = client.post(
+        "/v1/webhooks/checkout", content=b"{}", headers={"Content-Type": "application/json"}
+    )
     assert r.status_code == 403
 
 
-def test_webhook_payment_approved_marks_payment_paid(
-    signed_post, mock_prisma: MagicMock
-):
+def test_webhook_payment_approved_marks_payment_paid(signed_post, mock_prisma: MagicMock):
     mock_prisma.payment.update_many.return_value = SimpleNamespace(count=1)
     mock_prisma.payment.find_first.return_value = SimpleNamespace(
         id="pay-1",
@@ -188,9 +186,7 @@ def test_webhook_payment_approved_falls_back_to_booking_deposit(
     assert booking_update["data"] == {"depositPaid": True}
 
 
-def test_webhook_payment_approved_warns_when_no_match(
-    signed_post, mock_prisma: MagicMock
-):
+def test_webhook_payment_approved_warns_when_no_match(signed_post, mock_prisma: MagicMock):
     """No Payment row + no booking → log + 200 (no DB writes)."""
     mock_prisma.payment.update_many.return_value = SimpleNamespace(count=0)
     mock_prisma.booking.find_unique.return_value = None

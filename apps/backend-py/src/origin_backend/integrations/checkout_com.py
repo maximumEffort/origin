@@ -76,9 +76,7 @@ async def create_payment_session(req: PaymentSessionRequest) -> PaymentSession:
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.post(
-                f"{BASE_URL}/payment-sessions", json=payload, headers=_headers()
-            )
+            r = await client.post(f"{BASE_URL}/payment-sessions", json=payload, headers=_headers())
             r.raise_for_status()
             data: dict[str, Any] = r.json()
     except httpx.HTTPError as e:
@@ -104,7 +102,9 @@ async def get_payment(payment_id: str) -> dict[str, Any]:
         return r.json()  # type: ignore[no-any-return]
 
 
-async def refund(payment_id: str, *, amount_aed: float | None = None, reference: str | None = None) -> None:
+async def refund(
+    payment_id: str, *, amount_aed: float | None = None, reference: str | None = None
+) -> None:
     """Issue a full or partial refund."""
     body: dict[str, Any] = {}
     if amount_aed is not None:
@@ -132,9 +132,7 @@ def verify_webhook_signature(raw_body: bytes, signature: str) -> bool:
     secret = settings.checkout_webhook_secret
     if not secret or not signature:
         return False
-    expected = hmac.new(
-        secret.encode("utf-8"), raw_body, hashlib.sha256
-    ).hexdigest()
+    expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(signature, expected)
 
 

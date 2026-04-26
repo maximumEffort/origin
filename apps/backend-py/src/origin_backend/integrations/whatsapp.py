@@ -42,29 +42,59 @@ TEMPLATES: dict[str, dict[WhatsAppLanguage, _Variant]] = {
     "BOOKING_CONFIRMED": {
         "en": {
             "name": "booking_confirmed_en",
-            "params": lambda p: [p["customerName"], p["vehicleName"], p["startDate"], p["bookingRef"]],
+            "params": lambda p: [
+                p["customerName"],
+                p["vehicleName"],
+                p["startDate"],
+                p["bookingRef"],
+            ],
         },
         "ar": {
             "name": "booking_confirmed_ar",
-            "params": lambda p: [p["customerName"], p["vehicleName"], p["startDate"], p["bookingRef"]],
+            "params": lambda p: [
+                p["customerName"],
+                p["vehicleName"],
+                p["startDate"],
+                p["bookingRef"],
+            ],
         },
         "zh": {
             "name": "booking_confirmed_zh",
-            "params": lambda p: [p["customerName"], p["vehicleName"], p["startDate"], p["bookingRef"]],
+            "params": lambda p: [
+                p["customerName"],
+                p["vehicleName"],
+                p["startDate"],
+                p["bookingRef"],
+            ],
         },
     },
     "BOOKING_APPROVED": {
         "en": {
             "name": "booking_approved_en",
-            "params": lambda p: [p["customerName"], p["vehicleName"], p["startDate"], p["portalUrl"]],
+            "params": lambda p: [
+                p["customerName"],
+                p["vehicleName"],
+                p["startDate"],
+                p["portalUrl"],
+            ],
         },
         "ar": {
             "name": "booking_approved_ar",
-            "params": lambda p: [p["customerName"], p["vehicleName"], p["startDate"], p["portalUrl"]],
+            "params": lambda p: [
+                p["customerName"],
+                p["vehicleName"],
+                p["startDate"],
+                p["portalUrl"],
+            ],
         },
         "zh": {
             "name": "booking_approved_zh",
-            "params": lambda p: [p["customerName"], p["vehicleName"], p["startDate"], p["portalUrl"]],
+            "params": lambda p: [
+                p["customerName"],
+                p["vehicleName"],
+                p["startDate"],
+                p["portalUrl"],
+            ],
         },
     },
     "PAYMENT_REMINDER": {
@@ -85,19 +115,31 @@ TEMPLATES: dict[str, dict[WhatsAppLanguage, _Variant]] = {
         "en": {
             "name": "lease_expiry_en",
             "params": lambda p: [
-                p["customerName"], p["vehicleName"], p["endDate"], p["daysLeft"], p["renewalUrl"]
+                p["customerName"],
+                p["vehicleName"],
+                p["endDate"],
+                p["daysLeft"],
+                p["renewalUrl"],
             ],
         },
         "ar": {
             "name": "lease_expiry_ar",
             "params": lambda p: [
-                p["customerName"], p["vehicleName"], p["endDate"], p["daysLeft"], p["renewalUrl"]
+                p["customerName"],
+                p["vehicleName"],
+                p["endDate"],
+                p["daysLeft"],
+                p["renewalUrl"],
             ],
         },
         "zh": {
             "name": "lease_expiry_zh",
             "params": lambda p: [
-                p["customerName"], p["vehicleName"], p["endDate"], p["daysLeft"], p["renewalUrl"]
+                p["customerName"],
+                p["vehicleName"],
+                p["endDate"],
+                p["daysLeft"],
+                p["renewalUrl"],
             ],
         },
     },
@@ -176,7 +218,10 @@ async def send_template(
         return
 
     components = [
-        {"type": "body", "parameters": [{"type": "text", "text": v} for v in variant["params"](params)]}
+        {
+            "type": "body",
+            "parameters": [{"type": "text", "text": v} for v in variant["params"](params)],
+        }
     ]
     body: dict[str, object] = {
         "messaging_product": "whatsapp",

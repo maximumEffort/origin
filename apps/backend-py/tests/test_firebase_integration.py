@@ -62,9 +62,7 @@ def test_unconfigured_returns_false(monkeypatch):
 
 
 def test_invalid_json_returns_false(monkeypatch):
-    monkeypatch.setattr(
-        firebase_push.settings, "firebase_service_account_json", "not-json"
-    )
+    monkeypatch.setattr(firebase_push.settings, "firebase_service_account_json", "not-json")
     assert firebase_push._init() is False
 
 

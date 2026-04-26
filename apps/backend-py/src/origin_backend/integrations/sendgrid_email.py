@@ -134,15 +134,11 @@ async def send_booking_confirmation(
     await send_template_email(to, "BOOKING_CONFIRMED", data, lang)
 
 
-async def send_booking_approved(
-    to: str, data: dict[str, Any], lang: EmailLanguage = "en"
-) -> None:
+async def send_booking_approved(to: str, data: dict[str, Any], lang: EmailLanguage = "en") -> None:
     await send_template_email(to, "BOOKING_APPROVED", data, lang)
 
 
-async def send_payment_receipt(
-    to: str, data: dict[str, Any], lang: EmailLanguage = "en"
-) -> None:
+async def send_payment_receipt(to: str, data: dict[str, Any], lang: EmailLanguage = "en") -> None:
     await send_template_email(to, "PAYMENT_RECEIPT", data, lang)
 
 

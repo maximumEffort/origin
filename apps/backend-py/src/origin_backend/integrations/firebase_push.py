@@ -62,9 +62,7 @@ def _init() -> bool:
 
     raw = settings.firebase_service_account_json
     if not raw:
-        logger.warning(
-            "FIREBASE_SERVICE_ACCOUNT_JSON not set — push notifications disabled"
-        )
+        logger.warning("FIREBASE_SERVICE_ACCOUNT_JSON not set — push notifications disabled")
         _initialised = False
         return False
 
@@ -112,9 +110,7 @@ async def send_to_device(notification: PushNotification) -> None:
         response = await asyncio.to_thread(messaging.send, message)
         logger.info("Push sent: %s", response)
     except Exception as e:
-        logger.error(
-            "Push failed for token %s...: %s", notification.token[:20], e
-        )
+        logger.error("Push failed for token %s...: %s", notification.token[:20], e)
 
 
 async def send_to_devices(
@@ -157,9 +153,7 @@ async def send_to_topic(notification: TopicNotification) -> None:
 
     message = messaging.Message(
         topic=notification.topic,
-        notification=messaging.Notification(
-            title=notification.title, body=notification.body
-        ),
+        notification=messaging.Notification(title=notification.title, body=notification.body),
         data=notification.data or {},
     )
     try:

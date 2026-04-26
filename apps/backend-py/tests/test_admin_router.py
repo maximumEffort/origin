@@ -87,9 +87,7 @@ def _category() -> SimpleNamespace:
 
 
 def _admin_headers(role: str = "SUPER_ADMIN", admin_id: str | None = None) -> dict[str, str]:
-    return {
-        "Authorization": f"Bearer {issue_access_token(sub=admin_id or ADMIN_ID, role=role)}"
-    }
+    return {"Authorization": f"Bearer {issue_access_token(sub=admin_id or ADMIN_ID, role=role)}"}
 
 
 def _customer_headers() -> dict[str, str]:
@@ -210,9 +208,7 @@ def test_reject_booking_passes_reason_to_notes(client: TestClient, mock_prisma: 
 def test_list_customers_filter(client: TestClient, mock_prisma: MagicMock):
     mock_prisma.adminuser.find_unique.return_value = _admin("SALES")
     mock_prisma.customer.find_many.return_value = []
-    r = client.get(
-        "/v1/admin/customers?kycStatus=SUBMITTED", headers=_admin_headers("SALES")
-    )
+    r = client.get("/v1/admin/customers?kycStatus=SUBMITTED", headers=_admin_headers("SALES"))
     assert r.status_code == 200
     where = mock_prisma.customer.find_many.call_args.kwargs["where"]
     assert where == {"kycStatus": "SUBMITTED"}
@@ -230,9 +226,7 @@ def test_get_customer_404(client: TestClient, mock_prisma: MagicMock):
 def test_approve_kyc_400_when_not_submitted(client: TestClient, mock_prisma: MagicMock):
     mock_prisma.adminuser.find_unique.return_value = _admin("SALES")
     mock_prisma.customer.find_unique.return_value = _customer(kyc="APPROVED")
-    r = client.post(
-        "/v1/admin/customers/cust-1/kyc/approve", headers=_admin_headers("SALES")
-    )
+    r = client.post("/v1/admin/customers/cust-1/kyc/approve", headers=_admin_headers("SALES"))
     assert r.status_code == 400
 
 
@@ -240,9 +234,7 @@ def test_approve_kyc_happy(client: TestClient, mock_prisma: MagicMock):
     mock_prisma.adminuser.find_unique.return_value = _admin("SALES")
     mock_prisma.customer.find_unique.return_value = _customer(kyc="SUBMITTED")
     mock_prisma.customer.update.return_value = _customer(kyc="APPROVED")
-    r = client.post(
-        "/v1/admin/customers/cust-1/kyc/approve", headers=_admin_headers("SALES")
-    )
+    r = client.post("/v1/admin/customers/cust-1/kyc/approve", headers=_admin_headers("SALES"))
     assert r.status_code == 200
     update_args = mock_prisma.customer.update.call_args.kwargs
     assert update_args["data"] == {"kycStatus": "APPROVED"}

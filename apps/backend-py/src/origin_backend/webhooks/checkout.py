@@ -49,7 +49,9 @@ async def checkout_webhook_endpoint(
     raw_body = await request.body()
     if not checkout_com.verify_webhook_signature(raw_body, cko_signature or ""):
         logger.warning("Checkout webhook: invalid signature")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid webhook signature")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid webhook signature"
+        )
 
     try:
         event = json.loads(raw_body)
@@ -80,9 +82,7 @@ async def _handle_payment_approved(db: Prisma, data: dict[str, Any]) -> None:
     payment_id = data.get("id")
     amount_aed = (data.get("amount") or 0) / 100
 
-    logger.info(
-        "Payment approved: %s — %s AED (ref: %s)", payment_id, amount_aed, reference
-    )
+    logger.info("Payment approved: %s — %s AED (ref: %s)", payment_id, amount_aed, reference)
 
     updated = await db.payment.update_many(
         where={"gatewayReference": reference, "status": "PENDING"},

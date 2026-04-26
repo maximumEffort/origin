@@ -61,9 +61,7 @@ async def test_create_session_returns_payment_url(configured_tabby, http_post):
         "id": "tab-1",
         "status": "created",
         "configuration": {
-            "available_products": {
-                "installments": [{"web_url": "https://tabby/checkout/abc"}]
-            }
+            "available_products": {"installments": [{"web_url": "https://tabby/checkout/abc"}]}
         },
     }
 
