@@ -24,11 +24,14 @@ param skuName string = 'standard'
 @maxValue(90)
 param softDeleteRetentionDays int = 7
 
+@description('Purge protection. Once enabled, the vault cannot be hard-deleted before the soft-delete window expires. Off in V1 (default behavior — we omit the property; Azure rejects explicit false). Flip to true at GA when accidental KV deletion would be catastrophic.')
+param enablePurgeProtection bool = false
+
 resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
   name: keyVaultName
   location: location
   tags: tags
-  properties: {
+  properties: union({
     sku: {
       family: 'A'
       name: skuName
@@ -37,13 +40,12 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
     enableRbacAuthorization: true        // Use Azure RBAC, not legacy access policies.
     enableSoftDelete: true
     softDeleteRetentionInDays: softDeleteRetentionDays
-    enablePurgeProtection: false         // Keep false in V1 so we can clean up if we abandon. Flip to true at GA.
     publicNetworkAccess: 'Enabled'       // Tighten with private endpoints post-V1.
     networkAcls: {
       bypass: 'AzureServices'
       defaultAction: 'Allow'
     }
-  }
+  }, enablePurgeProtection ? { enablePurgeProtection: true } : {})
 }
 
 // ── Foundational secrets seeded at deploy time ──────────────────────────────
