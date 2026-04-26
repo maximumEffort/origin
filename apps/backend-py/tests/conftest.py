@@ -57,6 +57,11 @@ def mock_prisma() -> MagicMock:
     mock.booking.find_unique = AsyncMock(return_value=None)
     mock.booking.create = AsyncMock(return_value=None)
     mock.booking.update = AsyncMock(return_value=None)
+    mock.lease = MagicMock()
+    mock.lease.find_many = AsyncMock(return_value=[])
+    mock.lease.find_unique = AsyncMock(return_value=None)
+    mock.lease.create = AsyncMock(return_value=None)
+    mock.lease.update = AsyncMock(return_value=None)
     mock.execute_raw = AsyncMock(return_value=None)
     return mock
 

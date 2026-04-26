@@ -77,6 +77,7 @@ apps/backend-py/
 │   ├── common/              # Prisma client, auth deps, exception handlers
 │   ├── customers/           # Customer profile + KYC documents
 │   ├── health/              # /health endpoints
+│   ├── leases/              # Customer lease list, detail, renew
 │   ├── vehicles/            # Vehicle list + detail
 │   └── integrations/        # Twilio, SendGrid, Stripe wrappers
 └── tests/
@@ -129,7 +130,7 @@ uv run prisma generate
 - [x] Vehicles
 - [x] Customers + KYC documents
 - [x] Bookings
-- [ ] Leases
+- [x] Leases
 - [ ] Payments + Stripe webhook
 - [x] Calculator (quote engine)
 - [ ] Contact form
