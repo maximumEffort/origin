@@ -122,3 +122,62 @@ Outbound integrations: Twilio Verify (OTP), SendGrid (emails),
 Stripe (PaymentIntent), Google Maps (Places + Geocoding + Distance),
 WhatsApp Business, Firebase Cloud Messaging, Tabby (BNPL),
 Checkout.com (cards / Apple Pay / Google Pay).
+
+## Deployment (Railway)
+
+`railway.toml` in this directory wires Railway up to the multi-stage
+Dockerfile and points the healthcheck at `/health/ready`.
+
+`.github/workflows/deploy-backend.yml` auto-deploys on every push to
+`main` that touches `apps/backend-py/**`. Manual re-deploys via the
+"Run workflow" button (e.g. after rotating a secret).
+
+### One-time setup
+
+1. **Create the Railway project** and a service named `backend` (or
+   set the `RAILWAY_SERVICE_NAME` repo variable to whatever you call
+   it). Point the service at this repo, root directory `apps/backend-py/`.
+2. **Provision Postgres** in the same Railway project; Railway will
+   inject `DATABASE_URL` into the service automatically.
+3. **Set the runtime env vars** in the Railway service settings:
+
+   ```
+   JWT_SECRET                     # required, min 16 chars
+   JWT_REFRESH_SECRET             # recommended in prod
+   APP_ENV=production
+   CORS_ALLOWED_ORIGINS           # comma-separated; the customer + admin URLs
+   VAT_RATE=0.05
+
+   # Integrations — only set the ones in use for the current env
+   TWILIO_ACCOUNT_SID
+   TWILIO_AUTH_TOKEN
+   TWILIO_VERIFY_SERVICE_SID
+   SENDGRID_API_KEY
+   SENDGRID_FROM_EMAIL
+   STRIPE_SECRET_KEY
+   STRIPE_WEBHOOK_SECRET
+   GOOGLE_MAPS_API_KEY
+   WHATSAPP_ACCESS_TOKEN
+   WHATSAPP_PHONE_NUMBER_ID
+   FIREBASE_SERVICE_ACCOUNT_JSON  # whole service-account JSON, single line
+   TABBY_API_KEY
+   TABBY_MERCHANT_CODE
+   CHECKOUT_SECRET_KEY
+   CHECKOUT_WEBHOOK_SECRET
+   ```
+
+4. **Set repo secrets** for the deploy workflow:
+   - `RAILWAY_TOKEN` — project token from Railway dashboard → Project
+     Settings → Tokens.
+   - (optional) repo variable `RAILWAY_SERVICE_NAME` if the service
+     isn't called `backend`.
+5. **First deploy** runs on the next push to `main` (or trigger
+   manually via Actions → Deploy backend (Railway) → Run workflow).
+6. **Cut the frontends over** — set `NEXT_PUBLIC_API_URL` on both the
+   customer and admin Vercel projects to
+   `https://<railway-domain>/v1`. Vercel auto-redeploys on env-var
+   change.
+7. **Re-register webhooks** at the new domain:
+   - Checkout.com Dashboard → Webhooks →
+     `POST https://<railway-domain>/v1/webhooks/checkout`
+   - Stripe (when wired): same URL pattern.
