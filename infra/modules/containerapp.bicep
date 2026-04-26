@@ -229,13 +229,16 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
 // ── Role assignments for the system-assigned identity ───────────────────────
 
 // Key Vault Secrets User — read secrets from KV.
+// Built-in role IDs live at TENANT scope (canonical /providers/.../roleDefinitions/{guid});
+// using subscriptionResourceId() resolves to a sub-scoped path that some
+// subscriptions don't accept. tenantResourceId() is the safer reference.
 resource roleKvSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: keyVault
   name: guid(keyVault.id, containerApp.id, 'KeyVaultSecretsUser')
   properties: {
     principalId: containerApp.identity.principalId
     principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-4322-8e57-46e3aa55c8e0')
+    roleDefinitionId: tenantResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-4322-8e57-46e3aa55c8e0')
   }
 }
 
