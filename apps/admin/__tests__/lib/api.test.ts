@@ -154,19 +154,19 @@ describe('adminLogin', () => {
       json: () =>
         Promise.resolve({
           ok: true,
-          admin: { id: '1', email: 'admin@originleasing.ae', fullName: 'Admin', role: 'admin' },
+          admin: { id: '1', email: 'admin@origin-auto.ae', fullName: 'Admin', role: 'admin' },
         }),
     });
 
-    const result = await adminLogin('admin@originleasing.ae', 'password123');
+    const result = await adminLogin('admin@origin-auto.ae', 'password123');
 
     expect(mockFetch).toHaveBeenCalledWith('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@originleasing.ae', password: 'password123' }),
+      body: JSON.stringify({ email: 'admin@origin-auto.ae', password: 'password123' }),
     });
     expect(result.ok).toBe(true);
-    expect(result.admin.email).toBe('admin@originleasing.ae');
+    expect(result.admin.email).toBe('admin@origin-auto.ae');
   });
 
   it('throws on invalid credentials', async () => {
