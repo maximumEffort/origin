@@ -25,7 +25,7 @@ KYC OCR, predictive maintenance) in a single language.
 You'll need Python 3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-cd apps/backend-py
+cd apps/backend
 
 # Install uv if you don't have it
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -50,7 +50,7 @@ Visit http://localhost:3001/docs for the auto-generated OpenAPI UI.
 ## Project structure
 
 ```
-apps/backend-py/
+apps/backend/
 ├── pyproject.toml           # Project metadata + deps + tool config
 ├── prisma/
 │   ├── schema.prisma        # Same schema as apps/backend (Node)
@@ -129,14 +129,14 @@ Checkout.com (cards / Apple Pay / Google Pay).
 Dockerfile and points the healthcheck at `/health/ready`.
 
 `.github/workflows/deploy-backend.yml` auto-deploys on every push to
-`main` that touches `apps/backend-py/**`. Manual re-deploys via the
+`main` that touches `apps/backend/**`. Manual re-deploys via the
 "Run workflow" button (e.g. after rotating a secret).
 
 ### One-time setup
 
 1. **Create the Railway project** and a service named `backend` (or
    set the `RAILWAY_SERVICE_NAME` repo variable to whatever you call
-   it). Point the service at this repo, root directory `apps/backend-py/`.
+   it). Point the service at this repo, root directory `apps/backend/`.
 2. **Provision Postgres** in the same Railway project; Railway will
    inject `DATABASE_URL` into the service automatically.
 3. **Set the runtime env vars** in the Railway service settings:

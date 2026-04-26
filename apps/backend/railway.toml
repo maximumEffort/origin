@@ -1,7 +1,7 @@
 # Railway service configuration for the Origin FastAPI backend.
 #
 # Picked up automatically when this repo is linked to a Railway project
-# whose root directory is `apps/backend-py/`. The Dockerfile in this
+# whose root directory is `apps/backend/`. The Dockerfile in this
 # directory is used as the build source; Railway sets PORT and we bind
 # uvicorn to it inside the start command.
 
