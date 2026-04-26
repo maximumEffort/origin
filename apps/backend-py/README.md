@@ -1,23 +1,10 @@
-# Origin Backend (Python)
+# Origin Backend
 
-FastAPI rewrite of the Node/NestJS backend. Both run side-by-side during
-the migration; the frontends point at one or the other via
-`NEXT_PUBLIC_API_URL`.
-
-## Why this exists
-
-The Node backend works. So why a Python rewrite?
-
-1. **Operator clarity.** The team operating Origin will read, debug, and
-   extend Python more easily than NestJS decorators.
-2. **AI / data future.** Demand forecasting, AI-assisted customer
-   support, OCR for KYC, predictive fleet maintenance — all Python-first.
-   Better to land here once than glue Python services to a Node core.
-3. **Pre-launch is the cheapest rewrite window.** Once paying customers
-   exist, rewriting carries real risk. Right now it's translation.
-
-The Node backend remains in `apps/backend/` until the Python service is
-proven at parity. Then it's archived.
+FastAPI service that the customer + admin frontends consume via
+`NEXT_PUBLIC_API_URL`. Was rewritten from a NestJS service pre-launch
+for operator clarity (the team reads Python more easily than NestJS
+decorators) and to keep AI / data work (demand forecasting,
+KYC OCR, predictive maintenance) in a single language.
 
 ## Stack
 
@@ -71,10 +58,20 @@ apps/backend-py/
 ├── src/origin_backend/
 │   ├── main.py              # FastAPI app entrypoint
 │   ├── config.py            # Pydantic settings (env vars)
+│   ├── admin/               # Back-office: bookings, KYC, fleet, dashboard
 │   ├── auth/                # OTP + JWT + admin login
-│   ├── common/              # Prisma client, exception handlers, deps
+│   ├── bookings/            # Customer booking lifecycle
+│   ├── calculator/          # Quote engine (VAT, mileage, add-ons)
+│   ├── common/              # Prisma client, auth deps, exception handlers
+│   ├── contact/             # Public contact-form submissions
+│   ├── customers/           # Customer profile + KYC documents
 │   ├── health/              # /health endpoints
-│   └── integrations/        # Twilio, SendGrid, Stripe wrappers
+│   ├── leases/              # Customer lease list, detail, renew
+│   ├── maps/                # Google Maps proxy (autocomplete, place-details)
+│   ├── payments/            # Stripe PaymentIntent creation
+│   ├── vehicles/            # Vehicle list + detail
+│   ├── webhooks/            # Inbound webhooks (Checkout.com)
+│   └── integrations/        # Twilio, SendGrid, Stripe, Maps, WhatsApp, Firebase, Tabby, Checkout
 └── tests/
     ├── conftest.py          # Shared fixtures (mocked Prisma)
     ├── test_auth_jwt.py     # JWT round-trip tests
@@ -104,32 +101,83 @@ uv run mypy src/
 uv run prisma generate
 ```
 
-## Mapping from Node backend (cheat sheet)
+## Surface area
 
-| NestJS concept | FastAPI equivalent |
+| Module | Endpoints |
 |---|---|
-| `@Controller('auth')` | `APIRouter(prefix='/auth')` |
-| `@Get('/me')` | `@router.get('/me')` |
-| `@Body() dto: LoginDto` | `body: LoginRequest` (Pydantic model) |
-| `@UseGuards(JwtAuthGuard)` | `Depends(get_current_user)` |
-| `class AuthService` | A module of functions in `auth/service.py` |
-| Module providers | FastAPI `Depends(...)` |
-| `class-validator` decorators | Pydantic field validators |
-| `JwtService` | `auth/jwt.py` helpers |
-| `prisma.customer.findMany()` | `await db.customer.find_many()` (same API!) |
+| Auth | OTP send/verify, refresh, admin login |
+| Health | `/health`, `/health/live`, `/health/ready` |
+| Vehicles | List + detail (public) |
+| Customers + KYC | Profile + document upsert (own user only) |
+| Bookings | Create, submit, list, detail (own bookings) |
+| Calculator | Instant quote with VAT |
+| Leases | List, detail, renew (own leases) |
+| Payments | Stripe PaymentIntent creation |
+| Contact | Public inquiry submission |
+| Maps | Server-side Google Maps proxy (autocomplete, place-details) |
+| Admin | 14 endpoints — bookings, customers/KYC, leases, fleet, dashboard. Role-gated (`SUPER_ADMIN` / `SALES` / `FLEET_MANAGER` / `FINANCE`). |
+| Webhooks | `POST /v1/webhooks/checkout` for Checkout.com |
 
-## Migration status
+Outbound integrations: Twilio Verify (OTP), SendGrid (emails),
+Stripe (PaymentIntent), Google Maps (Places + Geocoding + Distance),
+WhatsApp Business, Firebase Cloud Messaging, Tabby (BNPL),
+Checkout.com (cards / Apple Pay / Google Pay).
 
-- [x] Auth: OTP send/verify, refresh, admin login
-- [x] Health endpoints (/health, /health/live, /health/ready)
-- [ ] Vehicles
-- [ ] Customers + KYC documents
-- [ ] Bookings
-- [ ] Leases
-- [ ] Payments + Stripe webhook
-- [ ] Calculator (quote engine)
-- [ ] Contact form
-- [ ] Integrations (Twilio, SendGrid, Stripe, Google Maps, WhatsApp)
-- [ ] Admin endpoints (full set)
+## Deployment (Railway)
 
-Each module gets its own PR.
+`railway.toml` in this directory wires Railway up to the multi-stage
+Dockerfile and points the healthcheck at `/health/ready`.
+
+`.github/workflows/deploy-backend.yml` auto-deploys on every push to
+`main` that touches `apps/backend-py/**`. Manual re-deploys via the
+"Run workflow" button (e.g. after rotating a secret).
+
+### One-time setup
+
+1. **Create the Railway project** and a service named `backend` (or
+   set the `RAILWAY_SERVICE_NAME` repo variable to whatever you call
+   it). Point the service at this repo, root directory `apps/backend-py/`.
+2. **Provision Postgres** in the same Railway project; Railway will
+   inject `DATABASE_URL` into the service automatically.
+3. **Set the runtime env vars** in the Railway service settings:
+
+   ```
+   JWT_SECRET                     # required, min 16 chars
+   JWT_REFRESH_SECRET             # recommended in prod
+   APP_ENV=production
+   CORS_ALLOWED_ORIGINS           # comma-separated; the customer + admin URLs
+   VAT_RATE=0.05
+
+   # Integrations — only set the ones in use for the current env
+   TWILIO_ACCOUNT_SID
+   TWILIO_AUTH_TOKEN
+   TWILIO_VERIFY_SERVICE_SID
+   SENDGRID_API_KEY
+   SENDGRID_FROM_EMAIL
+   STRIPE_SECRET_KEY
+   STRIPE_WEBHOOK_SECRET
+   GOOGLE_MAPS_API_KEY
+   WHATSAPP_ACCESS_TOKEN
+   WHATSAPP_PHONE_NUMBER_ID
+   FIREBASE_SERVICE_ACCOUNT_JSON  # whole service-account JSON, single line
+   TABBY_API_KEY
+   TABBY_MERCHANT_CODE
+   CHECKOUT_SECRET_KEY
+   CHECKOUT_WEBHOOK_SECRET
+   ```
+
+4. **Set repo secrets** for the deploy workflow:
+   - `RAILWAY_TOKEN` — project token from Railway dashboard → Project
+     Settings → Tokens.
+   - (optional) repo variable `RAILWAY_SERVICE_NAME` if the service
+     isn't called `backend`.
+5. **First deploy** runs on the next push to `main` (or trigger
+   manually via Actions → Deploy backend (Railway) → Run workflow).
+6. **Cut the frontends over** — set `NEXT_PUBLIC_API_URL` on both the
+   customer and admin Vercel projects to
+   `https://<railway-domain>/v1`. Vercel auto-redeploys on env-var
+   change.
+7. **Re-register webhooks** at the new domain:
+   - Checkout.com Dashboard → Webhooks →
+     `POST https://<railway-domain>/v1/webhooks/checkout`
+   - Stripe (when wired): same URL pattern.

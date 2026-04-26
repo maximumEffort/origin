@@ -64,6 +64,28 @@ class Settings(BaseSettings):
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
 
+    # ── Google Maps ──
+    google_maps_api_key: str | None = None
+
+    # ── WhatsApp Business (Meta Cloud API) ──
+    whatsapp_access_token: str | None = None
+    whatsapp_phone_number_id: str | None = None
+
+    @property
+    def whatsapp_configured(self) -> bool:
+        return bool(self.whatsapp_access_token and self.whatsapp_phone_number_id)
+
+    # ── Firebase (FCM push notifications) ──
+    firebase_service_account_json: str | None = None
+
+    # ── Tabby (BNPL — Buy Now Pay Later, UAE/GCC) ──
+    tabby_api_key: str | None = None
+    tabby_merchant_code: str | None = None
+
+    # ── Checkout.com (card / Apple Pay / Google Pay) ──
+    checkout_secret_key: str | None = None
+    checkout_webhook_secret: str | None = None
+
     # ── CORS ──
     cors_allowed_origins: str = "http://localhost:3000,http://localhost:3002"
 

@@ -15,9 +15,7 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present",
-    "test": "npm test --workspaces --if-present",
-    "backend:dev": "npm run dev --workspace=backend",
-    "backend:build": "npm run build --workspace=backend"
+    "test": "npm test --workspaces --if-present"
   },
   "engines": {
     "node": ">=20.0.0"

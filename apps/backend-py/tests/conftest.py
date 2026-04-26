@@ -26,25 +26,46 @@ from fastapi.testclient import TestClient
 from origin_backend.common import prisma as prisma_module
 
 
+def _model_mock(**defaults: object) -> MagicMock:
+    """
+    Build a model namespace where every Prisma method is an AsyncMock.
+    Keeps tests resilient: any call we don't override still resolves to an
+    awaitable (instead of returning a plain MagicMock that explodes when
+    awaited inside `asyncio.gather`).
+    """
+    m = MagicMock()
+    method_defaults: dict[str, object] = {
+        "find_unique": None,
+        "find_first": None,
+        "find_many": [],
+        "count": 0,
+        "create": None,
+        "create_many": None,
+        "update": None,
+        "update_many": None,
+        "delete": None,
+        "delete_many": None,
+    }
+    method_defaults.update(defaults)
+    for name, val in method_defaults.items():
+        setattr(m, name, AsyncMock(return_value=val))
+    return m
+
+
 @pytest.fixture
 def mock_prisma() -> MagicMock:
     """Return a MagicMock that quacks like a connected Prisma client."""
     mock = MagicMock()
-    # Methods we touch in auth/service.py
-    mock.otpcode = MagicMock()
-    mock.otpcode.delete_many = AsyncMock(return_value=None)
-    mock.otpcode.create = AsyncMock(return_value=None)
-    mock.otpcode.find_first = AsyncMock(return_value=None)
-    mock.otpcode.delete = AsyncMock(return_value=None)
-    mock.customer = MagicMock()
-    mock.customer.find_unique = AsyncMock(return_value=None)
-    mock.customer.create = AsyncMock(return_value=None)
-    mock.adminuser = MagicMock()
-    mock.adminuser.find_unique = AsyncMock(return_value=None)
-    mock.vehicle = MagicMock()
-    mock.vehicle.find_many = AsyncMock(return_value=[])
-    mock.vehicle.find_unique = AsyncMock(return_value=None)
-    mock.vehicle.count = AsyncMock(return_value=0)
+    mock.otpcode = _model_mock()
+    mock.customer = _model_mock()
+    mock.document = _model_mock()
+    mock.adminuser = _model_mock()
+    mock.vehicle = _model_mock()
+    mock.vehiclecategory = _model_mock()
+    mock.booking = _model_mock()
+    mock.lease = _model_mock()
+    mock.payment = _model_mock()
+    mock.contactinquiry = _model_mock()
     mock.execute_raw = AsyncMock(return_value=None)
     return mock
 
@@ -56,7 +77,7 @@ async def client(mock_prisma: MagicMock) -> AsyncIterator[TestClient]:
     # Import here (after env vars are set) so settings validation passes.
     from origin_backend.main import app
 
-    # NOTE: Do NOT use `with TestClient(app) as c:` Ã¢â‚¬â€ the context manager
+    # NOTE: Do NOT use `with TestClient(app) as c:` — the context manager
     # triggers FastAPI's lifespan, which calls connect_prisma() and
     # overwrites our mock with a real Prisma instance. Bare TestClient
     # skips lifespan entirely, which is what we want for unit tests.

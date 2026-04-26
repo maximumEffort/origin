@@ -12,7 +12,7 @@ Customer site and admin dashboard for **Shanghai Car Rental LLC** (Abu Dhabi), u
 |---|---|---|---|
 | Customer site | `apps/customer/` | 3000 | Trilingual customer website (EN / AR / ZH-CN). Browse fleet, calculator, booking, customer portal. |
 | Admin dashboard | `apps/admin/` | 3002 | Internal ops tool. Fleet, customers, KYC, bookings, leases, reports. |
-| Backend API | `apps/backend/` | 3001 | NestJS + Prisma + PostgreSQL. Auth, vehicles, bookings, leases, payments, integrations. |
+| Backend API | `apps/backend-py/` | 3001 | FastAPI + Prisma Python + PostgreSQL. Auth, vehicles, bookings, leases, payments, integrations. |
 
 Both frontends consume the backend API via `NEXT_PUBLIC_API_URL`.
 
@@ -36,11 +36,15 @@ cp apps/admin/.env.example  apps/admin/.env.local
 # 4. Run
 npm run customer:dev   # → http://localhost:3000
 npm run admin:dev      # → http://localhost:3002
+
+# Backend uses uv, not npm:
+cd apps/backend-py && uv sync && uv run uvicorn origin_backend.main:app --reload --port 3001
 ```
 
-### Node version
+### Toolchain
 
-Node 22 (see `.nvmrc`).
+- Node 22 (frontends — see `.nvmrc`)
+- Python 3.12 + [uv](https://docs.astral.sh/uv/) (backend)
 
 ---
 
@@ -50,7 +54,8 @@ Node 22 (see `.nvmrc`).
 origin/
 ├── apps/
 │   ├── customer/        Next.js 15 — customer site (Vercel)
-│   └── admin/           Next.js 14 — admin dashboard (Vercel)
+│   ├── admin/           Next.js 14 — admin dashboard (Vercel)
+│   └── backend-py/      FastAPI — backend API (uv)
 ├── design/              Design system + Figma references
 ├── docs/                Architecture, API, data model, compliance notes
 ├── .github/             CI workflows + dependabot
