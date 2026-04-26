@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
 
+    # ── Google Maps ──
+    google_maps_api_key: str | None = None
+
     # ── CORS ──
     cors_allowed_origins: str = "http://localhost:3000,http://localhost:3002"
 
