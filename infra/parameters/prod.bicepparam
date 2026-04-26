@@ -30,6 +30,14 @@ param corsAllowedOrigins = 'https://origin-auto.ae,https://www.origin-auto.ae,ht
 
 param vatRate = '0.05'
 
+// "Key Vault Secrets User" built-in role GUID — pinned to this subscription's
+// catalog value. Microsoft documents 4633458b-17de-4322-8e57-46e3aa55c8e0 but
+// `az role definition list --name "Key Vault Secrets User"` returns a different
+// GUID for this tenant, and ARM rejects the documented one with
+// RoleDefinitionDoesNotExist. Re-verify if this is ever copied to a new
+// subscription.
+param keyVaultSecretsUserRoleGuid = '4633458b-17de-408a-b874-0445c86b69e6'
+
 param tags = {
   env: 'prod'
   app: 'origin'
