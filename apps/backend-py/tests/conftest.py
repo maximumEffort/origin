@@ -52,6 +52,11 @@ def mock_prisma() -> MagicMock:
     mock.vehicle.find_many = AsyncMock(return_value=[])
     mock.vehicle.find_unique = AsyncMock(return_value=None)
     mock.vehicle.count = AsyncMock(return_value=0)
+    mock.booking = MagicMock()
+    mock.booking.find_many = AsyncMock(return_value=[])
+    mock.booking.find_unique = AsyncMock(return_value=None)
+    mock.booking.create = AsyncMock(return_value=None)
+    mock.booking.update = AsyncMock(return_value=None)
     mock.execute_raw = AsyncMock(return_value=None)
     return mock
 

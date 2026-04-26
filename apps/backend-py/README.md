@@ -72,6 +72,8 @@ apps/backend-py/
 │   ├── main.py              # FastAPI app entrypoint
 │   ├── config.py            # Pydantic settings (env vars)
 │   ├── auth/                # OTP + JWT + admin login
+│   ├── bookings/            # Customer booking lifecycle
+│   ├── calculator/          # Quote engine (VAT, mileage, add-ons)
 │   ├── common/              # Prisma client, auth deps, exception handlers
 │   ├── customers/           # Customer profile + KYC documents
 │   ├── health/              # /health endpoints
@@ -126,10 +128,10 @@ uv run prisma generate
 - [x] Health endpoints (/health, /health/live, /health/ready)
 - [x] Vehicles
 - [x] Customers + KYC documents
-- [ ] Bookings
+- [x] Bookings
 - [ ] Leases
 - [ ] Payments + Stripe webhook
-- [ ] Calculator (quote engine)
+- [x] Calculator (quote engine)
 - [ ] Contact form
 - [ ] Integrations (Twilio, SendGrid, Stripe, Google Maps, WhatsApp)
 - [ ] Admin endpoints (full set)
