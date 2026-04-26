@@ -28,6 +28,15 @@ const MODEL_CORRECTIONS: Record<string, string> = {
   WRX: 'Seal',
 };
 
+/** Inline localised "no results" copy.
+ * TODO: migrate to t('fleet.noResults') once locale files are updated.
+ */
+function getNoResultsText(locale: string): string {
+  if (locale === 'ar') return 'لا توجد سيارات تطابق هذه التصفية.';
+  if (locale === 'zh-CN') return '没有车辆匹配这些筛选条件。';
+  return 'No vehicles match these filters.';
+}
+
 function staticFallback(): CarCard[] {
   return STATIC_VEHICLES.map((v) => ({
     id: v.id,
@@ -135,7 +144,7 @@ export default function CarsGrid({ locale }: { locale: string }) {
 
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-neutral-500">
-            <p className="text-lg">{t('fleet.filterAll')}</p>
+            <p className="text-lg">{getNoResultsText(locale)}</p>
             <button onClick={() => setActiveFilter('all')} className="mt-3 text-brand text-sm font-medium hover:underline">{t('common.viewAll')}</button>
           </div>
         ) : (
