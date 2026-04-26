@@ -36,7 +36,9 @@ jobs:
         # apps/backend/railway.toml for build + start config.
         # --service pins the deploy to the named service so we don't
         # accidentally re-deploy the wrong workload if the project grows.
-        working-directory: apps/backend
+        # NOTE: No working-directory here — Railway's service has
+        # rootDirectory=/apps/backend, so it finds the right folder itself.
+        # Setting working-directory would double-nest the path.
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: railway up --service ${{ vars.RAILWAY_SERVICE_NAME || 'backend' }} --ci
