@@ -137,7 +137,7 @@ uv run prisma generate
 - [x] Payments (Stripe PaymentIntent — webhook deferred, none in Node either)
 - [x] Calculator (quote engine)
 - [x] Contact form
-- [ ] Integrations (Twilio, SendGrid, Stripe, Google Maps, WhatsApp)
+- [ ] Integrations: Twilio (done), Stripe (done), SendGrid (done); Google Maps, WhatsApp, Firebase, Tabby, Checkout.com remaining
 - [x] Admin endpoints (full set — 14 endpoints, role-gated)
 
 Each module gets its own PR.

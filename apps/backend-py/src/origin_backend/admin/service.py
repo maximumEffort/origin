@@ -20,6 +20,7 @@ from typing import Any
 from fastapi import HTTPException, status
 
 from origin_backend.admin.schemas import CreateVehicleRequest, UpdateVehicleRequest
+from origin_backend.integrations import sendgrid_email
 from prisma import Prisma
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,21 @@ async def approve_booking(db: Prisma, booking_id: str) -> Any:
         where={"id": booking_id},
         data={"status": "APPROVED"},
     )
-    # TODO(sendgrid-integration): fire BOOKING_APPROVED email — deferred.
+
+    customer = await db.customer.find_unique(where={"id": booking.customerId})
+    if customer is not None and customer.email:
+        lang = _enum_value(customer.preferredLanguage) or "en"
+        await sendgrid_email.send_booking_approved(
+            customer.email,
+            {
+                "bookingRef": booking.reference,
+                "customerName": customer.fullName,
+                "startDate": booking.startDate.date().isoformat(),
+                "endDate": booking.endDate.date().isoformat(),
+                "totalAed": str(booking.grandTotalAed),
+            },
+            lang,  # type: ignore[arg-type]
+        )
     return updated
 
 
@@ -145,7 +160,14 @@ async def reject_kyc(db: Prisma, customer_id: str, reason: str | None) -> Any:
     if reason:
         data["kycRejectionReason"] = reason
     updated = await db.customer.update(where={"id": customer_id}, data=data)
-    # TODO(sendgrid-integration): fire KYC_INCOMPLETE email — deferred.
+
+    if customer.email:
+        lang = _enum_value(customer.preferredLanguage) or "en"
+        await sendgrid_email.send_kyc_incomplete_alert(
+            customer.email,
+            {"customerName": customer.fullName, "rejectionReason": reason or ""},
+            lang,  # type: ignore[arg-type]
+        )
     return updated
 
 

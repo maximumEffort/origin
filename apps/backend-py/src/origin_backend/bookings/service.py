@@ -21,6 +21,7 @@ from typing import Any
 from fastapi import HTTPException, status
 
 from origin_backend.calculator import service as calculator_service
+from origin_backend.integrations import sendgrid_email
 from prisma import Prisma
 
 logger = logging.getLogger(__name__)
@@ -123,9 +124,23 @@ async def create(
 
     booking = await db.booking.create(data=data)
 
-    # TODO(sendgrid-integration): fire booking confirmation email when
-    # the SendGrid integration lands. Best-effort, non-blocking — same as
-    # the Node service.
+    # Best-effort booking confirmation email. Failures are swallowed
+    # inside sendgrid_email so a mail outage can't kill a booking.
+    customer = await db.customer.find_unique(where={"id": customer_id})
+    if customer is not None and customer.email:
+        lang = _enum_value(customer.preferredLanguage) or "en"
+        await sendgrid_email.send_booking_confirmation(
+            customer.email,
+            {
+                "bookingRef": booking.reference,
+                "customerName": customer.fullName,
+                "startDate": booking.startDate.date().isoformat(),
+                "endDate": booking.endDate.date().isoformat(),
+                "totalAed": str(booking.grandTotalAed),
+                "depositAed": str(booking.depositAmountAed),
+            },
+            lang,  # type: ignore[arg-type]
+        )
 
     return _serialise_booking(booking)
 
