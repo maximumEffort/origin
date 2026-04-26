@@ -14,6 +14,15 @@ dockerfilePath = "Dockerfile"
 # proxy can reach the service.
 startCommand = "uvicorn origin_backend.main:app --host 0.0.0.0 --port $PORT --workers 2"
 
+# Explicitly clear any stale pre-deploy command. Railway's dashboard
+# was carrying over the NestJS-era `npx prisma migrate deploy` from a
+# previous successful deploy and running it against the FastAPI image,
+# which has no `npx` / Node Prisma CLI. Empty string forces an override.
+# Re-introduce a Python-native pre-deploy command (e.g.
+# `uv run prisma migrate deploy`) in a follow-up once the first deploy
+# is green and we've manually applied existing migrations.
+preDeployCommand = ""
+
 # Health check — the FastAPI app exposes /health/ready
 healthcheckPath = "/health/ready"
 healthcheckTimeout = 30
