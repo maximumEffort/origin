@@ -5,7 +5,8 @@
 //   - Identity gets Key Vault Secrets User role at the KV scope, so the
 //     three foundational secrets (JWT_SECRET, JWT_REFRESH_SECRET,
 //     CORS_ALLOWED_ORIGINS) flow in via keyVaultUrl references.
-//   - Identity gets AcrPull role at the ACR scope.
+//   - Identity gets AcrPull role at the ACR scope, plus the Container App
+//     itself is configured to authenticate ACR pulls via that identity.
 //   - All OTHER secrets (DATABASE_URL, Twilio, SendGrid, Stripe...) start as
 //     plain Container App secrets seeded with placeholder values. Operator
 //     populates them post-deploy via `az containerapp secret set`. Documented
@@ -24,6 +25,7 @@ param environmentName string
 param appName string
 param keyVaultName string
 param logAnalyticsName string
+param containerRegistryName string
 param appInsightsConnectionString string
 param vatRate string
 param tags object
@@ -53,6 +55,9 @@ param memorySize string = '1Gi'
 @description('Built-in role definition GUID for "Key Vault Secrets User". Microsoft documents this as 4633458b-17de-4322-8e57-46e3aa55c8e0, but some subscriptions return a different GUID. Verify in your tenant with: az role definition list --name "Key Vault Secrets User"')
 param keyVaultSecretsUserRoleGuid string = '4633458b-17de-4322-8e57-46e3aa55c8e0'
 
+@description('Built-in role definition GUID for "AcrPull". Microsoft documents this as 7f951dda-4ed3-4680-a7ca-43fe172d538d. Same caveat as keyVaultSecretsUserRoleGuid — verify with: az role definition list --name AcrPull')
+param acrPullRoleGuid string = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+
 // ── Lookups ─────────────────────────────────────────────────────────────────
 
 resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' existing = {
@@ -61,6 +66,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' existing = {
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: logAnalyticsName
+}
+
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2025-03-01-preview' existing = {
+  name: containerRegistryName
 }
 
 // ── Container App Environment ───────────────────────────────────────────────
@@ -106,6 +115,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
     workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
+      // Authenticate ACR image pulls via the Container App's managed identity.
+      // Pairs with the AcrPull role assignment below.
+      registries: [
+        {
+          server: containerRegistry.properties.loginServer
+          identity: 'system'
+        }
+      ]
       ingress: {
         external: true
         targetPort: targetPort
@@ -244,8 +261,17 @@ resource roleKvSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
-// AcrPull is granted in main.bicep against the ACR resource (not in this module)
-// because the ACR resource lives in a sibling module. Add separately if needed.
+// AcrPull — pull images from the ACR. Without this, even with the registry
+// config above, the Container App's managed identity gets 401 from ACR.
+resource roleAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: containerRegistry
+  name: guid(containerRegistry.id, containerApp.id, 'AcrPull')
+  properties: {
+    principalId: containerApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: '/providers/Microsoft.Authorization/roleDefinitions/${acrPullRoleGuid}'
+  }
+}
 
 output id string = containerApp.id
 output name string = containerApp.name
