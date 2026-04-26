@@ -115,10 +115,11 @@ Supported: **English** (en), **Arabic** (ar, RTL), **Simplified Chinese** (zh-CN
 |---|---|---|
 | Customer site | `apps/customer/` | Next.js 15 (App Router), next-intl, Tailwind, Stripe, Sentry |
 | Admin dashboard | `apps/admin/` | Next.js 14 (App Router), jose (JWT), httpOnly-cookie proxy to backend |
-| Backend API (Node) | `apps/backend/` | NestJS 10, Prisma 5, PostgreSQL — **archiving** during Python migration |
-| Backend API (Python) | `apps/backend-py/` | FastAPI, Prisma Python, PostgreSQL — **canonical, in active migration** |
+| Backend API | `apps/backend-py/` | FastAPI, Prisma Python, PostgreSQL — **canonical** |
 
 All three apps live in this monorepo. Both frontends consume the backend via `NEXT_PUBLIC_API_URL`. The backend is currently hosted on Railway (US) — migration to UAE infrastructure (AWS Lightsail me-central-1) is tracked in issue #21.
+
+The previous NestJS backend at `apps/backend/` was archived once the Python rewrite reached parity. Refer to git history if you need the original implementation.
 
 ---
 
@@ -131,12 +132,22 @@ npm install                 # install all deps for all three apps
 
 npm run customer:dev        # customer site on :3000
 npm run admin:dev           # admin on :3002
-npm run backend:dev         # backend API on :3001 (needs DATABASE_URL set)
 
 npm run -w customer lint    # lint one app
 npm run type-check          # type-check all apps
 npm run build               # build all apps
 npm test                    # run all tests
+```
+
+The backend uses `uv` (not npm). From the repo root:
+
+```bash
+cd apps/backend-py
+uv sync                                                   # install Python deps
+uv run prisma generate                                    # generate Prisma client
+uv run uvicorn origin_backend.main:app --reload --port 3001
+uv run pytest                                             # tests (mocked Prisma)
+uv run ruff check .                                       # lint
 ```
 
 ---

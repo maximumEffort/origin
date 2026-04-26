@@ -24,7 +24,6 @@ jobs:
     outputs:
       customer: ${{ steps.filter.outputs.customer }}
       admin: ${{ steps.filter.outputs.admin }}
-      backend: ${{ steps.filter.outputs.backend }}
       backend_py: ${{ steps.filter.outputs.backend_py }}
     steps:
       - uses: actions/checkout@v6
@@ -39,11 +38,6 @@ jobs:
               - '.github/workflows/ci.yml'
             admin:
               - 'apps/admin/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - '.github/workflows/ci.yml'
-            backend:
-              - 'apps/backend/**'
               - 'package.json'
               - 'package-lock.json'
               - '.github/workflows/ci.yml'
@@ -93,33 +87,9 @@ jobs:
           NEXT_PUBLIC_API_URL: https://example.com/v1
           ADMIN_SECRET: placeholder-ci-secret-not-used-for-auth-just-for-build
 
-  # ─── Backend API ─────────────────────────────────────────────────────────
-  backend:
-    name: Backend — type-check, build
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run -w backend prisma:generate
-      - run: npm run type-check --workspace=backend
-      - run: npm run lint --workspace=backend
-      # Tests are end-to-end and require a live database — run in staging, not CI
-      - run: npm run build --workspace=backend
-        env:
-          # Build needs DATABASE_URL for prisma generate, but we only run prisma generate
-          # which does NOT connect to the DB. Set a placeholder to satisfy any guards.
-          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
-          JWT_SECRET: ci-placeholder-not-used-for-real-auth
-
   # ─── Backend (Python) ───────────────────────────────────────────────────
   backend-py:
-    name: Backend (Python) — ruff, mypy, pytest
+    name: Backend — ruff, mypy, pytest
     needs: changes
     if: needs.changes.outputs.backend_py == 'true'
     runs-on: ubuntu-latest
