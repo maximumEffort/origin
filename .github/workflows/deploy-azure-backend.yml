@@ -1,0 +1,86 @@
+name: Deploy backend (Azure)
+
+# Builds the FastAPI image into ACR and rolls a new Container App revision
+# whenever apps/backend/** changes on main. Authenticates to Azure via OIDC
+# federated credential — no long-lived secret stored anywhere.
+#
+# Coexists with .github/workflows/deploy-backend.yml (Railway) during the
+# parallel-deploy phase from ADR-0001 §"Cutover plan". After the Phase 4 DNS
+# cutover, the Railway workflow gets deleted (Phase 5).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/deploy-azure-backend.yml'
+  workflow_dispatch: {}
+
+# Only one Azure backend deploy in flight at a time per ref.
+concurrency:
+  group: deploy-azure-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+# OIDC requires write on id-token; keep contents at read.
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_RG: rg-origin-prod-uaenorth
+  ACR_NAME: acroriginprod
+  CONTAINER_APP: ca-origin-backend-prod
+  IMAGE: origin-backend
+
+jobs:
+  deploy:
+    name: Build + push + roll
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build + push image via ACR
+        # `az acr build` runs the Docker build inside Azure (no docker daemon
+        # needed on the runner). We tag both the commit SHA (immutable, used
+        # for the Container App update) and 'latest' (convenience).
+        run: |
+          az acr build \
+            --registry $ACR_NAME \
+            --image $IMAGE:${{ github.sha }} \
+            --image $IMAGE:latest \
+            --file apps/backend/Dockerfile \
+            apps/backend
+
+      - name: Update Container App
+        # Pinning to the SHA tag — never to 'latest' on the Container App
+        # itself — so revisions are deterministic and rollback-able.
+        run: |
+          az containerapp update \
+            --name $CONTAINER_APP \
+            --resource-group $AZURE_RG \
+            --image $ACR_NAME.azurecr.io/$IMAGE:${{ github.sha }} \
+            --revision-suffix sha-${{ github.sha }}
+
+      - name: Health check
+        # Give the new revision ~60s to roll, then verify /health/ready.
+        # Doesn't fail the workflow on healthcheck miss — Container App's
+        # own probe gating handles that — but surfaces it in the run summary.
+        run: |
+          sleep 60
+          fqdn=$(az containerapp show --name $CONTAINER_APP --resource-group $AZURE_RG --query properties.configuration.ingress.fqdn -o tsv)
+          echo "Container App FQDN: https://$fqdn"
+          response=$(curl -s -o /dev/null -w "%{http_code}" "https://$fqdn/health/ready" || echo "000")
+          echo "/health/ready returned: $response"
+          if [ "$response" = "200" ]; then
+            echo "✅ Healthy"
+          else
+            echo "⚠️ Health check non-200 — investigate via az containerapp logs show"
+          fi
