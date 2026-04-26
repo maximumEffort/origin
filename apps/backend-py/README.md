@@ -72,8 +72,10 @@ apps/backend-py/
 │   ├── main.py              # FastAPI app entrypoint
 │   ├── config.py            # Pydantic settings (env vars)
 │   ├── auth/                # OTP + JWT + admin login
-│   ├── common/              # Prisma client, exception handlers, deps
+│   ├── common/              # Prisma client, auth deps, exception handlers
+│   ├── customers/           # Customer profile + KYC documents
 │   ├── health/              # /health endpoints
+│   ├── vehicles/            # Vehicle list + detail
 │   └── integrations/        # Twilio, SendGrid, Stripe wrappers
 └── tests/
     ├── conftest.py          # Shared fixtures (mocked Prisma)
@@ -122,8 +124,8 @@ uv run prisma generate
 
 - [x] Auth: OTP send/verify, refresh, admin login
 - [x] Health endpoints (/health, /health/live, /health/ready)
-- [ ] Vehicles
-- [ ] Customers + KYC documents
+- [x] Vehicles
+- [x] Customers + KYC documents
 - [ ] Bookings
 - [ ] Leases
 - [ ] Payments + Stripe webhook

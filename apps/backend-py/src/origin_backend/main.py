@@ -23,6 +23,7 @@ from origin_backend.auth.router import router as auth_router
 from origin_backend.common.exceptions import register_exception_handlers
 from origin_backend.common.prisma import connect_prisma, disconnect_prisma
 from origin_backend.config import settings
+from origin_backend.customers.router import router as customers_router
 from origin_backend.health.router import router as health_router
 from origin_backend.vehicles.router import router as vehicles_router
 
@@ -77,6 +78,7 @@ app.include_router(health_router)
 # All API endpoints under /v1 prefix to match NestJS routing.
 app.include_router(auth_router, prefix="/v1")
 app.include_router(vehicles_router, prefix="/v1")
+app.include_router(customers_router, prefix="/v1")
 
 # â”€â”€ Startup validation â€” fail fast if required config is missing â”€â”€â”€â”€
 if not settings.jwt_secret or len(settings.jwt_secret) < 16:
