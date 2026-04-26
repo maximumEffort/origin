@@ -1,0 +1,71 @@
+name: Deploy infra (Azure Bicep)
+
+# Applies the Bicep stack to Azure UAE North whenever infra/** changes on
+# main, or on manual dispatch (handy for re-running after a tenant-side
+# change like a Founders Hub credit upgrade).
+#
+# OIDC federated credential — no AZURE_CREDENTIALS JSON secret. The three
+# secrets the Bicep needs (PG_ADMIN_PWD, JWT_SECRET, JWT_REFRESH_SECRET)
+# come from GitHub repo secrets and are read by the bicepparam file via
+# readEnvironmentVariable().
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/deploy-azure-infra.yml'
+  workflow_dispatch: {}
+
+# Don't cancel an in-flight infra apply — Postgres provisioning takes 10+ min
+# and partial-cancellation creates a worse mess than queueing.
+concurrency:
+  group: deploy-azure-infra
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_LOCATION: uaenorth
+
+jobs:
+  deploy:
+    name: Apply Bicep
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: What-if (preview)
+        # Run what-if first; surfaces drift in the workflow summary so a
+        # reviewer can sanity-check what's about to change before it lands.
+        env:
+          PG_ADMIN_PWD: ${{ secrets.PG_ADMIN_PWD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+        run: |
+          az deployment sub what-if \
+            --location $AZURE_LOCATION \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters/prod.bicepparam
+
+      - name: Apply
+        env:
+          PG_ADMIN_PWD: ${{ secrets.PG_ADMIN_PWD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+        run: |
+          az deployment sub create \
+            --location $AZURE_LOCATION \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters/prod.bicepparam \
+            --name "infra-${{ github.run_number }}-${{ github.sha }}"
