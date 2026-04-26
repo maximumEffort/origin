@@ -1,9 +1,13 @@
 // Production parameters for Origin Azure UAE North.
 // Tier 1 sizing per ADR-0001. ~$36/mo, fully covered by Founders Hub credit.
 //
-// SECURE PARAMETERS (postgresAdminPassword, jwtSecret, jwtRefreshSecret) are
-// NOT defined here — Bicep will prompt for them at deploy time. Never commit
-// secret values to source.
+// SECRETS are read from environment variables at deploy time:
+//   PG_ADMIN_PWD       — Postgres admin password
+//   JWT_SECRET         — FastAPI access-token signing secret
+//   JWT_REFRESH_SECRET — FastAPI refresh-token signing secret
+//
+// Operator sets these in their shell before invoking `az deployment`. They
+// never touch source. See infra/README.md for the deploy walkthrough.
 
 using '../main.bicep'
 
@@ -11,8 +15,13 @@ param location = 'uaenorth'
 param environment = 'prod'
 param appName = 'origin'
 
-// Postgres admin login. Password prompted at deploy time.
+// Postgres admin login + password. Password from env.
 param postgresAdminLogin = 'origin_admin'
+param postgresAdminPassword = readEnvironmentVariable('PG_ADMIN_PWD')
+
+// JWT signing secrets from env.
+param jwtSecret = readEnvironmentVariable('JWT_SECRET')
+param jwtRefreshSecret = readEnvironmentVariable('JWT_REFRESH_SECRET')
 
 // CORS — covers the customer apex + www + admin subdomain + Vercel preview URLs
 // (extend as needed). Explicitly mirrors the values in containerapp.bicep CORS
@@ -27,5 +36,5 @@ param tags = {
   owner: 'amr.sarhan52@gmail.com'
   'cost-center': 'shanghai-car-rental-llc'
   'managed-by': 'bicep'
-  'adr': '0001-azure-uae-north-architecture'
+  adr: '0001-azure-uae-north-architecture'
 }
