@@ -75,6 +75,7 @@ apps/backend-py/
 │   ├── bookings/            # Customer booking lifecycle
 │   ├── calculator/          # Quote engine (VAT, mileage, add-ons)
 │   ├── common/              # Prisma client, auth deps, exception handlers
+│   ├── contact/             # Public contact-form submissions
 │   ├── customers/           # Customer profile + KYC documents
 │   ├── health/              # /health endpoints
 │   ├── leases/              # Customer lease list, detail, renew
@@ -133,7 +134,7 @@ uv run prisma generate
 - [x] Leases
 - [ ] Payments + Stripe webhook
 - [x] Calculator (quote engine)
-- [ ] Contact form
+- [x] Contact form
 - [ ] Integrations (Twilio, SendGrid, Stripe, Google Maps, WhatsApp)
 - [ ] Admin endpoints (full set)
 
