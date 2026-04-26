@@ -79,6 +79,7 @@ apps/backend-py/
 │   ├── customers/           # Customer profile + KYC documents
 │   ├── health/              # /health endpoints
 │   ├── leases/              # Customer lease list, detail, renew
+│   ├── payments/            # Stripe PaymentIntent creation
 │   ├── vehicles/            # Vehicle list + detail
 │   └── integrations/        # Twilio, SendGrid, Stripe wrappers
 └── tests/
@@ -132,7 +133,7 @@ uv run prisma generate
 - [x] Customers + KYC documents
 - [x] Bookings
 - [x] Leases
-- [ ] Payments + Stripe webhook
+- [x] Payments (Stripe PaymentIntent — webhook deferred, none in Node either)
 - [x] Calculator (quote engine)
 - [x] Contact form
 - [ ] Integrations (Twilio, SendGrid, Stripe, Google Maps, WhatsApp)

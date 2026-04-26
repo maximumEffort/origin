@@ -29,6 +29,7 @@ from origin_backend.contact.router import router as contact_router
 from origin_backend.customers.router import router as customers_router
 from origin_backend.health.router import router as health_router
 from origin_backend.leases.router import router as leases_router
+from origin_backend.payments.router import router as payments_router
 from origin_backend.vehicles.router import router as vehicles_router
 
 logger = logging.getLogger("origin_backend")
@@ -87,6 +88,7 @@ app.include_router(calculator_router, prefix="/v1")
 app.include_router(bookings_router, prefix="/v1")
 app.include_router(leases_router, prefix="/v1")
 app.include_router(contact_router, prefix="/v1")
+app.include_router(payments_router, prefix="/v1")
 
 # â”€â”€ Startup validation â€” fail fast if required config is missing â”€â”€â”€â”€
 if not settings.jwt_secret or len(settings.jwt_secret) < 16:
