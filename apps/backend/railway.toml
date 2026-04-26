@@ -10,9 +10,11 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Bind to Railway's injected $PORT (not the dev-default 3001) so the
-# proxy can reach the service.
-startCommand = "uvicorn origin_backend.main:app --host 0.0.0.0 --port $PORT --workers 2"
+# Wrap in `sh -c` so $PORT actually expands. Railway runs startCommand
+# in exec mode (no shell), so a bare `--port $PORT` arrives at uvicorn
+# as the literal string "$PORT" and uvicorn errors with
+# `Invalid value for '--port': '$PORT' is not a valid integer.`
+startCommand = "sh -c 'uvicorn origin_backend.main:app --host 0.0.0.0 --port $PORT --workers 2'"
 
 # No-op pre-deploy. The previously deployed NestJS service had:
 #   `DATABASE_URL=$DIRECT_URL npx prisma migrate deploy && ...`
