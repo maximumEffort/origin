@@ -11,8 +11,8 @@ def _category() -> SimpleNamespace:
     return SimpleNamespace(
         id="cat-1",
         nameEn="Electric SUV",
-        nameAr="Ã˜Â³Ã™Å Ã˜Â§Ã˜Â±Ã˜Â© Ã™Æ’Ã™â€¡Ã˜Â±Ã˜Â¨Ã˜Â§Ã˜Â¦Ã™Å Ã˜Â© SUV",
-        nameZh="Ã§â€ÂµÃ¥Å Â¨SUV",
+        nameAr="سيارة كهربائية SUV",
+        nameZh="电动SUV",
         icon="suv-icon",
     )
 
