@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl
 
@@ -26,7 +27,7 @@ class DocumentType(StrEnum):
     PASSPORT = "PASSPORT"
 
 
-# ── Request schemas ──────────────────────────────────────────────
+# ── Request schemas ─────────────────────────────────────────────────
 
 
 class UpdateCustomerRequest(BaseModel):
@@ -50,7 +51,7 @@ class CreateDocumentRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
 
-# ── Response schemas ─────────────────────────────────────────────
+# ── Response schemas ────────────────────────────────────────────────
 
 
 class DocumentResponse(BaseModel):
@@ -64,6 +65,17 @@ class DocumentResponse(BaseModel):
     uploadedAt: datetime
     reviewedAt: datetime | None = None
     reviewedBy: str | None = None
+
+    # ── OCR fields (ADR-0002) — populated asynchronously after upload ──
+    ocrStatus: str = "NOT_STARTED"
+    ocrProvider: str | None = None
+    ocrModel: str | None = None
+    ocrFields: dict[str, Any] | None = None
+    ocrConfidence: float | None = None
+    ocrRequestedAt: datetime | None = None
+    ocrCompletedAt: datetime | None = None
+    ocrFailureReason: str | None = None
+    reviewerOverrides: dict[str, Any] | None = None
 
 
 class CustomerProfile(BaseModel):

@@ -29,6 +29,7 @@ from origin_backend.config import settings
 from origin_backend.contact.router import router as contact_router
 from origin_backend.customers.router import router as customers_router
 from origin_backend.health.router import router as health_router
+from origin_backend.kyc.router import router as kyc_admin_router
 from origin_backend.leases.router import router as leases_router
 from origin_backend.maps.router import router as maps_router
 from origin_backend.payments.router import router as payments_router
@@ -48,7 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await connect_prisma()
     logger.info("origin-backend %s ready on port %s", __version__, settings.app_port)
     yield
-    logger.info("shutting down â€” disconnecting database")
+    logger.info("shutting down — disconnecting database")
     await disconnect_prisma()
 
 
@@ -64,7 +65,7 @@ app = FastAPI(
     redoc_url=None,
 )
 
-# â”€â”€ Middleware â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Middleware ──────────────────────────────────────────────────────
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 app.add_middleware(
@@ -76,11 +77,11 @@ app.add_middleware(
     max_age=86400,
 )
 
-# â”€â”€ Exception handlers (uniform error envelope) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Exception handlers (uniform error envelope) ─────────────────────
 register_exception_handlers(app)
 
-# â”€â”€ Routers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# Health endpoints are mounted at /health (NOT under /v1) â€” same as NestJS.
+# ── Routers ─────────────────────────────────────────────────────────────
+# Health endpoints are mounted at /health (NOT under /v1) — same as NestJS.
 app.include_router(health_router)
 
 # All API endpoints under /v1 prefix to match NestJS routing.
@@ -94,8 +95,9 @@ app.include_router(contact_router, prefix="/v1")
 app.include_router(payments_router, prefix="/v1")
 app.include_router(maps_router, prefix="/v1")
 app.include_router(admin_router, prefix="/v1")
+app.include_router(kyc_admin_router, prefix="/v1")  # /v1/admin/documents/{id}/{reocr,approve,reject}
 app.include_router(checkout_webhook_router, prefix="/v1")
 
-# â”€â”€ Startup validation â€” fail fast if required config is missing â”€â”€â”€â”€
+# ── Startup validation — fail fast if required config is missing ────
 if not settings.jwt_secret or len(settings.jwt_secret) < 16:
     raise RuntimeError("JWT_SECRET environment variable must be set and at least 16 characters.")
