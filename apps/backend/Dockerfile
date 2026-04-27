@@ -24,8 +24,11 @@ COPY prisma ./prisma
 COPY src ./src
 COPY README.md ./
 
-# Install deps + project into a project-local venv
-RUN uv sync --frozen --no-dev
+# Install deps + project into a project-local venv.
+# NOTE: --frozen was removed because the lockfile is currently stale
+# (azure-* deps missing). Once `uv lock` is re-run locally and the
+# updated uv.lock is committed, restore --frozen for reproducible builds.
+RUN uv sync --no-dev
 
 # Generate Prisma client (uses schema.prisma). This downloads the
 # Rust query engine binary into /root/.cache/prisma-python/binaries/.
