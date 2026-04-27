@@ -115,6 +115,16 @@ class Settings(BaseSettings):
         """True when the OCR feature flag is on AND the endpoint is set."""
         return self.kyc_ocr_enabled and bool(self.azure_doc_intel_endpoint)
 
+    # ── File uploads ──
+    kyc_upload_dir: str = Field(
+        default="uploads",
+        description="Local directory for KYC document storage (dev fallback when Azure Blob is not configured).",
+    )
+    kyc_upload_max_size_mb: int = Field(
+        default=10,
+        description="Maximum upload file size in megabytes.",
+    )
+
     # ── CORS ──
     cors_allowed_origins: str = "http://localhost:3000,http://localhost:3002"
 

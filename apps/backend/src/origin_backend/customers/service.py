@@ -8,10 +8,11 @@ they're trivially testable with a mocked client.
 
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from typing import Any
 
-from fastapi import BackgroundTasks, HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, UploadFile, status
 
 from origin_backend.customers.schemas import DocumentType
 from origin_backend.kyc import service as kyc_service
@@ -239,3 +240,103 @@ async def get_document(
     if doc is None or doc.customerId != customer_id:
         raise HTTPException(status_code=404, detail="Document not found")
     return _serialise_document(doc)
+
+
+# ── File upload (Issue #75) ─────────────────────────────────────────────────
+
+
+_ALLOWED_CONTENT_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+}
+
+_EXT_MAP = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "application/pdf": ".pdf",
+}
+
+
+async def upload_and_create_document(
+    db: Prisma,
+    customer_id: str,
+    *,
+    file: UploadFile,
+    document_type: str,
+    expiry_date: str | None,
+    background_tasks: BackgroundTasks | None = None,
+) -> dict[str, Any]:
+    """
+    Upload a KYC document file to storage and create the Document record.
+
+    Validates the file type and size, uploads to Azure Blob (or local
+    fallback in dev), creates/updates the Document row, and enqueues OCR
+    when the feature flag is enabled.
+
+    This powers the new ``POST /v1/customers/me/documents/upload`` multipart
+    endpoint that BookingFlow.tsx Step 3 calls (issue #75).
+    """
+    from origin_backend.common.blob import upload_kyc_document
+    from origin_backend.config import settings
+
+    # ── Validate document type ──
+    try:
+        doc_type = DocumentType(document_type)
+    except ValueError:
+        valid = ", ".join(t.value for t in DocumentType)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid document type: {document_type}. Must be one of: {valid}",
+        )
+
+    # ── Validate file ──
+    if not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file provided",
+        )
+
+    content_type = file.content_type or "application/octet-stream"
+    if content_type not in _ALLOWED_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File type {content_type} not allowed. Accepted: JPG, PNG, WebP, PDF",
+        )
+
+    content = await file.read()
+    max_bytes = settings.kyc_upload_max_size_mb * 1024 * 1024
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"File too large ({len(content) / 1024 / 1024:.1f} MB). "
+                f"Maximum: {settings.kyc_upload_max_size_mb} MB"
+            ),
+        )
+
+    extension = _EXT_MAP.get(
+        content_type,
+        os.path.splitext(file.filename or "")[1] or ".bin",
+    )
+
+    # ── Upload to storage ──
+    file_url = await upload_kyc_document(
+        customer_id=customer_id,
+        doc_type=doc_type.value,
+        file_content=content,
+        content_type=content_type,
+        file_extension=extension,
+    )
+
+    # ── Create/update Document row (delegates to existing add_document) ──
+    return await add_document(
+        db,
+        customer_id,
+        document_type=doc_type,
+        file_url=file_url,
+        expiry_date=expiry_date,
+        background_tasks=background_tasks,
+    )

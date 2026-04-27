@@ -12,6 +12,9 @@ const COOKIE_NAME = 'origin_customer_session';
  * so it never touches client-side JavaScript — XSS-safe.
  *
  * Mirrors the admin pattern in apps/admin/app/api/backend/[...path]/route.ts.
+ *
+ * Supports both JSON and multipart/form-data (file uploads) — the latter is
+ * used by the KYC document upload endpoint (POST /customers/me/documents/upload).
  */
 async function handler(
   req: NextRequest,
@@ -24,17 +27,28 @@ async function handler(
 
   const token = req.cookies.get(COOKIE_NAME)?.value;
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  // Detect multipart uploads (file uploads) — pass through the original
+  // Content-Type header (which includes the boundary string) and raw body
+  // so the backend receives a valid multipart request.
+  const incomingCT = req.headers.get('content-type') ?? '';
+  const isMultipart = incomingCT.includes('multipart/form-data');
+
+  const headers: Record<string, string> = {};
+  if (isMultipart) {
+    headers['Content-Type'] = incomingCT;
+  } else {
+    headers['Content-Type'] = 'application/json';
+  }
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const body =
-    req.method !== 'GET' && req.method !== 'HEAD'
-      ? await req.text()
-      : undefined;
+  let body: BodyInit | undefined;
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    // For multipart, pass the raw bytes to preserve boundaries.
+    // For JSON, pass as text.
+    body = isMultipart ? await req.arrayBuffer() : await req.text();
+  }
 
   const upstream = await fetch(`${API_URL}${backendPath}${qs}`, {
     method: req.method,

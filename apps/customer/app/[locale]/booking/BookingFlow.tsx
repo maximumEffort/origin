@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Check, ArrowRight, ArrowLeft, Upload, MessageCircle, LogIn } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft, Upload, MessageCircle, LogIn, Loader2, AlertCircle } from 'lucide-react';
 import { WHATSAPP_NUMBER } from '@/lib/constants';
 import { STATIC_VEHICLES } from '@/lib/static-vehicles';
 import { useAuth } from '@/components/AuthProvider';
@@ -40,6 +40,12 @@ interface Addons {
 interface DocFile {
   name: string;
   size: number;
+  /** True while the file is being uploaded to the backend. */
+  uploading?: boolean;
+  /** Backend Document row ID — set once the upload succeeds. */
+  documentId?: string;
+  /** Error message if the upload failed. */
+  error?: string;
 }
 
 interface Docs {
@@ -48,6 +54,14 @@ interface Docs {
   visa: DocFile | null;
   passport: DocFile | null;
 }
+
+/** Maps client-side keys to backend DocumentType enum values. */
+const DOC_TYPE_MAP: Record<keyof Docs, string> = {
+  emiratesId: 'EMIRATES_ID',
+  drivingLicence: 'DRIVING_LICENCE',
+  visa: 'VISA',
+  passport: 'PASSPORT',
+};
 
 export default function BookingFlow({ locale }: { locale: string }) {
   const t = useTranslations('booking');
@@ -189,14 +203,63 @@ export default function BookingFlow({ locale }: { locale: string }) {
   const toggleAddon = (key: keyof Addons) =>
     setAddons((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const handleFileSelect = (key: keyof Docs, file: File) =>
-    setDocs((prev) => ({ ...prev, [key]: { name: file.name, size: file.size } }));
+  /**
+   * Upload the selected file to the backend and create a Document row.
+   * Replaces the old metadata-only handler (issue #75).
+   */
+  const handleFileSelect = async (key: keyof Docs, file: File) => {
+    // Optimistic UI — show the file as "uploading" immediately
+    setDocs((prev) => ({
+      ...prev,
+      [key]: { name: file.name, size: file.size, uploading: true },
+    }));
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', DOC_TYPE_MAP[key]);
+
+      const res = await fetch(`${API_PROXY}/customers/me/documents/upload`, {
+        method: 'POST',
+        body: formData,
+        // Do NOT set Content-Type — the browser sets it with the multipart
+        // boundary automatically when the body is FormData.
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail ?? 'Upload failed');
+      }
+
+      const doc = await res.json();
+      setDocs((prev) => ({
+        ...prev,
+        [key]: { name: file.name, size: file.size, documentId: doc.id },
+      }));
+    } catch (err) {
+      setDocs((prev) => ({
+        ...prev,
+        [key]: {
+          name: file.name,
+          size: file.size,
+          error: err instanceof Error ? err.message : 'Upload failed',
+        },
+      }));
+    }
+  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
+
+  /** True when both required documents have been uploaded successfully. */
+  const requiredDocsUploaded =
+    !!docs.emiratesId?.documentId && !!docs.drivingLicence?.documentId;
+
+  /** True when any document is mid-upload. */
+  const anyUploading = Object.values(docs).some((d) => d?.uploading);
 
   return (
     <>
@@ -372,45 +435,65 @@ export default function BookingFlow({ locale }: { locale: string }) {
                   { key: 'drivingLicence' as const, label: t('drivingLicence') },
                   { key: 'visa'          as const, label: t('visa') },
                   { key: 'passport'      as const, label: t('passport') },
-                ]).map(({ key, label }) => (
-                  <div key={key} className="flex items-center justify-between p-4 border border-neutral-100 rounded-lg">
-                    <input
-                      ref={(el) => { fileInputRefs.current[key] = el; }}
-                      type="file"
-                      accept="image/*,.pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleFileSelect(key, file);
-                      }}
-                    />
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-neutral-900">{label}</div>
-                      {docs[key] ? (
-                        <div className="text-xs text-green-600 mt-0.5 truncate">{docs[key].name} ({formatFileSize(docs[key].size)})</div>
-                      ) : (
-                        <div className="text-xs text-neutral-500 mt-0.5">{t('uploadHint')}</div>
-                      )}
+                ]).map(({ key, label }) => {
+                  const doc = docs[key];
+                  return (
+                    <div key={key} className={`flex items-center justify-between p-4 border rounded-lg ${
+                      doc?.error ? 'border-red-200 bg-red-50/50' : 'border-neutral-100'
+                    }`}>
+                      <input
+                        ref={(el) => { fileInputRefs.current[key] = el; }}
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileSelect(key, file);
+                        }}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-neutral-900">{label}</div>
+                        {doc?.documentId ? (
+                          <div className="text-xs text-green-600 mt-0.5 truncate">{doc.name} ({formatFileSize(doc.size)})</div>
+                        ) : doc?.uploading ? (
+                          <div className="text-xs text-brand mt-0.5 truncate">{doc.name} — uploading…</div>
+                        ) : doc?.error ? (
+                          <div className="text-xs text-red-600 mt-0.5">{doc.error}</div>
+                        ) : (
+                          <div className="text-xs text-neutral-500 mt-0.5">{t('uploadHint')}</div>
+                        )}
+                      </div>
+                      <div className="shrink-0 ms-4">
+                        {doc?.uploading ? (
+                          <span className="flex items-center gap-1.5 text-sm font-medium text-brand px-3 py-1.5">
+                            <Loader2 size={14} className="animate-spin" />
+                          </span>
+                        ) : doc?.documentId ? (
+                          <button
+                            onClick={() => fileInputRefs.current[key]?.click()}
+                            className="flex items-center gap-1.5 text-sm font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors"
+                          >
+                            <Check size={14} /> {t('uploaded')}
+                          </button>
+                        ) : doc?.error ? (
+                          <button
+                            onClick={() => fileInputRefs.current[key]?.click()}
+                            className="flex items-center gap-1.5 text-sm font-medium text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors"
+                          >
+                            <AlertCircle size={14} /> Retry
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => fileInputRefs.current[key]?.click()}
+                            className="flex items-center gap-1.5 text-sm font-medium text-brand bg-brand/10 px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors"
+                          >
+                            <Upload size={14} /> {t('uploadBtn')}
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="shrink-0 ms-4">
-                      {docs[key] ? (
-                        <button
-                          onClick={() => fileInputRefs.current[key]?.click()}
-                          className="flex items-center gap-1.5 text-sm font-medium text-green-600 bg-green-50 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors"
-                        >
-                          <Check size={14} /> {t('uploaded')}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => fileInputRefs.current[key]?.click()}
-                          className="flex items-center gap-1.5 text-sm font-medium text-brand bg-brand/10 px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-colors"
-                        >
-                          <Upload size={14} /> {t('uploadBtn')}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <p className="text-xs text-neutral-500 mt-3">* {t('emiratesId')} & {t('drivingLicence')} — {t('uploadHint')}</p>
               <div className="mt-8 flex justify-between">
@@ -419,7 +502,7 @@ export default function BookingFlow({ locale }: { locale: string }) {
                   <ArrowLeft size={16} />{t('back')}
                 </button>
                 <button
-                  disabled={!docs.emiratesId?.name || !docs.drivingLicence?.name}
+                  disabled={!requiredDocsUploaded || anyUploading}
                   onClick={() => setStep(4)}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-40"
                 >

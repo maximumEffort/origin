@@ -98,6 +98,19 @@ app.include_router(admin_router, prefix="/v1")
 app.include_router(kyc_admin_router, prefix="/v1")  # /v1/admin/documents/{id}/{reocr,approve,reject}
 app.include_router(checkout_webhook_router, prefix="/v1")
 
+# ── Dev: serve locally-uploaded KYC files ───────────────────────────
+# In production, KYC files are stored in Azure Blob and served directly.
+# In dev (no Azure), files land in the local uploads/ dir and need a
+# static-file mount so the admin image-preview and tests can reach them.
+if not settings.is_production:
+    from pathlib import Path
+
+    from fastapi.staticfiles import StaticFiles
+
+    _uploads = Path(settings.kyc_upload_dir)
+    _uploads.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(_uploads)), name="uploads")
+
 # ── Startup validation — fail fast if required config is missing ────
 if not settings.jwt_secret or len(settings.jwt_secret) < 16:
     raise RuntimeError("JWT_SECRET environment variable must be set and at least 16 characters.")
