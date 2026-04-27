@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, FileCheck, FileX, Clock, Plus, Pencil, Trash2, CheckCircle, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Search, FileCheck, FileX, Clock, Plus, Pencil, Trash2, CheckCircle, ScanLine, Loader2 } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -129,8 +130,15 @@ export default function CustomersPage() {
                   <td className="px-5 py-4 text-gray-400 text-xs">{c.joinedDate}</td>
                   <td className="px-5 py-4">
                     <div className="flex gap-1.5 justify-end">
+                      <Link
+                        href={`/customers/${c.id}/kyc`}
+                        className="flex items-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
+                        title="Review KYC documents (with OCR)"
+                      >
+                        <ScanLine size={12} /> Review KYC
+                      </Link>
                       {c.kycStatus === 'SUBMITTED' && (
-                        <button onClick={() => handleApproveKyc(c)} className="flex items-center gap-1 px-2 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-medium hover:bg-green-100 transition-colors" title="Approve KYC">
+                        <button onClick={() => handleApproveKyc(c)} className="flex items-center gap-1 px-2 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-medium hover:bg-green-100 transition-colors" title="Approve KYC (whole customer)">
                           <CheckCircle size={12} /> Approve
                         </button>
                       )}
