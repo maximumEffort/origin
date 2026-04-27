@@ -6,17 +6,13 @@
 //   3. storage                                        — KYC docs + vehicle imagery
 //   4. postgres                                       — slowest, kicked off in parallel
 //   5. acr (container registry)                       — Container App pulls images from here
-//   6. docintel                                       — Document Intelligence (ADR-0002)
-//   7. containerapp (env + app)                       — depends on observability, kv, acr
-//   8. acr-roles                                      — grants Container App MI AcrPull on ACR
-//   9. docintel-roles                                 — grants Container App MI access to DI + Storage
+//   6. containerapp (env + app)                       — depends on observability, kv, acr
 //
-// See docs/adr/0001-azure-uae-north-architecture.md for the why behind every choice,
-// and docs/adr/0002-kyc-ocr-data-flow.md for the KYC OCR additions.
+// See docs/adr/0001-azure-uae-north-architecture.md for the why behind every choice.
 
 targetScope = 'subscription'
 
-// ── Parameters ────────────────────────────────────────────────────────────
+// ── Parameters ──────────────────────────────────────────────────────────────
 
 @description('Azure region. UAE North = Dubai. Origin is PDPL-bound to UAE.')
 param location string = 'uaenorth'
@@ -49,12 +45,6 @@ param corsAllowedOrigins string = 'https://origin-auto.ae,https://www.origin-aut
 @description('VAT rate (UAE = 0.05).')
 param vatRate string = '0.05'
 
-@description('KYC OCR feature flag (ADR-0002). False until staged rollout completes.')
-param kycOcrEnabled bool = false
-
-@description('Built-in role GUID for "Cognitive Services User". Microsoft documents this as a574d5d0-ad88-4d2b-ae57-bf67dc12c0a9 — verify in your tenant if main deployment errors with RoleDefinitionDoesNotExist.')
-param cognitiveServicesUserRoleGuid string = 'a574d5d0-ad88-4d2b-ae57-bf67dc12c0a9'
-
 @description('Built-in role GUID for "Key Vault Secrets User". Microsoft documents this as 4633458b-17de-4322-8e57-46e3aa55c8e0, but some subscriptions return a different GUID. Verify in your tenant with: az role definition list --name "Key Vault Secrets User"')
 param keyVaultSecretsUserRoleGuid string = '4633458b-17de-4322-8e57-46e3aa55c8e0'
 
@@ -67,7 +57,7 @@ param tags object = {
   'managed-by': 'bicep'
 }
 
-// ── Naming ────────────────────────────────────────────────────────────────
+// ── Naming ──────────────────────────────────────────────────────────────────
 // Pulled from ADR-0001 §"Naming convention".
 
 var resourceGroupName     = 'rg-${appName}-${environment}-${location}'
@@ -79,9 +69,8 @@ var containerRegistryName = 'acr${appName}${environment}'                 // no 
 var storageAccountName    = 'stor${appName}${environment}${location}'      // no dashes, lowercase, ≤24
 var containerAppEnvName   = 'cae-${appName}-${environment}-${location}'
 var containerAppName      = 'ca-${appName}-backend-${environment}'
-var docIntelName          = 'di-${appName}-${environment}-${location}'
 
-// ── Resource group ───────────────────────────────────────────────────────────
+// ── Resource group ──────────────────────────────────────────────────────────
 
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
@@ -89,7 +78,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   tags: tags
 }
 
-// ── Modules ───────────────────────────────────────────────────────────────────
+// ── Modules ─────────────────────────────────────────────────────────────────
 
 module observability 'modules/observability.bicep' = {
   name: 'observability'
@@ -147,16 +136,6 @@ module acr 'modules/containerregistry.bicep' = {
   }
 }
 
-module docIntel 'modules/docintel.bicep' = {
-  name: 'docintel'
-  scope: rg
-  params: {
-    location: location
-    accountName: docIntelName
-    tags: tags
-  }
-}
-
 module containerApp 'modules/containerapp.bicep' = {
   name: 'containerapp'
   scope: rg
@@ -166,14 +145,9 @@ module containerApp 'modules/containerapp.bicep' = {
     appName: containerAppName
     keyVaultName: keyVaultName
     logAnalyticsName: logAnalyticsName
-    acrLoginServer: acr.outputs.loginServer
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
     vatRate: vatRate
     keyVaultSecretsUserRoleGuid: keyVaultSecretsUserRoleGuid
-    // ── KYC OCR (ADR-0002) ──
-    kycOcrEnabled: kycOcrEnabled
-    azureDocIntelEndpoint: docIntel.outputs.endpoint
-    azureStorageBlobEndpoint: storage.outputs.blobEndpoint
     tags: tags
   }
   dependsOn: [
@@ -181,47 +155,10 @@ module containerApp 'modules/containerapp.bicep' = {
   ]
 }
 
-// ── Role assignments for the Container App's managed identity ───────────────────────
-
-// AcrPull — allows the Container App to pull images from the private ACR
-// using its system-assigned managed identity (no admin credentials needed).
-module acrRoleAssignments 'modules/acr-roles.bicep' = {
-  name: 'acr-roles'
-  scope: rg
-  params: {
-    containerRegistryName: containerRegistryName
-    containerAppPrincipalId: containerApp.outputs.principalId
-  }
-  dependsOn: [
-    acr
-    containerApp
-  ]
-}
-
-// Cognitive Services User + Storage Blob Data Contributor — scoped to the
-// docintel + storage resources so the backend can call DI and read/write
-// blob containers without needing API keys.
-module diRoleAssignments 'modules/docintel-roles.bicep' = {
-  name: 'docintel-roles'
-  scope: rg
-  params: {
-    docIntelName: docIntelName
-    storageAccountName: storageAccountName
-    containerAppPrincipalId: containerApp.outputs.principalId
-    cognitiveServicesUserRoleGuid: cognitiveServicesUserRoleGuid
-  }
-  dependsOn: [
-    docIntel
-    storage
-    containerApp
-  ]
-}
-
-// ── Outputs ──────────────────────────────────────────────────────────────────
+// ── Outputs ─────────────────────────────────────────────────────────────────
 
 output resourceGroupName string  = rg.name
 output containerAppFqdn string   = containerApp.outputs.fqdn
 output keyVaultName string       = keyVault.outputs.name
 output postgresHost string       = postgres.outputs.fqdn
-output postgresDatabaseName string = postgres.outputs.databaseName
 output containerRegistryServer string = acr.outputs.loginServer

@@ -5,8 +5,7 @@
 //   - Identity gets Key Vault Secrets User role at the KV scope, so the
 //     three foundational secrets (JWT_SECRET, JWT_REFRESH_SECRET,
 //     CORS_ALLOWED_ORIGINS) flow in via keyVaultUrl references.
-//   - Identity gets AcrPull role at the ACR scope (via acr-roles.bicep).
-//   - Registry auth uses the managed identity — no admin credentials.
+//   - Identity gets AcrPull role at the ACR scope.
 //   - All OTHER secrets (DATABASE_URL, Twilio, SendGrid, Stripe...) start as
 //     plain Container App secrets seeded with placeholder values. Operator
 //     populates them post-deploy via `az containerapp secret set`. Documented
@@ -28,26 +27,6 @@ param logAnalyticsName string
 param appInsightsConnectionString string
 param vatRate string
 param tags object
-
-// ── ACR ─────────────────────────────────────────────────────────────
-
-@description('ACR login server, e.g. acroriginprod.azurecr.io. Used to configure managed-identity-based registry auth.')
-param acrLoginServer string
-
-// ── KYC OCR (ADR-0002) ──────────────────────────────────────────────
-// kycOcrEnabled is a non-secret feature flag. The endpoints are also
-// non-secret (they identify resources, not credentials). Auth to both DI and
-// Storage uses the Container App's system-assigned managed identity, granted
-// via role assignments emitted from main.bicep -> docintel-roles.bicep.
-
-@description('KYC OCR feature flag (ADR-0002). False until staged rollout completes.')
-param kycOcrEnabled bool = false
-
-@description('Document Intelligence endpoint URL. Comes from the docintel module output.')
-param azureDocIntelEndpoint string = ''
-
-@description('Storage account blob endpoint, e.g. https://stororiginproduaenorth.blob.core.windows.net/.')
-param azureStorageBlobEndpoint string = ''
 
 @description('Initial container image. Replaced by CI on first push to ACR.')
 param image string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
@@ -74,7 +53,7 @@ param memorySize string = '1Gi'
 @description('Built-in role definition GUID for "Key Vault Secrets User". Microsoft documents this as 4633458b-17de-4322-8e57-46e3aa55c8e0, but some subscriptions return a different GUID. Verify in your tenant with: az role definition list --name "Key Vault Secrets User"')
 param keyVaultSecretsUserRoleGuid string = '4633458b-17de-4322-8e57-46e3aa55c8e0'
 
-// ── Lookups ────────────────────────────────────────────────────────
+// ── Lookups ─────────────────────────────────────────────────────────────────
 
 resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' existing = {
   name: keyVaultName
@@ -84,7 +63,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' exis
   name: logAnalyticsName
 }
 
-// ── Container App Environment ────────────────────────────────────────────
+// ── Container App Environment ───────────────────────────────────────────────
 
 resource environment 'Microsoft.App/managedEnvironments@2024-10-02-preview' = {
   name: environmentName
@@ -127,15 +106,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
     workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
-      // ── Registry auth via managed identity ─────────────────────────
-      // The system-assigned identity is granted AcrPull via acr-roles.bicep.
-      // No admin credentials or image pull secrets needed.
-      registries: [
-        {
-          server: acrLoginServer
-          identity: 'system'
-        }
-      ]
       ingress: {
         external: true
         targetPort: targetPort
@@ -194,7 +164,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
       ]
     }
     template: {
-      revisionSuffix: 'init'
       containers: [
         {
           name: 'backend'
@@ -208,12 +177,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
             { name: 'PORT',        value: string(targetPort) }
             { name: 'VAT_RATE',    value: vatRate }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
-            // ── KYC OCR (ADR-0002) ──
-            { name: 'KYC_OCR_ENABLED',           value: kycOcrEnabled ? 'true' : 'false' }
-            { name: 'AZURE_DOC_INTEL_ENDPOINT',  value: azureDocIntelEndpoint }
-            { name: 'AZURE_STORAGE_BLOB_ENDPOINT', value: azureStorageBlobEndpoint }
-            { name: 'KYC_OCR_BLOB_CONTAINER',    value: 'kyc-ocr-raw' }
-            // Secrets — referenced by name from the configuration.secrets block.
             { name: 'JWT_SECRET',                  secretRef: 'jwt-secret' }
             { name: 'JWT_REFRESH_SECRET',          secretRef: 'jwt-refresh-secret' }
             { name: 'CORS_ALLOWED_ORIGINS',        secretRef: 'cors-allowed-origins' }
@@ -264,11 +227,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
   }
 }
 
-// ── Role assignments for the system-assigned identity ─────────────────────────
-
-// Key Vault Secrets User — read secrets from KV.
-// Role definition ID is a tenant-scoped path; the GUID comes from the parameter
-// so subscriptions with non-standard catalogs can override it.
 resource roleKvSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: keyVault
   name: guid(keyVault.id, containerApp.id, 'KeyVaultSecretsUser')
@@ -278,10 +236,6 @@ resource roleKvSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' 
     roleDefinitionId: '/providers/Microsoft.Authorization/roleDefinitions/${keyVaultSecretsUserRoleGuid}'
   }
 }
-
-// AcrPull is granted in main.bicep via the acr-roles module, because the ACR
-// resource lives in a sibling module and main.bicep can pass both the ACR name
-// and the Container App's principal ID.
 
 output id string = containerApp.id
 output name string = containerApp.name

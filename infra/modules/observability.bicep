@@ -1,13 +1,8 @@
 // Log Analytics workspace + Application Insights (workspace-based).
-// The Container App environment binds to this workspace for stdout/stderr capture.
-// FastAPI's APPLICATIONINSIGHTS_CONNECTION_STRING env var (set later) feeds traces in.
-
 param location string
 param logAnalyticsName string
 param appInsightsName string
 param tags object
-
-@description('Log retention in days. 30 keeps Application Insights free tier happy.')
 param retentionInDays int = 30
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -17,9 +12,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   properties: {
     sku: { name: 'PerGB2018' }
     retentionInDays: retentionInDays
-    features: {
-      enableLogAccessUsingOnlyResourcePermissions: true
-    }
+    features: { enableLogAccessUsingOnlyResourcePermissions: true }
   }
 }
 
