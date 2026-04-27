@@ -140,7 +140,7 @@ async def admin_login(db: Prisma, email: str, password: str) -> dict[str, object
     if not admin or not admin.isActive or not password_valid:
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
-    access, refresh = issue_pair(sub=admin.id, role=admin.role.value)
+    access, refresh = issue_pair(sub=admin.id, role=str(admin.role))
     return {
         "access_token": access,
         "refresh_token": refresh,
@@ -148,7 +148,7 @@ async def admin_login(db: Prisma, email: str, password: str) -> dict[str, object
             "id": admin.id,
             "email": admin.email,
             "fullName": admin.fullName,
-            "role": admin.role.value,
+            "role": str(admin.role),
         },
     }
 
