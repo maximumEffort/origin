@@ -12,16 +12,21 @@ infra/
 ├── modules/
 │   ├── observability.bicep         Log Analytics workspace + Application Insights
 │   ├── keyvault.bicep              Key Vault (RBAC mode, no access policies)
-│   ├── storage.bicep               Storage account + private kyc-documents + public vehicle-imagery
+│   ├── storage.bicep               Storage account + private kyc-documents + public vehicle-imagery + kyc-ocr-raw
 │   ├── postgres.bicep              Postgres Flexible Server, B1ms, 32 GB
 │   ├── containerregistry.bicep     Basic ACR
-│   └── containerapp.bicep          Container App Environment + Container App, managed identity, KV refs
-└── parameters/
-    └── prod.bicepparam             Tier 1 parameter values
+│   ├── containerapp.bicep          Container App Environment + Container App, managed identity, KV refs, ACR registry auth
+│   ├── acr-roles.bicep             AcrPull role assignment for Container App MI → ACR
+│   ├── docintel.bicep              Azure Document Intelligence S0 (ADR-0002)
+│   └── docintel-roles.bicep        Cognitive Services User + Storage Blob roles for DI (ADR-0002)
+├── parameters/
+│   └── prod.bicepparam             Tier 1 parameter values
+└── scripts/
+    ├── setup-github-oidc.ps1       One-time OIDC federated credential setup
+    └── migrate-db.sh               Supabase → Azure PG data migration (Phase 3)
 ```
 
-Document Intelligence is **not** in this skeleton; it'll land in the KYC OCR feature PR
-(separate ADR, separate module). Front Door is deferred per ADR-0001.
+Front Door is deferred per ADR-0001.
 
 ## Prerequisites (one-time, on your machine)
 
@@ -61,47 +66,56 @@ You'll be prompted for:
 
 Postgres creation takes 10–20 min; everything else is sub-2-min. Total deploy: **~15–25 min**.
 
-## After first deploy — populate the rest of Key Vault
+## After first deploy — populate secrets
 
-The Bicep creates Key Vault with the foundational secrets. Twilio / SendGrid / Stripe etc. have to be set manually (we don't want them in source):
+The Bicep creates Key Vault with the foundational secrets (JWT, CORS). Integration secrets have to be set manually:
 
 ```powershell
 $kv = "kv-origin-prod-uaenorth"
 
-az keyvault secret set --vault-name $kv --name "TWILIO-ACCOUNT-SID"      --value "<value>"
-az keyvault secret set --vault-name $kv --name "TWILIO-AUTH-TOKEN"        --value "<value>"
+az keyvault secret set --vault-name $kv --name "TWILIO-ACCOUNT-SID"        --value "<value>"
+az keyvault secret set --vault-name $kv --name "TWILIO-AUTH-TOKEN"          --value "<value>"
 az keyvault secret set --vault-name $kv --name "TWILIO-VERIFY-SERVICE-SID" --value "<value>"
-az keyvault secret set --vault-name $kv --name "SENDGRID-API-KEY"         --value "<value>"
-az keyvault secret set --vault-name $kv --name "SENDGRID-FROM-EMAIL"      --value "noreply@origin-auto.ae"
-az keyvault secret set --vault-name $kv --name "SENDGRID-FROM-NAME"       --value "Origin"
-az keyvault secret set --vault-name $kv --name "STRIPE-SECRET-KEY"        --value "<value>"
-az keyvault secret set --vault-name $kv --name "STRIPE-WEBHOOK-SECRET"    --value "<value>"
-# DATABASE-URL initially still points at Supabase during parallel-deploy phase.
-# After data migration, update it to the Azure Postgres URL.
-az keyvault secret set --vault-name $kv --name "DATABASE-URL" --value "<supabase or azure pg url>"
-az keyvault secret set --vault-name $kv --name "DIRECT-URL"   --value "<direct postgres url>"
+az keyvault secret set --vault-name $kv --name "SENDGRID-API-KEY"           --value "<value>"
+az keyvault secret set --vault-name $kv --name "SENDGRID-FROM-EMAIL"        --value "noreply@origin-auto.ae"
+az keyvault secret set --vault-name $kv --name "SENDGRID-FROM-NAME"         --value "Origin"
+az keyvault secret set --vault-name $kv --name "STRIPE-SECRET-KEY"          --value "<value>"
+az keyvault secret set --vault-name $kv --name "STRIPE-WEBHOOK-SECRET"      --value "<value>"
 ```
 
-Re-deploy to make the Container App pick up new secrets:
+Set the database URL (initially Supabase during parallel-deploy, then Azure PG after migration):
+
+```powershell
+az containerapp secret set `
+  --name ca-origin-backend-prod `
+  --resource-group rg-origin-prod-uaenorth `
+  --secrets `
+    database-url="<postgres-url>" `
+    direct-url="<postgres-url>"
+```
+
+Restart to pick up new secrets:
 
 ```powershell
 az containerapp revision restart --name ca-origin-backend-prod --resource-group rg-origin-prod-uaenorth
 ```
 
-## Updating the image after CI builds it
+## CI/CD workflows
 
-The Container App is created with a placeholder hello-world image. Once the CI workflow
-(see `.github/workflows/deploy-azure-backend.yml` — coming in a separate PR) pushes the
-real FastAPI image to ACR, redeploy with:
+| Workflow | Trigger | What it does |
+|---|---|---|
+| `deploy-azure-infra.yml` | Push to `infra/**` on main, or manual | Runs `az deployment sub create` with Bicep |
+| `deploy-azure-backend.yml` | Push to `apps/backend/**` on main, or manual | Builds Docker image via ACR, updates Container App, runs Prisma migrations |
 
-```powershell
-az containerapp update `
-  --name ca-origin-backend-prod `
-  --resource-group rg-origin-prod-uaenorth `
-  --image acroriginprod.azurecr.io/origin-backend:latest
-```
+Both use OIDC federated credentials — no long-lived Azure secrets in GitHub.
 
-## Known caveats / honest disclaimers
+The old Railway workflow (`deploy-backend.yml`) has been decommissioned.
+
+## Database migration (Supabase → Azure PG)
+
+See `infra/scripts/migrate-db.sh` and `docs/runbooks/azure-cutover.md` for the full procedure.
+
+## Known caveats
 
 - This Bicep is a **skeleton, not battle-tested**. The first `az deployment sub create`
   will likely surface 1–2 errors — usually around resource name uniqueness (Storage
@@ -114,7 +128,7 @@ az containerapp update `
 - **No Front Door / WAF** (deferred per ADR-0001). Custom domain will bind directly to
   the Container App ingress.
 - **Container App uses placeholder image** on first deploy. The real image flows in via
-  the CI workflow once that lands.
+  the CI workflow on first `apps/backend/**` push.
 
 ## Cost on first deploy
 

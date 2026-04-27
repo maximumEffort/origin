@@ -1,44 +1,28 @@
-name: Deploy backend (Railway)
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║  DECOMMISSIONED — Railway is no longer used.                            ║
+# ║                                                                         ║
+# ║  Backend deploys now go through Azure Container Apps:                   ║
+# ║    .github/workflows/deploy-azure-backend.yml                          ║
+# ║                                                                         ║
+# ║  See ADR-0001 Phase 5 (Decommission Railway).                          ║
+# ║  This file is kept as a no-op stub so GitHub doesn't show a dangling   ║
+# ║  workflow reference. It can be deleted entirely once confirmed.         ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
 
-# Auto-deploy the FastAPI service to Railway whenever changes land on main
-# under apps/backend/. Manual runs are also enabled so we can re-deploy
-# without a code change (e.g. after rotating a secret in the Railway UI).
+name: Deploy backend (Railway) [DECOMMISSIONED]
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/backend/**'
-      - '.github/workflows/deploy-backend.yml'
-  workflow_dispatch: {}
-
-# Only one deploy in flight at a time — newer pushes cancel older runs.
-concurrency:
-  group: deploy-backend-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_dispatch: {}   # Manual only — no auto-triggers.
 
 jobs:
-  deploy:
-    name: Deploy to Railway
+  decommissioned:
+    name: Railway is decommissioned
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Install Railway CLI
-        run: curl -fsSL https://railway.com/install.sh | sh
-
-      - name: Add Railway CLI to PATH
-        run: echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
-
-      - name: Deploy
-        # `railway up` reads RAILWAY_TOKEN (project token) and uses
-        # apps/backend/railway.toml for build + start config.
-        # --service pins the deploy to the named service so we don't
-        # accidentally re-deploy the wrong workload if the project grows.
-        # NOTE: No working-directory here — Railway's service has
-        # rootDirectory=/apps/backend, so it finds the right folder itself.
-        # Setting working-directory would double-nest the path.
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service ${{ vars.RAILWAY_SERVICE_NAME || 'backend' }} --ci
+      - name: Notice
+        run: |
+          echo "⚠️  Railway deployment has been decommissioned."
+          echo "    Backend deploys now use Azure Container Apps."
+          echo "    See: .github/workflows/deploy-azure-backend.yml"
+          echo "    See: docs/adr/0001-azure-uae-north-architecture.md"
+          exit 0

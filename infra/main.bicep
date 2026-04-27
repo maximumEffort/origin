@@ -8,7 +8,8 @@
 //   5. acr (container registry)                       — Container App pulls images from here
 //   6. docintel                                       — Document Intelligence (ADR-0002)
 //   7. containerapp (env + app)                       — depends on observability, kv, acr
-//   8. docintel-roles                                  — grants Container App MI access to DI + Storage
+//   8. acr-roles                                      — grants Container App MI AcrPull on ACR
+//   9. docintel-roles                                 — grants Container App MI access to DI + Storage
 //
 // See docs/adr/0001-azure-uae-north-architecture.md for the why behind every choice,
 // and docs/adr/0002-kyc-ocr-data-flow.md for the KYC OCR additions.
@@ -165,6 +166,7 @@ module containerApp 'modules/containerapp.bicep' = {
     appName: containerAppName
     keyVaultName: keyVaultName
     logAnalyticsName: logAnalyticsName
+    acrLoginServer: acr.outputs.loginServer
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
     vatRate: vatRate
     keyVaultSecretsUserRoleGuid: keyVaultSecretsUserRoleGuid
@@ -180,9 +182,25 @@ module containerApp 'modules/containerapp.bicep' = {
 }
 
 // ── Role assignments for the Container App's managed identity ───────────────────────
-// Scoped to the docintel + storage resources so the backend can call DI and
-// read/write blob containers without needing API keys.
 
+// AcrPull — allows the Container App to pull images from the private ACR
+// using its system-assigned managed identity (no admin credentials needed).
+module acrRoleAssignments 'modules/acr-roles.bicep' = {
+  name: 'acr-roles'
+  scope: rg
+  params: {
+    containerRegistryName: containerRegistryName
+    containerAppPrincipalId: containerApp.outputs.principalId
+  }
+  dependsOn: [
+    acr
+    containerApp
+  ]
+}
+
+// Cognitive Services User + Storage Blob Data Contributor — scoped to the
+// docintel + storage resources so the backend can call DI and read/write
+// blob containers without needing API keys.
 module diRoleAssignments 'modules/docintel-roles.bicep' = {
   name: 'docintel-roles'
   scope: rg
@@ -205,4 +223,5 @@ output resourceGroupName string  = rg.name
 output containerAppFqdn string   = containerApp.outputs.fqdn
 output keyVaultName string       = keyVault.outputs.name
 output postgresHost string       = postgres.outputs.fqdn
+output postgresDatabaseName string = postgres.outputs.databaseName
 output containerRegistryServer string = acr.outputs.loginServer

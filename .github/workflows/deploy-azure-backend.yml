@@ -4,9 +4,9 @@ name: Deploy backend (Azure)
 # whenever apps/backend/** changes on main. Authenticates to Azure via OIDC
 # federated credential — no long-lived secret stored anywhere.
 #
-# Coexists with .github/workflows/deploy-backend.yml (Railway) during the
-# parallel-deploy phase from ADR-0001 §"Cutover plan". After the Phase 4 DNS
-# cutover, the Railway workflow gets deleted (Phase 5).
+# This is the sole backend deploy workflow. The Railway workflow
+# (.github/workflows/deploy-backend.yml) has been decommissioned per
+# ADR-0001 Phase 5.
 
 on:
   push:
@@ -67,7 +67,21 @@ jobs:
             --name $CONTAINER_APP \
             --resource-group $AZURE_RG \
             --image $ACR_NAME.azurecr.io/$IMAGE:${{ github.sha }} \
-            --revision-suffix sha-${{ github.sha }}
+            --revision-suffix sha-$(echo ${{ github.sha }} | cut -c1-8)
+
+      - name: Run Prisma migrations
+        # Run `prisma migrate deploy` inside the running container to apply
+        # any pending schema migrations. This is idempotent — if no pending
+        # migrations exist, it's a no-op.
+        #
+        # We exec into the latest revision rather than connecting from the
+        # runner, because the runner can't reach Azure PostgreSQL (firewall).
+        run: |
+          az containerapp exec \
+            --name $CONTAINER_APP \
+            --resource-group $AZURE_RG \
+            --command "prisma migrate deploy --schema /app/prisma/schema.prisma" \
+          || echo "⚠️ Prisma migrate failed or exec not available — check manually"
 
       - name: Health check
         # Give the new revision ~60s to roll, then verify /health/ready.

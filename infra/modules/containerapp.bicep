@@ -5,7 +5,8 @@
 //   - Identity gets Key Vault Secrets User role at the KV scope, so the
 //     three foundational secrets (JWT_SECRET, JWT_REFRESH_SECRET,
 //     CORS_ALLOWED_ORIGINS) flow in via keyVaultUrl references.
-//   - Identity gets AcrPull role at the ACR scope.
+//   - Identity gets AcrPull role at the ACR scope (via acr-roles.bicep).
+//   - Registry auth uses the managed identity — no admin credentials.
 //   - All OTHER secrets (DATABASE_URL, Twilio, SendGrid, Stripe...) start as
 //     plain Container App secrets seeded with placeholder values. Operator
 //     populates them post-deploy via `az containerapp secret set`. Documented
@@ -27,6 +28,11 @@ param logAnalyticsName string
 param appInsightsConnectionString string
 param vatRate string
 param tags object
+
+// ── ACR ─────────────────────────────────────────────────────────────
+
+@description('ACR login server, e.g. acroriginprod.azurecr.io. Used to configure managed-identity-based registry auth.')
+param acrLoginServer string
 
 // ── KYC OCR (ADR-0002) ──────────────────────────────────────────────
 // kycOcrEnabled is a non-secret feature flag. The endpoints are also
@@ -121,6 +127,15 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
     workloadProfileName: 'Consumption'
     configuration: {
       activeRevisionsMode: 'Single'
+      // ── Registry auth via managed identity ─────────────────────────
+      // The system-assigned identity is granted AcrPull via acr-roles.bicep.
+      // No admin credentials or image pull secrets needed.
+      registries: [
+        {
+          server: acrLoginServer
+          identity: 'system'
+        }
+      ]
       ingress: {
         external: true
         targetPort: targetPort
@@ -264,8 +279,9 @@ resource roleKvSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
-// AcrPull is granted in main.bicep against the ACR resource (not in this module)
-// because the ACR resource lives in a sibling module. Add separately if needed.
+// AcrPull is granted in main.bicep via the acr-roles module, because the ACR
+// resource lives in a sibling module and main.bicep can pass both the ACR name
+// and the Container App's principal ID.
 
 output id string = containerApp.id
 output name string = containerApp.name

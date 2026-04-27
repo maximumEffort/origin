@@ -58,12 +58,15 @@ COPY --from=builder /app /app
 # BinaryNotFoundError when prisma.connect() runs in main.py:lifespan.
 COPY --from=builder /root/.cache/prisma-python /root/.cache/prisma-python
 
+# Copy the startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 3001
 
-# Production server: gunicorn with uvicorn workers
-# 2 workers is fine for 2 vCPU; tune later.
-CMD ["uvicorn", "origin_backend.main:app", "--host", "0.0.0.0", "--port", "3001", "--workers", "2"]
+# Startup script runs Prisma migrations then starts uvicorn.
+CMD ["/app/start.sh"]
