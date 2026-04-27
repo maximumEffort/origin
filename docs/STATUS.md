@@ -1,17 +1,20 @@
 # Origin — Pickup-Here Status
 
-_Last updated: 2026-04-26._
+_Last updated: 2026-04-27._
 
-This file is the authoritative **"where are we right now"** for the Origin repo. If you're picking this back up after a break, start here. Open ADR-0001 (`docs/adr/0001-azure-uae-north-architecture.md`) for the strategic picture; this file is the tactical tracker.
+This file is the authoritative **"where are we right now"** for the Origin repo. If you're picking this back up after a break, start here. Open ADR-0001 (`docs/adr/0001-azure-uae-north-architecture.md`) and ADR-0002 (`docs/adr/0002-kyc-ocr-data-flow.md`) for the strategic picture; this file is the tactical tracker.
 
 ---
 
 ## TL;DR
 
-- **Phase 1 (Azure UAE North bring-up): done.** Backend is running on Azure Container Apps in `uaenorth`, serving live traffic. Health endpoint is green.
-- **Phase 2 (parallel deploy): active.** Railway US backend is still up. Azure backend is also up. Customer + admin frontends on Vercel still point at Railway.
-- **Phase 3–5 (data migration → DNS cutover → decommission): not yet started.** Blocked on user-side actions.
-- **V1 launch blockers** are now mostly licensing + content tasks (RTA Fleet Operator licence, VAT TRN, vehicle photos, real Stripe/Twilio creds). Infra is no longer the bottleneck.
+- **Azure UAE North backend**: live and serving. `/health/ready` green.
+- **KYC OCR Phase A (backend)**: merged. Schema + Azure Document Intelligence + 4 endpoints + 17 tests, gated by `KYC_OCR_ENABLED=false`.
+- **KYC OCR Phase B (admin UI)**: merged. `/customers/{id}/kyc` review page with three-column layout, confidence badges, per-field overrides.
+- **KYC OCR Phase C (customer pre-fill)**: deferred — needs the customer upload pipeline to actually push files to backend storage first (current flow only collects metadata client-side).
+- **Customer copy**: swept "lease/buy" → "rental" across all 3 locales; inflated stats removed; live on origin-customer.vercel.app.
+- **Phase 3-5 (data migration → DNS cutover → decommission)**: not yet started. Blocked on user-side actions.
+- **V1 launch blockers** are now licensing + content (RTA Fleet Operator licence, VAT TRN, vehicle photos, real Stripe/Twilio creds). Infra is no longer the bottleneck.
 
 ---
 
@@ -21,7 +24,7 @@ This file is the authoritative **"where are we right now"** for the Origin repo.
 |---|---|---|
 | **Azure backend (production target)** | `https://ca-origin-backend-prod.proudriver-25bede2a.uaenorth.azurecontainerapps.io` | Live — `/health/ready` returns `{"status":"ready"}`. Returns 14 vehicles from `/v1/vehicles`. |
 | **Railway backend (legacy, still up)** | `https://car-leasing-business-production.up.railway.app` | Live — currently the canonical backend for both frontends. |
-| Customer site | (Vercel project: `origin-customer`) | Pointing at **Railway** backend. Will flip to Azure during cutover. |
+| Customer site | `https://origin-customer.vercel.app` | Pointing at **Railway** backend. Will flip to Azure during cutover. |
 | Admin site | (Vercel project: `origin-admin`) | Pointing at **Railway** backend. |
 | Database (current) | Supabase EU (pooler URL with `?pgbouncer=true&connection_limit=1`) | Both Railway and Azure backends share this. |
 | Database (target) | Azure PostgreSQL Flexible Server `pg-origin-prod-uaenorth` | Provisioned, empty. Waiting on data migration. |
@@ -40,93 +43,81 @@ All under subscription **`5edcba8f-db66-402d-86a3-d8b0a06c7655`**, resource grou
 | Container App Env | `cae-origin-prod-uaenorth` | |
 | Container Registry | `acroriginprod` | Basic SKU. AcrPull granted to Container App identity; `--identity system` registered. |
 | PostgreSQL Flexible Server | `pg-origin-prod-uaenorth` | Burstable B1ms, 32 GB, public access with `AllowAllAzureServices` rule. Database name: `origin`. |
-| Storage Account | `stororiginproduaenorth` | Two containers: `kyc-documents` (private), `vehicle-imagery` (public). CORS allow-list includes the canonical domains. |
+| Storage Account | `stororiginproduaenorth` | Three containers: `kyc-documents` (private), `vehicle-imagery` (public), `kyc-ocr-raw` (private, ADR-0002). CORS allow-list includes the canonical domains. |
 | Key Vault | `kv-origin-prod-uaenorth` | RBAC mode. Seeded with `JWT-SECRET`, `JWT-REFRESH-SECRET`, `CORS-ALLOWED-ORIGINS`. Container App identity has `Key Vault Secrets User`. |
+| **Document Intelligence** | `di-origin-prod-uaenorth` | **NEW (ADR-0002).** S0 tier. System-assigned MI. Container App MI has `Cognitive Services User` here, `Storage Blob Data Contributor` on the storage account. Provisioned by `infra/modules/docintel.bicep` + `docintel-roles.bicep`. |
 | Log Analytics | `log-origin-prod-uaenorth` | PerGB2018, 30-day retention. |
 | Application Insights | `ai-origin-prod-uaenorth` | Workspace-based. |
 
-Tier 1 monthly bill estimate: **~$36/month**, fully covered by the active **$1,000 Microsoft for Startups Founders Hub credit**.
-
-> The standard $5K Founders Hub tier is still **in review** as of last check. Once approved, no infra action needed — the credit just stretches.
+Tier 1 monthly bill estimate: **~$36–40/month**, fully covered by the active **$1,000 Microsoft for Startups Founders Hub credit**. Document Intelligence cost is <$1/month at launch volume (per ADR-0002).
 
 ---
 
 ## Phase Tracker
 
-### Phase 1 — Provision (DONE)
-- [x] ADR-0001 merged (PR #64)
-- [x] Bicep skeleton merged (PR #65)
-- [x] OIDC + workflows merged (PR #67)
-- [x] First deploy succeeded
-- [x] Bicep hardening (AcrPull + `--identity system`) idempotent in main IaC
+### Azure UAE North migration (ADR-0001)
 
-### Phase 2 — Parallel deploy (ACTIVE)
-- [x] Backend image building + pushing to ACR via GitHub Actions on `main`
-- [x] Container App revision rolling on each push to `apps/backend/**`
-- [x] `/health/ready` green
-- [x] Domain sweep — repo references all on `origin-auto.ae` (PR #69)
-- [ ] Real secrets seeded (Twilio, SendGrid, Stripe) — see Task #26
-- [ ] Custom domain `api.origin-auto.ae` bound to Container App — see Task #27
+| Phase | Status |
+|---|---|
+| 1. Provision | ✅ Done (PRs #64, #65, #67) |
+| 2. Parallel deploy | 🟢 Active. Backend image rolling on push to `apps/backend/**`. Real secrets + custom domain still pending. |
+| 3. Data migration | ⏳ Not started. Blocked on scheduling a window. |
+| 4. DNS cutover | ⏳ Not started. Needs Etisalat DNS access. |
+| 5. Decommission Railway | ⏳ Not started. Wait 7 days post-cutover. |
 
-### Phase 3 — Data migration (NOT STARTED)
-- [ ] Snapshot Supabase → restore into `pg-origin-prod-uaenorth`
-- [ ] Run Prisma migrations on Azure Postgres
-- [ ] Validate row counts + FK integrity
-- [ ] Schedule cutover window (low-traffic, weekend)
+### KYC OCR (ADR-0002)
 
-### Phase 4 — DNS cutover (NOT STARTED)
-- [ ] Lower TTLs at Etisalat 24h before window
-- [ ] Repoint `api.origin-auto.ae` → Azure Container App
-- [ ] Flip `NEXT_PUBLIC_API_URL` on both Vercel projects
-- [ ] Re-register webhooks at new domain (Stripe, Twilio, SendGrid)
+| Phase | Status |
+|---|---|
+| A. Backend — schema + Azure DI + 4 endpoints + tests | ✅ Done (PR #73). Schema migration ready in `prisma/migrations/20260426_kyc_ocr/`. Feature flag `KYC_OCR_ENABLED=false`. |
+| B. Admin review UI — `/customers/{id}/kyc` | ✅ Done (PR #74). Three-column layout, confidence badges, per-field overrides, approve/reject/reocr. |
+| C. Customer pre-fill UX | ⏳ **Deferred.** Requires customer-side upload pipeline rework (see "Phase C blocker" below). `priceSuffix` i18n key already added; pluralization fix on the booking page is the only remaining piece of light scope. |
+| D. Flag flip in staging → prod | ⏳ Not started. Wait until C is complete and we've watched OCR results in non-prod. |
+| E (V1.1). Custom UAE-DL trained model | ⏳ Future. Train once we have ~100 real licence samples. |
 
-### Phase 5 — Decommission (NOT STARTED)
-- [ ] Confirm 7 days of green Azure traffic
-- [ ] Tear down Railway backend
-- [ ] Pause / archive Supabase project (keep snapshot for compliance window)
+#### Phase C blocker
+
+The customer booking flow (`apps/customer/app/[locale]/booking/BookingFlow.tsx` Step 3) currently only **collects file metadata** into client-side `docs` state. There's no actual `POST /v1/customers/me/documents` call from this UI today — the upload pipeline is stubbed. Phase C as designed in ADR-0002 (auto-pre-fill from OCR) requires:
+
+1. Real file upload to the storage backend (likely via SAS URL pattern documented in ADR-0001)
+2. Then `POST /me/documents` with the resulting `fileUrl`
+3. Then poll `GET /me/documents/{id}` for OCR completion
+4. Then pre-fill the form
+
+That's a separate-PR refactor of the upload flow, not just additive UI. **Recommend filing a follow-up issue** "implement real KYC file upload pipeline" before Phase C.
 
 ---
 
 ## What needs human action next (cannot be automated)
 
-1. **Bind custom domain `api.origin-auto.ae` to Container App.**
-   Needs Etisalat DNS access to add the TXT validation record + CNAME. Once DNS is in place, the Bicep `customDomains[]` block on the Container App takes a one-line addition. Tracked as Task #27.
-
-2. **Populate real secrets in Key Vault.**
-   `kv-origin-prod-uaenorth` currently has placeholders for Twilio / SendGrid / Stripe. These need rotation anyway (see issue #19). Set them via `az keyvault secret set` once accounts are provisioned. Container App will pick them up on next revision. Tracked as Task #26.
-
-3. **Microsoft for Startups Founders Hub — $5K standard tier.**
-   Application is in review. No action unless asked for more docs.
-
-4. **Plan data migration window.**
-   This is when both backends point at the new Postgres. Pick a low-traffic window (Friday night UAE time is typical). Run plan in `docs/adr/0001-azure-uae-north-architecture.md` § Phase 3.
-
-5. **Apply for licences (V1 launch blockers, none in this repo's control):**
-   - RTA Fleet Operator Licence (issue #16) — without this, no rentals are legal.
-   - UAE VAT registration / TRN (issue #15) — must be in footer + invoices.
-   - UAE legal counsel review of Privacy Policy / Terms / RTA page (issue #17).
-   - External pen test before public launch (issue #14).
+1. **Bind custom domain `api.origin-auto.ae` to Container App.** Needs Etisalat DNS access. Once DNS is in place, the Bicep `customDomains[]` block on the Container App takes a one-line addition. Tracked as Task #27.
+2. **Populate real secrets in Key Vault.** Twilio / SendGrid / Stripe placeholders need rotation (issue #19). Set via `az keyvault secret set` once accounts are provisioned. Tracked as Task #26.
+3. **Microsoft for Startups Founders Hub — $5K standard tier.** Application is in review.
+4. **Plan data migration window.** Pick a low-traffic window (Friday night UAE time is typical).
+5. **Apply for licences (V1 launch blockers, none in this repo's control):** RTA Fleet Operator (issue #16), UAE VAT/TRN (issue #15), legal counsel review (issue #17), pen test (issue #14).
+6. **Apply the KYC OCR migration to prod DB** (one-time, when ready to enable Phase A on the live system): `psql "$DATABASE_URL" -f prisma/migrations/20260426_kyc_ocr/migration.sql`. Idempotent on existing rows.
+7. **Fix BYD WRX seed (#68).** Needs DB access. Either via admin API once admin login is confirmed working, or directly via psql to Supabase.
 
 ---
 
 ## Open Launch Blockers (from GitHub Issues)
 
-Sorted by V1 impact. Full list at `https://github.com/maximumEffort/origin/issues`.
+Sorted by V1 impact.
 
-| # | Title | Why it blocks launch |
+| # | Title | Status |
 |---|---|---|
-| #16 | Obtain RTA Fleet Operator Licence; display on /rta page and footer | Hard legal blocker — operating without it risks regulatory action. |
-| #15 | Register for UAE VAT; add TRN to footer and invoices | Required for invoices; 5% VAT must be itemised. |
-| #17 | UAE legal counsel review of Privacy Policy, Terms, RTA page | Risk: shipped legal copy not reviewed by UAE counsel. |
-| #18 | Source and upload real vehicle photography | Stub imagery currently — looks bad on hero / cards. |
-| #19 | Rotate Stripe and Twilio credentials before launch | Production secrets must not be the dev rotation. |
-| #14 | External penetration test before public launch | Compliance / due-diligence requirement. |
-| #12 | Native Arabic speaker review of `locales/ar.json` | RTL launch quality blocker. |
-| #13 | Native Chinese speaker review of `locales/zh-CN.json` | Same as above for `zh-CN`. |
-| #9 | Rotate admin password from default | Security must-have before public launch. |
-| #23 | Run Lighthouse audit and fix P0/P1 findings | Performance + a11y bar for launch. |
-| #21 | Migrate backend + Postgres from Railway/Supabase to UAE VPS | Now actively in progress via Azure (Phases 1–5 above). Update / close once cutover completes. |
-| #68 | Bad seed data: vehicle listed as "BYD WRX" | Data quality bug — BYD doesn't make a WRX (Subaru does), and this is an EV-only fleet but the row is `PETROL`. Fix during seed-data refresh. |
+| #16 | Obtain RTA Fleet Operator Licence | 🔴 In progress (external) |
+| #15 | Register for UAE VAT; add TRN to footer/invoices | 🔴 Pending |
+| #17 | UAE legal counsel review of Privacy/Terms/RTA pages | 🔴 Pending |
+| #18 | Source and upload real vehicle photography | 🟡 Mockups OK; real photos pending |
+| #19 | Rotate Stripe/Twilio credentials before launch | 🟡 Pending — see action item #2 above |
+| #14 | External penetration test before public launch | 🔴 Pending |
+| #12 | Native Arabic speaker review of `locales/ar.json` | 🟡 Pending |
+| #13 | Native Chinese speaker review of `locales/zh-CN.json` | 🟡 Pending |
+| #9 | Rotate admin password from default | 🔴 Pending |
+| #23 | Run Lighthouse audit and fix P0/P1 findings | 🔴 Pending |
+| #21 | Migrate backend + Postgres from Railway/Supabase to UAE | 🟢 In progress via Azure (Phases 1–5 above) |
+| #68 | Bad seed data: vehicle listed as "BYD WRX" | 🟡 Needs DB access |
 
 V2/V3 issues (not launch blockers, gated on licences) — #26 (Buy service), #27 (Lease-to-own).
 
@@ -136,18 +127,16 @@ V2/V3 issues (not launch blockers, gated on licences) — #26 (Buy service), #27
 
 | PR | Title | Purpose |
 |---|---|---|
-| #69 | chore: sweep stale `originleasing.{ae,net}` → `origin-auto.ae` | Final domain consistency pass before cutover. |
-| #67 | OIDC workflows + Bicep hardening | Replaces #66 (closed, stale). GitHub Actions deploy to Azure on push to `main`. |
-| #65 | Bicep skeleton | Subscription-scope IaC for Phase 1. |
-| #64 | ADR-0001 (Azure UAE North architecture) | Strategic decision doc. |
-| #63 | fix(backend): copy prisma-python binary cache from builder to runtime stage | Final Railway deploy fix. |
-| #62 | fix(backend): wrap `startCommand` in `sh -c` so `$PORT` expands | Railway deploy fix. |
-| #61 | fix(backend): no-op `preDeployCommand` to bypass stale NestJS migration | Railway deploy fix. |
-| #60 | fix(backend): explicitly clear stale NestJS-era `preDeployCommand` | Railway deploy fix. |
-| #59 | fix(backend): add libatomic1 to Docker builder | Railway deploy fix (prisma-python's nodeenv). |
-| #58 | fix(backend): copy `uv.lock` into Docker build context | Railway deploy fix. |
-
-The PR #58–#63 chain together solved an end-to-end broken Railway deploy. With Azure as the new home, those fixes are still in the Dockerfile but the deploy target is no longer Railway.
+| **#74** | feat(admin): KYC OCR review UI — Phase B (ADR-0002) | Admin `/customers/{id}/kyc` page with three-column layout, confidence badges, approve/reject/reocr |
+| **#73** | feat(backend+infra): KYC OCR Phase A — schema + Azure DI + endpoints (ADR-0002) | 21-file PR — schema migration, Bicep DI module, backend `kyc/` module, 4 endpoints, 17 tests, all gated by `KYC_OCR_ENABLED=false` |
+| **#72** | fix(customer): sweep "lease/buy" copy → "rental" + drop inflated stats | All three locales swept — CLAUDE.md compliance + UAE consumer-protection. Live on origin-customer.vercel.app. |
+| **#71** | docs(adr): ADR-0002 — KYC OCR data flow (Azure Document Intelligence) | Strategic doc locking in provider, schema, async data flow, UX, PDPL story, 5-phase rollout |
+| #70 | docs: add STATUS.md — pickup-here document | This file (predecessor) |
+| #69 | chore: sweep stale `originleasing.{ae,net}` → `origin-auto.ae` | Final domain consistency pass before cutover |
+| #67 | OIDC workflows + Bicep hardening | GitHub Actions deploy to Azure on push to `main` |
+| #65 | Bicep skeleton | Subscription-scope IaC for Phase 1 |
+| #64 | ADR-0001 (Azure UAE North architecture) | Strategic decision doc |
+| #58–63 | Railway deploy fix chain | uv.lock, libatomic1, $PORT, prisma cache, NestJS preDeployCommand cleanup |
 
 ---
 
@@ -157,18 +146,21 @@ The PR #58–#63 chain together solved an end-to-end broken Railway deploy. With
 docs/
   STATUS.md                                   ← this file
   adr/0001-azure-uae-north-architecture.md    ← strategic ADR + 5-phase cutover plan
+  adr/0002-kyc-ocr-data-flow.md               ← KYC OCR data flow (Azure DI, schema, UX)
   api-integration-guide.md                    ← 3rd-party integrations playbook (Stripe, SendGrid, Twilio, Tabby)
   uae-infrastructure-setup.md                 ← (legacy) self-hosted UAE VPS plan, superseded by ADR-0001
 
 infra/
   main.bicep                                  ← subscription-scope entry point
   modules/
-    containerapp.bicep                        ← Container App + identity + CORS + KV/ACR role assignments
+    containerapp.bicep                        ← Container App + identity + CORS + KV/ACR role assignments + KYC OCR env vars
     containerregistry.bicep                   ← ACR (Basic, admin enabled for V1 convenience)
+    docintel.bicep                            ← Document Intelligence S0 (ADR-0002)
+    docintel-roles.bicep                      ← Cognitive Services User + Storage Blob Data Contributor for Container App MI
     keyvault.bicep                            ← KV in RBAC mode + seeded JWT/CORS secrets
     observability.bicep                       ← Log Analytics + App Insights
     postgres.bicep                            ← Flex B1ms + AllowAllAzureServices
-    storage.bicep                             ← KYC (private) + vehicle (public) + CORS
+    storage.bicep                             ← KYC (private) + vehicle (public) + kyc-ocr-raw (private) + CORS
   parameters/prod.bicepparam                  ← prod overrides; uses readEnvironmentVariable() for secrets
   scripts/setup-github-oidc.ps1               ← creates SP + federated creds on the repo
 
@@ -179,8 +171,20 @@ infra/
 
 apps/
   backend/                                    ← FastAPI + Prisma Python (canonical)
+    src/origin_backend/
+      kyc/                                    ← OCR module (ADR-0002 Phase A)
+        ocr.py                                ← Azure DI client wrapper
+        service.py                            ← state machine + admin actions
+        router.py                             ← /v1/admin/documents/{id}/{reocr,approve,reject}
+        schemas.py                            ← Pydantic shapes
+    prisma/
+      schema.prisma                           ← OcrStatus enum + 9 OCR columns on Document
+      migrations/20260426_kyc_ocr/            ← forward + rollback SQL
   customer/                                   ← Next.js 15 + next-intl + Tailwind (RTL ready)
   admin/                                      ← Next.js 14 + jose + httpOnly-cookie proxy
+    app/(dashboard)/customers/[id]/kyc/       ← KYC review page (ADR-0002 Phase B)
+    components/ConfidenceBadge.tsx            ← OCR confidence pill
+    lib/api-kyc.ts                            ← typed KYC API client
 ```
 
 ---
@@ -199,14 +203,21 @@ curl -s 'https://ca-origin-backend-prod.proudriver-25bede2a.uaenorth.azurecontai
 ### Trigger a backend redeploy (no code change)
 Push any commit touching `apps/backend/**`. The `deploy-azure-backend.yml` workflow handles ACR build + Container App revision update.
 
-### Manually push a new image (bypassing CI)
+### Apply the KYC OCR schema migration to prod
 ```bash
-az login
-az acr build -t origin/backend:latest -t origin/backend:$(git rev-parse --short HEAD) \
-  -r acroriginprod -f apps/backend/Dockerfile apps/backend
-az containerapp update -n ca-origin-backend-prod -g rg-origin-prod-uaenorth \
-  -i acroriginprod.azurecr.io/origin/backend:$(git rev-parse --short HEAD) \
-  --revision-suffix sha-$(git rev-parse --short HEAD)
+# One-time. Backwards-compatible (defaults all existing rows to ocrStatus='NOT_STARTED').
+psql "$DATABASE_URL" -f apps/backend/prisma/migrations/20260426_kyc_ocr/migration.sql
+
+# Roll back if needed:
+# psql "$DATABASE_URL" -f apps/backend/prisma/migrations/20260426_kyc_ocr/migration.down.sql
+```
+
+### Flip KYC OCR on (after Phase C ships and you've watched it in staging)
+```bash
+az containerapp update \
+  -n ca-origin-backend-prod -g rg-origin-prod-uaenorth \
+  --set-env-vars KYC_OCR_ENABLED=true
+# Or update prod.bicepparam and run deploy-azure-infra.yml.
 ```
 
 ### Update a Key Vault secret
@@ -233,10 +244,19 @@ az deployment sub what-if --location uaenorth \
 curl -s https://ca-origin-backend-prod.proudriver-25bede2a.uaenorth.azurecontainerapps.io/health/ready
 
 # Customer (Vercel)
-curl -sI https://origin-auto.ae | head -5     # post-DNS-cutover
+curl -sI https://origin-customer.vercel.app | head -5
 
 # Admin (Vercel)
-curl -sI https://admin.origin-auto.ae | head -5
+curl -sI https://origin-admin.vercel.app | head -5
+```
+
+### Manually run KYC OCR backend tests
+```bash
+cd apps/backend
+uv sync
+uv run prisma generate
+uv run pytest tests/test_kyc_router.py -v
+# expect 17/17 passing
 ```
 
 ---
@@ -244,8 +264,11 @@ curl -sI https://admin.origin-auto.ae | head -5
 ## Notes for the next session
 
 - **Don't recreate Azure resources.** Bicep is idempotent — running `deploy-azure-infra.yml` against an unchanged template is a no-op. If you see drift, run `what-if` first.
+- **Document Intelligence's `Cognitive Services User` role GUID** is `a574d5d0-ad88-4d2b-ae57-bf67dc12c0a9` per Microsoft docs. If your tenant returns a different GUID (the way `Key Vault Secrets User` did), update `cognitiveServicesUserRoleGuid` in `prod.bicepparam`.
+- **Customer-side upload pipeline is the next major piece.** The booking flow's Step 3 currently stubs uploads. Real upload (likely via SAS URL → POST /me/documents) is what unblocks Phase C of the KYC OCR work AND fixes the "AED 8,500 months" pluralization bug remnant in `BookingFlow.tsx` (the i18n key `priceSuffix` is already there waiting).
+- **Phase A is dormant on disk.** The schema migration and backend module are merged but `KYC_OCR_ENABLED=false`. Customer behavior is unchanged. Flip the flag only after Phase C and a staging soak.
 - **`docs/n8n-setup.md` references `origin.ae` (no `-auto`).** That's an older / different domain from the active workflow doc. It predates the Azure migration; treat as legacy until someone decides whether n8n is in scope for V1.
 - **Railway backend is still spending money** (~$5/month on the Hobby plan). Tear down only after a 7-day clean window on Azure post-cutover.
-- **Subscription rename in progress** — `Azure subscription 1` → `Origin Production`. Doesn't affect anything functionally.
-- **Tenant has a non-standard Built-in Role GUID** for `Key Vault Secrets User`. The actual GUID `4633458b-17de-408a-b874-0445c86b69e6` is pinned in `infra/parameters/prod.bicepparam` as `keyVaultSecretsUserRoleGuid`. If a future deployment errors with `RoleDefinitionDoesNotExist`, that's the parameter to update.
+- **Tenant has a non-standard Built-in Role GUID** for `Key Vault Secrets User`. The actual GUID `4633458b-17de-408a-b874-0445c86b69e6` is pinned in `infra/parameters/prod.bicepparam`. If a future deployment errors with `RoleDefinitionDoesNotExist`, that's the parameter to update.
 - **Admin login email is still `admin@originleasing.ae`** — intentional, separate from the public-domain sweep. Migrating it requires backend DB + auth coordination; tracked in CLAUDE.md and a follow-up issue.
+- **BYD WRX seed bug (#68)** still needs DB access to fix. The row is real production data, not in any seed file in the repo.
