@@ -27,6 +27,12 @@ enum Brand {
   NIO
   VOYAH
   ZEEKR
+  DONGFENG
+  BESTUNE
+  HONGQI
+  FORTING
+  WEY
+  GREAT_WALL
 }
 
 enum FuelType {
