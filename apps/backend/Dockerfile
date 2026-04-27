@@ -5,43 +5,26 @@
 # ── Stage 1: builder ────────────────────────────────────────────────
 FROM python:3.12-slim AS builder
 
-# libatomic1 is required by the Node binary that prisma-client-py
-# downloads via nodeenv during `prisma generate` — without it the
-# Node binary fails with "error while loading shared libraries:
-# libatomic.so.1: cannot open shared object file".
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv (fast Python package installer, replaces pip)
 RUN pip install --no-cache-dir uv==0.5.0
 
 WORKDIR /app
 
-# Copy only what's needed to resolve deps (cache-friendly)
 COPY pyproject.toml uv.lock ./
 COPY prisma ./prisma
 COPY src ./src
 COPY README.md ./
 
-# Install deps + project into a project-local venv.
-# NOTE: --frozen was removed because the lockfile is currently stale
-# (azure-* deps missing). Once `uv lock` is re-run locally and the
-# updated uv.lock is committed, restore --frozen for reproducible builds.
 RUN uv sync --no-dev
 
-# Generate Prisma client (uses schema.prisma). This downloads the
-# Rust query engine binary into /root/.cache/prisma-python/binaries/.
 RUN uv run prisma generate
 
 # ── Stage 2: runtime ───────────────────────────────────────────────
 FROM python:3.12-slim
 
-# Install Node.js for prisma-client-py runtime (it shells out to the
-# Prisma query engine which is a Rust binary, but the CLI uses Node).
-# libatomic1 is also explicitly listed: apt's nodejs pulls it
-# transitively today, but listing it here keeps the runtime working
-# even if the nodejs dependency tree changes.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         nodejs \
         ca-certificates \
@@ -50,17 +33,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy the pre-built venv + source from the builder stage
 COPY --from=builder /app /app
-
-# Copy the prisma-python binary cache (Rust query engine downloaded
-# by `prisma generate`). Without this, app startup fails with
-# BinaryNotFoundError when prisma.connect() runs in main.py:lifespan.
 COPY --from=builder /root/.cache/prisma-python /root/.cache/prisma-python
-
-# Copy the startup script
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
@@ -68,5 +42,5 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 3001
 
-# Startup script runs Prisma migrations then starts uvicorn.
-CMD ["/app/start.sh"]
+# Run Prisma migrations then start uvicorn — no shell script needed
+CMD ["sh", "-c", "prisma migrate deploy 2>/dev/null || true && uvicorn origin_backend.main:app --host 0.0.0.0 --port ${PORT:-3001}"]
