@@ -164,7 +164,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
       ]
     }
     template: {
-      revisionSuffix: 'init'
+      // No `revisionSuffix` here. Container App revision suffixes must be
+      // unique within the app, so a hardcoded value (`'init'`) collides on
+      // every subsequent Bicep deploy. Omitting it lets Azure derive a
+      // suffix from the template content hash, which is unique-per-change.
+      // CI image updates via `az containerapp update --image ...` create
+      // their own revisions independently of this template.
       containers: [
         {
           name: 'backend'
