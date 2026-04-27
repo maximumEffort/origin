@@ -80,6 +80,14 @@ enum DocumentStatus {
   EXPIRED
 }
 
+enum OcrStatus {
+  NOT_STARTED       // default — uploaded, OCR not yet enqueued
+  PROCESSING        // job enqueued, awaiting Azure DI response
+  COMPLETED         // result stored in ocrFields
+  FAILED            // 3 retries exhausted, falls back to manual review
+  SKIPPED           // type doesn't support OCR (e.g. visa V1) or feature flag off
+}
+
 enum LeaseType {
   SHORT_TERM
   LONG_TERM
@@ -248,7 +256,27 @@ model Document {
   reviewedBy      String?
   reviewer        AdminUser?     @relation(fields: [reviewedBy], references: [id])
 
+  // ── KYC OCR (ADR-0002) ───────────────────────────────────────
+  // Populated asynchronously after upload by origin_backend.kyc.ocr
+  // when KYC_OCR_ENABLED feature flag is true. ocrFields holds the
+  // curated structured extraction; the raw Azure DI response goes
+  // to a separate blob in `kyc-ocr-raw/` for re-processing without
+  // re-paying for OCR.
+  ocrStatus         OcrStatus @default(NOT_STARTED)
+  ocrProvider       String?   // e.g. "azure-doc-intel" — track for future provider swap
+  ocrModel          String?   // e.g. "prebuilt-idDocument", "prebuilt-document"
+  ocrFields         Json?     // structured extraction; shape varies by document type
+  ocrConfidence     Float?    // overall doc-level confidence 0..1
+  ocrRequestedAt    DateTime?
+  ocrCompletedAt    DateTime?
+  ocrFailureReason  String?
+
+  // Audit: per-field deltas where the admin overrode OCR at approval.
+  // Null when admin accepted OCR as-is.
+  reviewerOverrides Json?
+
   @@index([customerId])
+  @@index([ocrStatus])
   @@map("documents")
 }
 
