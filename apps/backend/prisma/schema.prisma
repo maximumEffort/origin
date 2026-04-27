@@ -163,6 +163,34 @@ enum AdminRole {
   FINANCE
 }
 
+enum CustomerType {
+  INDIVIDUAL
+  CORPORATE
+}
+
+enum CompanyRole {
+  ADMIN
+  DRIVER
+  FINANCE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+  OVERDUE
+  VOID
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
 model VehicleCategory {
   id       String    @id @default(uuid())
   nameEn   String
@@ -222,22 +250,25 @@ model VehicleImage {
 }
 
 model Customer {
-  id                String            @id @default(uuid())
-  phone             String            @unique
-  email             String?
-  fullName          String
-  nationality       String?
-  preferredLanguage Language          @default(en)
+  id                  String            @id @default(uuid())
+  phone               String            @unique
+  email               String?
+  fullName            String
+  nationality         String?
+  preferredLanguage   Language          @default(en)
+  customerType        CustomerType      @default(INDIVIDUAL)
   kycStatus           KycStatus         @default(PENDING)
   kycRejectionReason  String?
   whatsappOptIn       Boolean           @default(false)
-  documents         Document[]
-  bookings          Booking[]
-  leases            Lease[]
-  payments          Payment[]
-  notifications     NotificationLog[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  documents           Document[]
+  bookings            Booking[]
+  leases              Lease[]
+  payments            Payment[]
+  invoices            Invoice[]
+  companyEmployees    CompanyEmployee[]
+  notifications       NotificationLog[]
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   @@map("customers")
 }
@@ -338,6 +369,7 @@ model Lease {
   agreementPdfUrl     String?
   notes               String?
   payments            Payment[]
+  invoices            Invoice[]
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
@@ -363,6 +395,7 @@ model Payment {
   gateway          PaymentGateway?
   gatewayReference String?
   invoicePdfUrl    String?
+  invoice          Invoice?
   createdAt        DateTime        @default(now())
 
   @@index([leaseId])
@@ -424,4 +457,137 @@ model OtpCode {
 
   @@index([phone, expiresAt])
   @@map("otp_codes")
+}
+
+// ── Corporate Accounts ─────────────────────────────────────────
+
+model Company {
+  id                 String            @id @default(uuid())
+  name               String
+  tradeLicenceNumber String?           @unique
+  crNumber           String?
+  vatTrn             String?
+  address            String?
+  city               String?           @default("Dubai")
+  contactEmail       String?
+  contactPhone       String?
+  billingEmail       String?
+  discountPct        Decimal           @db.Decimal(4, 2) @default(0.00)
+  creditTermDays     Int               @default(0)
+  isActive           Boolean           @default(true)
+  employees          CompanyEmployee[]
+  invoices           Invoice[]
+  notes              String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@map("companies")
+}
+
+model CompanyEmployee {
+  id         String      @id @default(uuid())
+  companyId  String
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  role       CompanyRole @default(DRIVER)
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+
+  @@unique([companyId, customerId])
+  @@index([companyId])
+  @@index([customerId])
+  @@map("company_employees")
+}
+
+// ── Invoices ───────────────────────────────────────────────────
+
+model Invoice {
+  id              String            @id @default(uuid())
+  invoiceNumber   String            @unique
+  customerId      String
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  companyId       String?
+  company         Company?          @relation(fields: [companyId], references: [id])
+  leaseId         String?
+  lease           Lease?            @relation(fields: [leaseId], references: [id])
+  paymentId       String?
+  payment         Payment?          @relation(fields: [paymentId], references: [id])
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  subtotalAed     Decimal           @db.Decimal(10, 2)
+  vatRate         Decimal           @db.Decimal(4, 4) @default(0.0500)
+  vatAmountAed    Decimal           @db.Decimal(10, 2)
+  totalAed        Decimal           @db.Decimal(10, 2)
+  vatTrn          String?
+  status          InvoiceStatus     @default(DRAFT)
+  issuedAt        DateTime?
+  dueDate         DateTime?
+  paidAt          DateTime?
+  pdfUrl          String?
+  notes           String?
+  lineItems       InvoiceLineItem[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([customerId])
+  @@index([companyId])
+  @@index([leaseId])
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id           String  @id @default(uuid())
+  invoiceId    String
+  invoice      Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description  String
+  quantity     Int     @default(1)
+  unitPriceAed Decimal @db.Decimal(10, 2)
+  totalAed     Decimal @db.Decimal(10, 2)
+  sortOrder    Int     @default(0)
+
+  @@index([invoiceId])
+  @@map("invoice_line_items")
+}
+
+// ── Audit & Error Logs ─────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  userType   String?  // "admin" or "customer"
+  action     String   // e.g. "booking.approve", "vehicle.update", "kyc.review"
+  entityType String?  // e.g. "Booking", "Vehicle", "Document"
+  entityId   String?
+  oldValue   Json?
+  newValue   Json?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?    @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model ErrorLog {
+  id         String   @id @default(uuid())
+  level      LogLevel @default(ERROR)
+  message    String
+  stackTrace String?
+  endpoint   String?
+  method     String?
+  statusCode Int?
+  userId     String?
+  requestId  String?
+  metadata   Json?    @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([level])
+  @@index([createdAt])
+  @@index([endpoint])
+  @@map("error_logs")
 }
