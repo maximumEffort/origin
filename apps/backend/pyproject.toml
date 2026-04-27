@@ -11,6 +11,7 @@ dependencies = [
     # Web framework
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",      # ASGI server for production
+    "python-multipart>=0.0.9",        # required for FastAPI UploadFile / Form
     # Validation + settings
     "pydantic[email]>=2.9.0",
     "pydantic-settings>=2.5.0",
@@ -84,20 +85,15 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Test fixtures legitimately contain non-ASCII text (Arabic, Chinese, etc.)
-# that ruff flags as RUF001/002/003 ambiguous-unicode. Suppress for tests only —
-# production code still gets the full check.
 "tests/**/*.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-# Prisma-generated client doesn't have full stubs; allow that
 [[tool.mypy.overrides]]
 module = "prisma.*"
 ignore_missing_imports = true
-# Azure SDK stubs are incomplete; don't fail when the optional deps aren't installed
 [[tool.mypy.overrides]]
 module = ["azure.*"]
 ignore_missing_imports = true
