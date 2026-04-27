@@ -38,11 +38,23 @@ param vatRate = '0.05'
 // subscription.
 param keyVaultSecretsUserRoleGuid = '4633458b-17de-408a-b874-0445c86b69e6'
 
+// ── KYC OCR (ADR-0002) ──
+// Phase A ships the schema + backend module + Document Intelligence
+// resource, but `kycOcrEnabled` stays false until staged rollout completes.
+// Flip to true via env var override, NOT by editing this file:
+//     az deployment sub create ... --parameters kycOcrEnabled=true
+param kycOcrEnabled = false
+
+// "Cognitive Services User" built-in role GUID — Microsoft's documented
+// value. If `az deployment` rejects it, re-verify per tenant via
+// `az role definition list --name "Cognitive Services User"` and update.
+param cognitiveServicesUserRoleGuid = 'a574d5d0-ad88-4d2b-ae57-bf67dc12c0a9'
+
 param tags = {
   env: 'prod'
   app: 'origin'
   owner: 'amr.sarhan52@gmail.com'
   'cost-center': 'shanghai-car-rental-llc'
   'managed-by': 'bicep'
-  adr: '0001-azure-uae-north-architecture'
+  adr: '0001-azure-uae-north-architecture+0002-kyc-ocr'
 }
