@@ -2,8 +2,12 @@
 Azure Blob Storage upload helper for KYC documents.
 
 Supports two modes:
-- Azure Blob (production): when AZURE_STORAGE_BLOB_ENDPOINT is configured
-- Local filesystem (dev): saves to KYC_UPLOAD_DIR and serves via /uploads/
+- Azure Blob (production on Azure): when AZURE_STORAGE_BLOB_ENDPOINT is configured
+  AND the azure-storage-blob + azure-identity packages are installed.
+- Local filesystem (Railway / dev): saves to KYC_UPLOAD_DIR and serves via /uploads/.
+
+All Azure imports are lazy and wrapped in try/except so this module is
+import-safe even when the azure-* optional dependencies aren't installed.
 """
 
 from __future__ import annotations
@@ -18,6 +22,39 @@ logger = logging.getLogger(__name__)
 
 KYC_CONTAINER = "kyc-documents"
 
+# Set at first call to _check_azure_available(); None means "not checked yet".
+_azure_available: bool | None = None
+
+
+def _check_azure_available() -> bool:
+    """Return True if Azure Blob SDK is importable AND an endpoint is configured."""
+    global _azure_available  # noqa: PLW0603
+    if _azure_available is not None:
+        return _azure_available
+
+    if not settings.azure_storage_blob_endpoint:
+        _azure_available = False
+        logger.info(
+            "AZURE_STORAGE_BLOB_ENDPOINT not set — KYC uploads will use local filesystem"
+        )
+        return False
+
+    try:
+        import azure.identity.aio  # noqa: F401
+        import azure.storage.blob.aio  # noqa: F401
+    except ImportError:
+        _azure_available = False
+        logger.warning(
+            "AZURE_STORAGE_BLOB_ENDPOINT is set but azure-storage-blob / azure-identity "
+            "are not installed.  Falling back to local filesystem.  Install the 'azure' "
+            "extra to enable blob uploads:  uv sync --extra azure"
+        )
+        return False
+
+    _azure_available = True
+    logger.info("Azure Blob Storage configured — KYC uploads will go to %s", settings.azure_storage_blob_endpoint)
+    return True
+
 
 async def upload_kyc_document(
     *,
@@ -30,23 +67,28 @@ async def upload_kyc_document(
     """
     Upload a KYC document file and return its URL.
 
-    In production (AZURE_STORAGE_BLOB_ENDPOINT set), uploads to Azure Blob
-    Storage in the kyc-documents container.  In development, saves to the
-    local filesystem under KYC_UPLOAD_DIR and returns a path that the dev
-    server can serve via the /uploads static mount.
+    When Azure Blob is available (endpoint + SDK), uploads there.
+    Otherwise, saves to the local filesystem under KYC_UPLOAD_DIR and
+    returns a relative /uploads/… path that the static-file mount serves.
     """
     file_id = uuid.uuid4().hex[:12]
     blob_name = f"{customer_id}/{doc_type.lower()}_{file_id}{file_extension}"
 
-    if settings.azure_storage_blob_endpoint:
+    if _check_azure_available():
         return await _upload_to_azure(blob_name, file_content, content_type)
     return _save_locally(blob_name, file_content)
 
 
 async def _upload_to_azure(blob_name: str, content: bytes, content_type: str) -> str:
     """Upload to Azure Blob Storage using DefaultAzureCredential."""
-    from azure.identity.aio import DefaultAzureCredential
-    from azure.storage.blob.aio import BlobServiceClient
+    try:
+        from azure.identity.aio import DefaultAzureCredential
+        from azure.storage.blob.aio import BlobServiceClient
+    except ImportError as e:
+        raise RuntimeError(
+            "Azure Blob upload requested but azure-storage-blob / azure-identity "
+            "are not installed.  Run:  uv sync --extra azure"
+        ) from e
 
     credential = DefaultAzureCredential()
     try:
@@ -70,7 +112,7 @@ async def _upload_to_azure(blob_name: str, content: bytes, content_type: str) ->
 
 
 def _save_locally(blob_name: str, content: bytes) -> str:
-    """Dev fallback — write to the local uploads directory."""
+    """Fallback — write to the local uploads directory."""
     upload_dir = Path(settings.kyc_upload_dir) / KYC_CONTAINER
     file_path = upload_dir / blob_name
     file_path.parent.mkdir(parents=True, exist_ok=True)

@@ -13,10 +13,12 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from origin_backend import __version__
 from origin_backend.admin.router import router as admin_router
@@ -80,7 +82,7 @@ app.add_middleware(
 # ── Exception handlers (uniform error envelope) ─────────────────────
 register_exception_handlers(app)
 
-# ── Routers ─────────────────────────────────────────────────────────────
+# ── Routers ─────────────────────────────────────────────────────────
 # Health endpoints are mounted at /health (NOT under /v1) — same as NestJS.
 app.include_router(health_router)
 
@@ -98,17 +100,15 @@ app.include_router(admin_router, prefix="/v1")
 app.include_router(kyc_admin_router, prefix="/v1")  # /v1/admin/documents/{id}/{reocr,approve,reject}
 app.include_router(checkout_webhook_router, prefix="/v1")
 
-# ── Dev: serve locally-uploaded KYC files ───────────────────────────
-# In production, KYC files are stored in Azure Blob and served directly.
-# In dev (no Azure), files land in the local uploads/ dir and need a
-# static-file mount so the admin image-preview and tests can reach them.
-if not settings.is_production:
-    from pathlib import Path
+# ── Serve locally-uploaded KYC files ─────────────────────────────
+# When Azure Blob is configured, KYC files are stored there and served
+# directly via Azure URLs. When it's NOT configured (Railway, local dev),
+# files land in the local uploads/ dir and need a static-file mount.
+# Always create the dir so blob.py's local fallback doesn't fail.
+_uploads = Path(settings.kyc_upload_dir)
+_uploads.mkdir(parents=True, exist_ok=True)
 
-    from fastapi.staticfiles import StaticFiles
-
-    _uploads = Path(settings.kyc_upload_dir)
-    _uploads.mkdir(parents=True, exist_ok=True)
+if not settings.azure_storage_blob_endpoint:
     app.mount("/uploads", StaticFiles(directory=str(_uploads)), name="uploads")
 
 # ── Startup validation — fail fast if required config is missing ────

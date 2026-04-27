@@ -29,10 +29,13 @@ dependencies = [
     "httpx>=0.27.0",
     # Logging
     "structlog>=24.4.0",
-    # ── KYC OCR (ADR-0002) ──
-    # Azure Document Intelligence + Blob storage + managed-identity auth.
-    # Permissive minor floors so Azure team patch releases land automatically;
-    # exact versions are pinned in uv.lock.
+]
+
+[project.optional-dependencies]
+# Azure deps are optional — only installed when deploying to Azure.
+# Railway and local dev run without them; KYC uploads fall back to
+# local filesystem storage. Install with: uv sync --extra azure
+azure = [
     "azure-ai-documentintelligence>=1.0.0",
     "azure-storage-blob>=12.23.0",
     "azure-identity>=1.19.0",
@@ -93,6 +96,10 @@ plugins = ["pydantic.mypy"]
 # Prisma-generated client doesn't have full stubs; allow that
 [[tool.mypy.overrides]]
 module = "prisma.*"
+ignore_missing_imports = true
+# Azure SDK stubs are incomplete; don't fail when the optional deps aren't installed
+[[tool.mypy.overrides]]
+module = ["azure.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
