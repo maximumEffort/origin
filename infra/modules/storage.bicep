@@ -89,6 +89,24 @@ resource vehicleImageryContainer 'Microsoft.Storage/storageAccounts/blobServices
   }
 }
 
+// Raw Azure Document Intelligence response payloads (ADR-0002).
+// Holds the full `analyzeResult` JSON per processed document so the curated
+// `Document.ocrFields` JSONB column can be regenerated from a different
+// extraction rules without re-paying for OCR. Strictly private — short-lived
+// SAS for admin preview only.
+resource kycOcrRawContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2024-01-01' = {
+  parent: blobService
+  name: 'kyc-ocr-raw'
+  properties: {
+    publicAccess: 'None'
+    metadata: {
+      purpose: 'kyc-ocr-raw-results'
+      pii: 'true'
+      retention: 'see-pdpl-policy'
+    }
+  }
+}
+
 output id string = storage.id
 output name string = storage.name
 output blobEndpoint string = storage.properties.primaryEndpoints.blob

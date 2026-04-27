@@ -86,6 +86,35 @@ class Settings(BaseSettings):
     checkout_secret_key: str | None = None
     checkout_webhook_secret: str | None = None
 
+    # ── KYC OCR (ADR-0002) ──
+    # Phase A ships behind a feature flag — schema migration goes out, but the
+    # upsert path doesn't actually call Azure DI until the flag flips. Auth to
+    # Document Intelligence prefers the system-assigned managed identity at
+    # runtime; azure_doc_intel_key is only used in dev or as a fallback.
+    kyc_ocr_enabled: bool = False
+    azure_doc_intel_endpoint: str | None = Field(
+        default=None,
+        description="Document Intelligence endpoint, e.g. https://di-origin-prod-uaenorth.cognitiveservices.azure.com/",
+    )
+    azure_doc_intel_key: str | None = Field(
+        default=None,
+        description="API key for Document Intelligence. Optional when running with managed identity.",
+    )
+    azure_storage_blob_endpoint: str | None = Field(
+        default=None,
+        description="Blob endpoint for the storage account holding KYC docs, e.g. https://stororiginproduaenorth.blob.core.windows.net/",
+    )
+    kyc_ocr_blob_container: str = "kyc-ocr-raw"
+    kyc_ocr_max_retries: int = 3
+    kyc_ocr_min_confidence_prefill: float = 0.85
+    kyc_ocr_min_confidence_admin_green: float = 0.85
+    kyc_ocr_min_confidence_admin_red: float = 0.7
+
+    @property
+    def kyc_ocr_configured(self) -> bool:
+        """True when the OCR feature flag is on AND the endpoint is set."""
+        return self.kyc_ocr_enabled and bool(self.azure_doc_intel_endpoint)
+
     # ── CORS ──
     cors_allowed_origins: str = "http://localhost:3000,http://localhost:3002"
 

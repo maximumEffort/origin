@@ -6,13 +6,16 @@
 //   3. storage                                        — KYC docs + vehicle imagery
 //   4. postgres                                       — slowest, kicked off in parallel
 //   5. acr (container registry)                       — Container App pulls images from here
-//   6. containerapp (env + app)                       — depends on observability, kv, acr
+//   6. docintel                                       — Document Intelligence (ADR-0002)
+//   7. containerapp (env + app)                       — depends on observability, kv, acr
+//   8. docintel-roles                                  — grants Container App MI access to DI + Storage
 //
-// See docs/adr/0001-azure-uae-north-architecture.md for the why behind every choice.
+// See docs/adr/0001-azure-uae-north-architecture.md for the why behind every choice,
+// and docs/adr/0002-kyc-ocr-data-flow.md for the KYC OCR additions.
 
 targetScope = 'subscription'
 
-// ── Parameters ──────────────────────────────────────────────────────────────
+// ── Parameters ────────────────────────────────────────────────────────────
 
 @description('Azure region. UAE North = Dubai. Origin is PDPL-bound to UAE.')
 param location string = 'uaenorth'
@@ -45,11 +48,14 @@ param corsAllowedOrigins string = 'https://origin-auto.ae,https://www.origin-aut
 @description('VAT rate (UAE = 0.05).')
 param vatRate string = '0.05'
 
+@description('KYC OCR feature flag (ADR-0002). False until staged rollout completes.')
+param kycOcrEnabled bool = false
+
+@description('Built-in role GUID for "Cognitive Services User". Microsoft documents this as a574d5d0-ad88-4d2b-ae57-bf67dc12c0a9 — verify in your tenant if main deployment errors with RoleDefinitionDoesNotExist.')
+param cognitiveServicesUserRoleGuid string = 'a574d5d0-ad88-4d2b-ae57-bf67dc12c0a9'
+
 @description('Built-in role GUID for "Key Vault Secrets User". Microsoft documents this as 4633458b-17de-4322-8e57-46e3aa55c8e0, but some subscriptions return a different GUID. Verify in your tenant with: az role definition list --name "Key Vault Secrets User"')
 param keyVaultSecretsUserRoleGuid string = '4633458b-17de-4322-8e57-46e3aa55c8e0'
-
-@description('Built-in role GUID for "AcrPull". Microsoft documents this as 7f951dda-4ed3-4680-a7ca-43fe172d538d. Same caveat as keyVaultSecretsUserRoleGuid — verify with: az role definition list --name AcrPull')
-param acrPullRoleGuid string = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 
 @description('Tags applied to all resources. Override only if you know what you are doing.')
 param tags object = {
@@ -60,7 +66,7 @@ param tags object = {
   'managed-by': 'bicep'
 }
 
-// ── Naming ──────────────────────────────────────────────────────────────────
+// ── Naming ────────────────────────────────────────────────────────────────
 // Pulled from ADR-0001 §"Naming convention".
 
 var resourceGroupName     = 'rg-${appName}-${environment}-${location}'
@@ -72,8 +78,9 @@ var containerRegistryName = 'acr${appName}${environment}'                 // no 
 var storageAccountName    = 'stor${appName}${environment}${location}'      // no dashes, lowercase, ≤24
 var containerAppEnvName   = 'cae-${appName}-${environment}-${location}'
 var containerAppName      = 'ca-${appName}-backend-${environment}'
+var docIntelName          = 'di-${appName}-${environment}-${location}'
 
-// ── Resource group ──────────────────────────────────────────────────────────
+// ── Resource group ───────────────────────────────────────────────────────────
 
 resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
@@ -81,7 +88,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   tags: tags
 }
 
-// ── Modules ─────────────────────────────────────────────────────────────────
+// ── Modules ───────────────────────────────────────────────────────────────────
 
 module observability 'modules/observability.bicep' = {
   name: 'observability'
@@ -139,6 +146,16 @@ module acr 'modules/containerregistry.bicep' = {
   }
 }
 
+module docIntel 'modules/docintel.bicep' = {
+  name: 'docintel'
+  scope: rg
+  params: {
+    location: location
+    accountName: docIntelName
+    tags: tags
+  }
+}
+
 module containerApp 'modules/containerapp.bicep' = {
   name: 'containerapp'
   scope: rg
@@ -148,20 +165,41 @@ module containerApp 'modules/containerapp.bicep' = {
     appName: containerAppName
     keyVaultName: keyVaultName
     logAnalyticsName: logAnalyticsName
-    containerRegistryName: containerRegistryName
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
     vatRate: vatRate
     keyVaultSecretsUserRoleGuid: keyVaultSecretsUserRoleGuid
-    acrPullRoleGuid: acrPullRoleGuid
+    // ── KYC OCR (ADR-0002) ──
+    kycOcrEnabled: kycOcrEnabled
+    azureDocIntelEndpoint: docIntel.outputs.endpoint
+    azureStorageBlobEndpoint: storage.outputs.blobEndpoint
     tags: tags
   }
   dependsOn: [
     keyVault                       // KV must exist + secrets seeded before app references them
-    acr                            // ACR must exist before role assignment + registry config bind to it
   ]
 }
 
-// ── Outputs ─────────────────────────────────────────────────────────────────
+// ── Role assignments for the Container App's managed identity ───────────────────────
+// Scoped to the docintel + storage resources so the backend can call DI and
+// read/write blob containers without needing API keys.
+
+module diRoleAssignments 'modules/docintel-roles.bicep' = {
+  name: 'docintel-roles'
+  scope: rg
+  params: {
+    docIntelName: docIntelName
+    storageAccountName: storageAccountName
+    containerAppPrincipalId: containerApp.outputs.principalId
+    cognitiveServicesUserRoleGuid: cognitiveServicesUserRoleGuid
+  }
+  dependsOn: [
+    docIntel
+    storage
+    containerApp
+  ]
+}
+
+// ── Outputs ──────────────────────────────────────────────────────────────────
 
 output resourceGroupName string  = rg.name
 output containerAppFqdn string   = containerApp.outputs.fqdn

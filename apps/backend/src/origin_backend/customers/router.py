@@ -11,7 +11,7 @@ All endpoints require a customer access token.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from origin_backend.common.auth import AuthenticatedUser, require_customer
 from origin_backend.common.prisma import get_db
@@ -63,17 +63,43 @@ async def list_my_documents_endpoint(
     return await service.get_documents(db, user.id)
 
 
-@router.post("/me/documents", response_model=DocumentResponse)
-async def add_document_endpoint(
-    body: CreateDocumentRequest,
+@router.get("/me/documents/{document_id}", response_model=DocumentResponse)
+async def get_my_document_endpoint(
+    document_id: str,
     user: AuthenticatedUser = Depends(require_customer),
     db: Prisma = Depends(get_db),
 ) -> object:
-    """Register (or re-submit) a KYC document by type."""
+    """
+    Fetch a single KYC document — used by the customer-side OCR poll loop
+    after upload. Returns the OCR-enriched DocumentResponse so the form can
+    pre-fill from `ocrFields` once `ocrStatus == 'COMPLETED'`.
+
+    Scoped to the calling customer; 404 on cross-tenant access attempts.
+    """
+    return await service.get_document(db, user.id, document_id)
+
+
+@router.post("/me/documents", response_model=DocumentResponse)
+async def add_document_endpoint(
+    body: CreateDocumentRequest,
+    background_tasks: BackgroundTasks,
+    user: AuthenticatedUser = Depends(require_customer),
+    db: Prisma = Depends(get_db),
+) -> object:
+    """
+    Register (or re-submit) a KYC document by type.
+
+    When `KYC_OCR_ENABLED=true`, the service layer enqueues an Azure DI OCR
+    job in the background and the customer can poll
+    `GET /me/documents/{id}` to watch ocrStatus PROCESSING -> COMPLETED.
+    The HTTP response itself returns immediately with `ocrStatus` reflecting
+    the just-enqueued state.
+    """
     return await service.add_document(
         db,
         user.id,
         document_type=body.type,
         file_url=str(body.file_url),
         expiry_date=body.expiry_date,
+        background_tasks=background_tasks,
     )
