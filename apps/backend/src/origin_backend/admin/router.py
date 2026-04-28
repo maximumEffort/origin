@@ -25,8 +25,9 @@ from origin_backend.admin.schemas import (
     SetVehicleStatusRequest,
     UpdateVehicleRequest,
 )
-from origin_backend.common.auth import require_admin
+from origin_backend.common.auth import AuthenticatedUser, require_admin
 from origin_backend.common.prisma import get_db
+from origin_backend.common.request_context import RequestInfo, get_request_info
 from prisma import Prisma
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -82,32 +83,41 @@ async def list_bookings_endpoint(
 @router.post("/bookings/{booking_id}/approve", status_code=status.HTTP_200_OK)
 async def approve_booking_endpoint(
     booking_id: str,
-    _=Depends(require_admin("SUPER_ADMIN", "SALES")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "SALES")),
     db: Prisma = Depends(get_db),
+    req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Approve a SUBMITTED booking."""
-    return _encode(await service.approve_booking(db, booking_id))
+    return _encode(await service.approve_booking(
+        db, booking_id, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
+    ))
 
 
 @router.post("/bookings/{booking_id}/reject", status_code=status.HTTP_200_OK)
 async def reject_booking_endpoint(
     booking_id: str,
     body: RejectReasonRequest,
-    _=Depends(require_admin("SUPER_ADMIN", "SALES")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "SALES")),
     db: Prisma = Depends(get_db),
+    req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Reject a SUBMITTED booking with optional reason."""
-    return _encode(await service.reject_booking(db, booking_id, body.reason))
+    return _encode(await service.reject_booking(
+        db, booking_id, body.reason, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
+    ))
 
 
 @router.post("/bookings/{booking_id}/create-lease", status_code=status.HTTP_201_CREATED)
 async def create_lease_endpoint(
     booking_id: str,
-    _=Depends(require_admin("SUPER_ADMIN", "SALES")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "SALES")),
     db: Prisma = Depends(get_db),
+    req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Convert an APPROVED booking into an active lease + payment schedule."""
-    return _encode(await service.create_lease_from_booking(db, booking_id))
+    return _encode(await service.create_lease_from_booking(
+        db, booking_id, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
+    ))
 
 
 # ── Customers & KYC ───────────────────────────────────────────────────────
@@ -136,22 +146,28 @@ async def get_customer_endpoint(
 @router.post("/customers/{customer_id}/kyc/approve", status_code=status.HTTP_200_OK)
 async def approve_kyc_endpoint(
     customer_id: str,
-    _=Depends(require_admin("SUPER_ADMIN", "SALES")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "SALES")),
     db: Prisma = Depends(get_db),
+    req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Approve a SUBMITTED KYC application."""
-    return _encode(await service.approve_kyc(db, customer_id))
+    return _encode(await service.approve_kyc(
+        db, customer_id, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
+    ))
 
 
 @router.post("/customers/{customer_id}/kyc/reject", status_code=status.HTTP_200_OK)
 async def reject_kyc_endpoint(
     customer_id: str,
     body: RejectReasonRequest,
-    _=Depends(require_admin("SUPER_ADMIN", "SALES")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "SALES")),
     db: Prisma = Depends(get_db),
+    req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Reject a customer's KYC submission with optional reason."""
-    return _encode(await service.reject_kyc(db, customer_id, body.reason))
+    return _encode(await service.reject_kyc(
+        db, customer_id, body.reason, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
+    ))
 
 
 # ── Leases ────────────────────────────────────────────────────────────────
@@ -183,30 +199,39 @@ async def list_vehicles_endpoint(
 @router.post("/vehicles", status_code=status.HTTP_201_CREATED)
 async def create_vehicle_endpoint(
     body: CreateVehicleRequest,
-    _=Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
     db: Prisma = Depends(get_db),
+    req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Add a new vehicle to the fleet (auto-VIN, auto-category if missing)."""
-    return _encode(await service.create_vehicle(db, body))
+    return _encode(await service.create_vehicle(
+        db, body, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
+    ))
 
 
 @router.patch("/vehicles/{vehicle_id}")
 async def update_vehicle_endpoint(
     vehicle_id: str,
     body: UpdateVehicleRequest,
-    _=Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
     db: Prisma = Depends(get_db),
+    req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Partial update of a vehicle."""
-    return _encode(await service.update_vehicle(db, vehicle_id, body))
+    return _encode(await service.update_vehicle(
+        db, vehicle_id, body, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
+    ))
 
 
 @router.post("/vehicles/{vehicle_id}/status", status_code=status.HTTP_200_OK)
 async def set_vehicle_status_endpoint(
     vehicle_id: str,
     body: SetVehicleStatusRequest,
-    _=Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
     db: Prisma = Depends(get_db),
+    req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Set vehicle status (AVAILABLE / LEASED / MAINTENANCE / RETIRED)."""
-    return _encode(await service.set_vehicle_status(db, vehicle_id, body.status))
+    return _encode(await service.set_vehicle_status(
+        db, vehicle_id, body.status, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
+    ))

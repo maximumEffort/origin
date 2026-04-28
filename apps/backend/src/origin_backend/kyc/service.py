@@ -26,6 +26,7 @@ from typing import Any
 
 from fastapi import BackgroundTasks, HTTPException
 
+from origin_backend.common.audit import log_action
 from origin_backend.config import settings
 from origin_backend.customers.schemas import DocumentType
 from origin_backend.kyc import ocr as ocr_client
@@ -216,6 +217,8 @@ async def approve(
     document_id: str,
     admin_id: str,
     overrides: dict[str, str] | None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
 ) -> dict[str, Any]:
     """Admin approves a KYC document. Persists per-field overrides for audit."""
     doc = await db.document.find_unique(where={"id": document_id})
@@ -236,6 +239,17 @@ async def approve(
         },
     )
 
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="APPROVE",
+        entity_type="DOCUMENT",
+        entity_id=document_id,
+        new_value={"status": "APPROVED", "overrides": overrides_clean or None},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
     # Auto-promote KYC if both EID + DL approved.
     await _maybe_promote_kyc(db, customer_id=updated.customerId)
 
@@ -254,6 +268,8 @@ async def reject(
     document_id: str,
     admin_id: str,
     reason: str,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
 ) -> dict[str, Any]:
     """Admin rejects a KYC document with a reason."""
     doc = await db.document.find_unique(where={"id": document_id})
@@ -269,6 +285,17 @@ async def reject(
             "reviewedAt": now,
             "reviewedBy": admin_id,
         },
+    )
+
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="REJECT",
+        entity_type="DOCUMENT",
+        entity_id=document_id,
+        new_value={"status": "REJECTED", "reason": reason},
+        ip_address=ip_address,
+        user_agent=user_agent,
     )
 
     return {

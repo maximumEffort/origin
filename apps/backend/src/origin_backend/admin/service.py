@@ -20,6 +20,7 @@ from typing import Any
 from fastapi import HTTPException, status
 
 from origin_backend.admin.schemas import CreateVehicleRequest, UpdateVehicleRequest
+from origin_backend.common.audit import log_action
 from origin_backend.integrations import sendgrid_email
 from prisma import Prisma
 
@@ -53,7 +54,14 @@ async def list_all_bookings(db: Prisma, status_filter: str | None) -> list[Any]:
     )
 
 
-async def approve_booking(db: Prisma, booking_id: str) -> Any:
+async def approve_booking(
+    db: Prisma,
+    booking_id: str,
+    *,
+    admin_id: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Any:
     booking = await db.booking.find_unique(where={"id": booking_id})
     if booking is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
@@ -65,6 +73,18 @@ async def approve_booking(db: Prisma, booking_id: str) -> Any:
     updated = await db.booking.update(
         where={"id": booking_id},
         data={"status": "APPROVED"},
+    )
+
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="APPROVE",
+        entity_type="BOOKING",
+        entity_id=booking_id,
+        old_value={"status": _enum_value(booking.status)},
+        new_value={"status": "APPROVED"},
+        ip_address=ip_address,
+        user_agent=user_agent,
     )
 
     customer = await db.customer.find_unique(where={"id": booking.customerId})
@@ -84,7 +104,15 @@ async def approve_booking(db: Prisma, booking_id: str) -> Any:
     return updated
 
 
-async def reject_booking(db: Prisma, booking_id: str, reason: str | None) -> Any:
+async def reject_booking(
+    db: Prisma,
+    booking_id: str,
+    reason: str | None,
+    *,
+    admin_id: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Any:
     booking = await db.booking.find_unique(where={"id": booking_id})
     if booking is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
@@ -96,7 +124,21 @@ async def reject_booking(db: Prisma, booking_id: str, reason: str | None) -> Any
     data: dict[str, Any] = {"status": "REJECTED"}
     if reason:
         data["notes"] = reason
-    return await db.booking.update(where={"id": booking_id}, data=data)
+    result = await db.booking.update(where={"id": booking_id}, data=data)
+
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="REJECT",
+        entity_type="BOOKING",
+        entity_id=booking_id,
+        old_value={"status": _enum_value(booking.status)},
+        new_value={"status": "REJECTED", "reason": reason},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
+    return result
 
 
 # ── Customers & KYC ───────────────────────────────────────────────────────
@@ -131,7 +173,14 @@ async def get_customer(db: Prisma, customer_id: str) -> Any:
     return customer
 
 
-async def approve_kyc(db: Prisma, customer_id: str) -> Any:
+async def approve_kyc(
+    db: Prisma,
+    customer_id: str,
+    *,
+    admin_id: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Any:
     customer = await db.customer.find_unique(where={"id": customer_id})
     if customer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
@@ -140,13 +189,35 @@ async def approve_kyc(db: Prisma, customer_id: str) -> Any:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only submitted KYC applications can be approved",
         )
-    return await db.customer.update(
+    result = await db.customer.update(
         where={"id": customer_id},
         data={"kycStatus": "APPROVED"},
     )
 
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="APPROVE",
+        entity_type="CUSTOMER_KYC",
+        entity_id=customer_id,
+        old_value={"kycStatus": _enum_value(customer.kycStatus)},
+        new_value={"kycStatus": "APPROVED"},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
 
-async def reject_kyc(db: Prisma, customer_id: str, reason: str | None) -> Any:
+    return result
+
+
+async def reject_kyc(
+    db: Prisma,
+    customer_id: str,
+    reason: str | None,
+    *,
+    admin_id: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Any:
     customer = await db.customer.find_unique(where={"id": customer_id})
     if customer is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
@@ -154,6 +225,18 @@ async def reject_kyc(db: Prisma, customer_id: str, reason: str | None) -> Any:
     if reason:
         data["kycRejectionReason"] = reason
     updated = await db.customer.update(where={"id": customer_id}, data=data)
+
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="REJECT",
+        entity_type="CUSTOMER_KYC",
+        entity_id=customer_id,
+        old_value={"kycStatus": _enum_value(customer.kycStatus)},
+        new_value={"kycStatus": "REJECTED", "reason": reason},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
 
     if customer.email:
         lang = _enum_value(customer.preferredLanguage) or "en"
@@ -168,7 +251,14 @@ async def reject_kyc(db: Prisma, customer_id: str, reason: str | None) -> Any:
 # ── Lease creation from booking ───────────────────────────────────────────
 
 
-async def create_lease_from_booking(db: Prisma, booking_id: str) -> Any:
+async def create_lease_from_booking(
+    db: Prisma,
+    booking_id: str,
+    *,
+    admin_id: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Any:
     booking = await db.booking.find_unique(
         where={"id": booking_id},
         include={"vehicle": True},
@@ -253,6 +343,17 @@ async def create_lease_from_booking(db: Prisma, booking_id: str) -> Any:
     if payments:
         await db.payment.create_many(data=payments)
 
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="CREATE",
+        entity_type="LEASE",
+        entity_id=lease.id,
+        new_value={"bookingId": booking_id, "reference": reference},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
     return lease
 
 
@@ -287,7 +388,14 @@ async def list_all_vehicles(db: Prisma, status_filter: str | None) -> list[Any]:
     )
 
 
-async def create_vehicle(db: Prisma, dto: CreateVehicleRequest) -> Any:
+async def create_vehicle(
+    db: Prisma,
+    dto: CreateVehicleRequest,
+    *,
+    admin_id: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Any:
     """Create a vehicle, auto-generating VIN + category if missing."""
     vin = f"ORIGIN-{int(datetime.now(UTC).timestamp() * 1000)}-{secrets.token_hex(3).upper()}"
 
@@ -334,10 +442,31 @@ async def create_vehicle(db: Prisma, dto: CreateVehicleRequest) -> Any:
         "vin": vin,
         "categoryId": category_id,
     }
-    return await db.vehicle.create(data=data)
+    vehicle = await db.vehicle.create(data=data)
+
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="CREATE",
+        entity_type="VEHICLE",
+        entity_id=vehicle.id if vehicle else "",
+        new_value={"brand": dto.brand, "model": dto.model, "plateNumber": dto.plate_number},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
+    return vehicle
 
 
-async def update_vehicle(db: Prisma, vehicle_id: str, dto: UpdateVehicleRequest) -> Any:
+async def update_vehicle(
+    db: Prisma,
+    vehicle_id: str,
+    dto: UpdateVehicleRequest,
+    *,
+    admin_id: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Any:
     vehicle = await db.vehicle.find_unique(where={"id": vehicle_id})
     if vehicle is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
@@ -378,17 +507,53 @@ async def update_vehicle(db: Prisma, vehicle_id: str, dto: UpdateVehicleRequest)
 
     if not data:
         return vehicle
-    return await db.vehicle.update(where={"id": vehicle_id}, data=data)
+    result = await db.vehicle.update(where={"id": vehicle_id}, data=data)
+
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="UPDATE",
+        entity_type="VEHICLE",
+        entity_id=vehicle_id,
+        old_value=None,
+        new_value=data,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
+    return result
 
 
-async def set_vehicle_status(db: Prisma, vehicle_id: str, new_status: str) -> Any:
+async def set_vehicle_status(
+    db: Prisma,
+    vehicle_id: str,
+    new_status: str,
+    *,
+    admin_id: str = "",
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Any:
     vehicle = await db.vehicle.find_unique(where={"id": vehicle_id})
     if vehicle is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vehicle not found")
-    return await db.vehicle.update(
+    result = await db.vehicle.update(
         where={"id": vehicle_id},
         data={"status": new_status},
     )
+
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="UPDATE_STATUS",
+        entity_type="VEHICLE",
+        entity_id=vehicle_id,
+        old_value={"status": _enum_value(vehicle.status)},
+        new_value={"status": new_status},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+
+    return result
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────

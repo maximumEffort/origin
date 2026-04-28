@@ -27,6 +27,7 @@ from origin_backend.bookings.router import router as bookings_router
 from origin_backend.calculator.router import router as calculator_router
 from origin_backend.common.exceptions import register_exception_handlers
 from origin_backend.common.prisma import connect_prisma, disconnect_prisma
+from origin_backend.common.request_context import RequestContextMiddleware
 from origin_backend.config import settings
 from origin_backend.contact.router import router as contact_router
 from origin_backend.customers.router import router as customers_router
@@ -67,6 +68,7 @@ app = FastAPI(
 )
 
 # ── Middleware ──────────────────────────────────────────────────────
+app.add_middleware(RequestContextMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 app.add_middleware(
