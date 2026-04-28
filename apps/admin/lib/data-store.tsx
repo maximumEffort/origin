@@ -77,6 +77,17 @@ export interface Lease {
   nextPayment: { due: string; amount: number; status: 'PENDING' | 'OVERDUE' | 'PAID' } | null;
 }
 
+// ── Paginated response envelope (issue #115) ──────────────────────────────
+
+export interface Paginated<T> {
+  data: T[];
+  pagination: { page: number; limit: number; total: number };
+}
+
+function emptyPage<T>(): Paginated<T> {
+  return { data: [], pagination: { page: 1, limit: 0, total: 0 } };
+}
+
 // ── API response types ───────────────────────────────────────────────────
 
 interface ApiVehicle {
@@ -242,16 +253,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError('');
     try {
+      const PAGE_SIZE = 200; // upper bound enforced by backend
       const [vRes, bRes, cRes, lRes] = await Promise.all([
-        api.get<ApiVehicle[]>('/admin/vehicles').catch(() => []),
-        api.get<ApiBooking[]>('/admin/bookings').catch(() => []),
-        api.get<ApiCustomer[]>('/admin/customers').catch(() => []),
-        api.get<ApiLease[]>('/admin/leases').catch(() => []),
+        api.get<Paginated<ApiVehicle>>(`/admin/vehicles?page=1&limit=${PAGE_SIZE}`).catch(emptyPage<ApiVehicle>),
+        api.get<Paginated<ApiBooking>>(`/admin/bookings?page=1&limit=${PAGE_SIZE}`).catch(emptyPage<ApiBooking>),
+        api.get<Paginated<ApiCustomer>>(`/admin/customers?page=1&limit=${PAGE_SIZE}`).catch(emptyPage<ApiCustomer>),
+        api.get<Paginated<ApiLease>>(`/admin/leases?page=1&limit=${PAGE_SIZE}`).catch(emptyPage<ApiLease>),
       ]);
-      setVehicles(vRes.map(mapVehicle));
-      setBookings(bRes.map(mapBooking));
-      setCustomers(cRes.map(mapCustomer));
-      setLeases(lRes.map(mapLease));
+      setVehicles(vRes.data.map(mapVehicle));
+      setBookings(bRes.data.map(mapBooking));
+      setCustomers(cRes.data.map(mapCustomer));
+      setLeases(lRes.data.map(mapLease));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data');
     } finally {

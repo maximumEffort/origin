@@ -42,16 +42,29 @@ def _parse_iso_dt(value: str | None) -> datetime | None:
 # ── Bookings ──────────────────────────────────────────────────────────────
 
 
-async def list_all_bookings(db: Prisma, status_filter: str | None) -> list[Any]:
+async def list_all_bookings(
+    db: Prisma,
+    status_filter: str | None,
+    *,
+    page: int = 1,
+    limit: int = 50,
+) -> dict[str, Any]:
     where: dict[str, Any] | None = {"status": status_filter} if status_filter else None
-    return await db.booking.find_many(
+    total = await db.booking.count(where=where) if where else await db.booking.count()
+    items = await db.booking.find_many(
         where=where,
         include={
             "customer": True,
             "vehicle": True,
         },
         order={"createdAt": "desc"},
+        skip=(page - 1) * limit,
+        take=limit,
     )
+    return {
+        "data": items,
+        "pagination": {"page": page, "limit": limit, "total": total},
+    }
 
 
 async def approve_booking(
@@ -144,15 +157,28 @@ async def reject_booking(
 # ── Customers & KYC ───────────────────────────────────────────────────────
 
 
-async def list_all_customers(db: Prisma, kyc_status: str | None) -> list[Any]:
+async def list_all_customers(
+    db: Prisma,
+    kyc_status: str | None,
+    *,
+    page: int = 1,
+    limit: int = 50,
+) -> dict[str, Any]:
     where: dict[str, Any] | None = {"kycStatus": kyc_status} if kyc_status else None
-    return await db.customer.find_many(
+    total = await db.customer.count(where=where) if where else await db.customer.count()
+    items = await db.customer.find_many(
         where=where,
         include={
             "documents": True,
         },
         order={"createdAt": "desc"},
+        skip=(page - 1) * limit,
+        take=limit,
     )
+    return {
+        "data": items,
+        "pagination": {"page": page, "limit": limit, "total": total},
+    }
 
 
 async def get_customer(db: Prisma, customer_id: str) -> Any:
@@ -366,9 +392,16 @@ async def create_lease_from_booking(
 # ── Leases ────────────────────────────────────────────────────────────────
 
 
-async def list_all_leases(db: Prisma, status_filter: str | None) -> list[Any]:
+async def list_all_leases(
+    db: Prisma,
+    status_filter: str | None,
+    *,
+    page: int = 1,
+    limit: int = 50,
+) -> dict[str, Any]:
     where: dict[str, Any] | None = {"status": status_filter} if status_filter else None
-    return await db.lease.find_many(
+    total = await db.lease.count(where=where) if where else await db.lease.count()
+    items = await db.lease.find_many(
         where=where,
         include={
             "customer": True,
@@ -376,22 +409,41 @@ async def list_all_leases(db: Prisma, status_filter: str | None) -> list[Any]:
             "payments": {"order_by": {"dueDate": "asc"}},
         },
         order={"createdAt": "desc"},
+        skip=(page - 1) * limit,
+        take=limit,
     )
+    return {
+        "data": items,
+        "pagination": {"page": page, "limit": limit, "total": total},
+    }
 
 
 # ── Fleet / Vehicles ──────────────────────────────────────────────────────
 
 
-async def list_all_vehicles(db: Prisma, status_filter: str | None) -> list[Any]:
+async def list_all_vehicles(
+    db: Prisma,
+    status_filter: str | None,
+    *,
+    page: int = 1,
+    limit: int = 50,
+) -> dict[str, Any]:
     where: dict[str, Any] | None = {"status": status_filter} if status_filter else None
-    return await db.vehicle.find_many(
+    total = await db.vehicle.count(where=where) if where else await db.vehicle.count()
+    items = await db.vehicle.find_many(
         where=where,
         include={
             "category": True,
             "images": {"where": {"isPrimary": True}, "take": 1},
         },
         order={"createdAt": "desc"},
+        skip=(page - 1) * limit,
+        take=limit,
     )
+    return {
+        "data": items,
+        "pagination": {"page": page, "limit": limit, "total": total},
+    }
 
 
 async def create_vehicle(
