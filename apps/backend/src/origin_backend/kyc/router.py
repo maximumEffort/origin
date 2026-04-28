@@ -14,7 +14,9 @@ serialise_document from this module.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException
 
 from origin_backend.common.auth import AuthenticatedUser, require_admin
 from origin_backend.common.prisma import get_db
@@ -23,7 +25,6 @@ from origin_backend.kyc import service
 from origin_backend.kyc.schemas import (
     ApproveDocumentRequest,
     ApproveResponse,
-    RejectDocumentRequest,
     RejectResponse,
     ReocrResponse,
 )
@@ -69,17 +70,20 @@ async def approve_endpoint(
 @router.post("/{document_id}/reject", response_model=RejectResponse)
 async def reject_endpoint(
     document_id: str,
-    body: RejectDocumentRequest,
+    body: dict[str, Any] = Body(...),
     user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
     db: Prisma = Depends(get_db),
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Reject a KYC document with a customer-visible reason."""
+    reason = body.get("reason")
+    if not reason or not isinstance(reason, str) or len(reason) < 1 or len(reason) > 500:
+        raise HTTPException(status_code=422, detail="reason is required (1-500 characters)")
     return await service.reject(
         db,
         document_id=document_id,
         admin_id=user.id,
-        reason=body.reason,
+        reason=reason,
         ip_address=req_info.ip_address,
         user_agent=req_info.user_agent,
     )
