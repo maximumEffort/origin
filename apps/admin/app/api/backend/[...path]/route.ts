@@ -17,15 +17,24 @@ async function handler(req: NextRequest, { params }: { params: Promise<{ path: s
 
   const token = req.cookies.get('admin_api_token')?.value;
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const incomingContentType = req.headers.get('content-type') ?? '';
+  const isMultipart = incomingContentType.startsWith('multipart/form-data');
+
+  const headers: Record<string, string> = {};
+  if (!isMultipart) {
+    headers['Content-Type'] = incomingContentType || 'application/json';
+  } else {
+    headers['Content-Type'] = incomingContentType;
+  }
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const body = req.method !== 'GET' && req.method !== 'HEAD'
-    ? await req.text()
+  const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
+  const body = hasBody
+    ? isMultipart
+      ? await req.arrayBuffer()
+      : await req.text()
     : undefined;
 
   const backendRes = await fetch(`${API_URL}${backendPath}${qs}`, {

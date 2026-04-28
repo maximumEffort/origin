@@ -14,7 +14,7 @@ from origin_backend.config import settings
 
 logger = logging.getLogger(__name__)
 
-CONTAINER_NAME = "vehicle-images"
+CONTAINER_NAME = "vehicle-imagery"
 
 
 def _get_blob_service_client():
@@ -64,7 +64,7 @@ async def delete_image(url: str) -> None:
     """Delete an image from Azure Blob Storage by its URL."""
     try:
         parsed = urlparse(url)
-        # URL format: https://saoriginprod.blob.core.windows.net/vehicle-images/xxx/yyy.jpg
+        # URL format: https://saoriginprod.blob.core.windows.net/vehicle-imagery/xxx/yyy.jpg
         path_parts = parsed.path.lstrip("/").split("/", 1)
         if len(path_parts) < 2:
             logger.warning("Could not parse blob path from URL: %s", url)

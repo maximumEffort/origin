@@ -5,6 +5,7 @@ import { Plus, AlertTriangle, Search, Pencil, Trash2, Wrench, CheckCircle, XCirc
 import StatusBadge from '@/components/StatusBadge';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import VehicleImageManager from '@/components/VehicleImageManager';
 import { useData, Vehicle } from '@/lib/data-store';
 
 const BRANDS = [
@@ -347,6 +348,12 @@ export default function FleetPage() {
             <input type="text" value={featuresText} onChange={e => setFeaturesText(e.target.value)} placeholder="e.g. Panoramic sunroof, Apple CarPlay, 420 km range" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
         </div>
+
+        {editingId && (
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <VehicleImageManager vehicleId={editingId} />
+          </div>
+        )}
 
         {saveError && (
           <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600">{saveError}</div>
