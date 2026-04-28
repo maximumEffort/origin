@@ -66,11 +66,16 @@ async function getFeaturedCars(): Promise<CarCardData[]> {
   }));
 }
 
+// Real Origin launch fleet (Shanghai Car Rental LLC). Five most representative
+// brands across the 11-vehicle fleet. Hongqi (3 cars) is the largest, Zeekr
+// brings the EV story, WEY anchors the premium hybrid MPV, Forting fills the
+// modern SUV slot, Great Wall covers the entry crossover.
 const BRANDS = [
-  { name: 'NIO', taglineKey: 'nioTagline', emoji: '⚡' },
-  { name: 'Voyah', taglineKey: 'voyahTagline', emoji: '🌊' },
-  { name: 'Zeekr', taglineKey: 'zeekrTagline', emoji: '🚀' },
-  { name: 'BYD', taglineKey: 'bydTagline', emoji: '🔋' },
+  { name: 'Hongqi',     slug: 'hongqi',     taglineKey: 'hongqiTagline',    emoji: '🚩' },
+  { name: 'Zeekr',      slug: 'zeekr',      taglineKey: 'zeekrTagline',     emoji: '⚡' },
+  { name: 'Forting',    slug: 'forting',    taglineKey: 'fortingTagline',   emoji: '🛞' },
+  { name: 'WEY',        slug: 'wey',        taglineKey: 'weyTagline',       emoji: '🏔️' },
+  { name: 'Great Wall', slug: 'great-wall', taglineKey: 'greatWallTagline', emoji: '🛡️' },
 ] as const;
 
 const STEP_ICONS = [Car, FileText, Key] as const;
@@ -101,14 +106,15 @@ export default async function HomePage() {
     { key: 'electric', label: t('fleet.filterElectric'), href: `/${locale}/cars?category=electric` },
     { key: 'suv',      label: t('fleet.filterSuv'),      href: `/${locale}/cars?category=suv` },
     { key: 'sedan',    label: t('fleet.filterSedan'),    href: `/${locale}/cars?category=sedan` },
-    { key: 'pickup',   label: t('fleet.filterPickup'),   href: `/${locale}/cars?category=pickup` },
+    { key: 'mpv',      label: t('fleet.filterMpv'),      href: `/${locale}/cars?category=mpv` },
   ];
 
   const brandTaglines: Record<string, string> = {
-    NIO:    t('home.nioTagline'),
-    Voyah:  t('home.voyahTagline'),
-    Zeekr:  t('home.zeekrTagline'),
-    BYD:    t('home.bydTagline'),
+    Hongqi:       t('home.hongqiTagline'),
+    Zeekr:        t('home.zeekrTagline'),
+    Forting:      t('home.fortingTagline'),
+    WEY:          t('home.weyTagline'),
+    'Great Wall': t('home.greatWallTagline'),
   };
 
   return (
@@ -334,10 +340,10 @@ export default async function HomePage() {
               </h2>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
-              {BRANDS.map(({ name, emoji }) => (
+              {BRANDS.map(({ name, slug, emoji }) => (
                 <Link
                   key={name}
-                  href={`/${locale}/cars?brand=${name.toLowerCase()}`}
+                  href={`/${locale}/cars?brand=${slug}`}
                   className="brand-pill group flex items-center gap-4 bg-neutral-50 border border-neutral-100 rounded-2xl px-6 py-4 hover:border-brand/30 hover:bg-brand-light/40 min-w-[180px]"
                 >
                   <span className="text-2xl">{emoji}</span>
