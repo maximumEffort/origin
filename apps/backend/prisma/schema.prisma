@@ -221,6 +221,7 @@ model Vehicle {
   dailyRateAed          Decimal         @db.Decimal(10, 2)
   monthlyRateAed        Decimal         @db.Decimal(10, 2)
   leaseMonthlyAed       Decimal?        @db.Decimal(10, 2)
+  depositAmountAed      Decimal?        @db.Decimal(10, 2)
   downPaymentPct        Decimal         @db.Decimal(4, 2) @default(0.20)
   mileageLimitMonthly   Int             @default(3000)
   rtaRegistrationExpiry DateTime?

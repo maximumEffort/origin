@@ -1,15 +1,15 @@
 /**
  * Static vehicle data — Origin Car Leasing fleet.
- * Source: company inventory spreadsheet (April 2026).
+ * Source: company inventory (Shanghai Car Rental LLC, April 2026).
  *
- * Pricing model:
- * - Price: AED out-of-freezone price (includes insurance + plate fee)
- * - Down payment: 20% of price
- * - 3-year instalment: (price - down payment) / 36
- * - Monthly lease fee: instalment × 1.3 (30% profit margin)
+ * V1 is rental-only. Pricing is AED inclusive of 5% VAT.
+ * - monthlyAed / dailyAed: rental rates from the active fleet sheet
+ * - mileageLimit: monthly km included; excess at AED 1/km
+ * - One entry per vehicle in the fleet (single unit each, stock=1)
  *
- * One entry per model (colours + stock listed per card).
- * Used as fallback when the backend API is unreachable.
+ * This file is kept in sync with apps/backend/seed_fleet.py and serves as
+ * the SSR/fallback source when the backend API is unreachable. When the
+ * backend returns vehicles, CarsGrid silently upgrades to live data.
  */
 
 export interface StaticVehicle {
@@ -29,11 +29,13 @@ export interface StaticVehicle {
   imageUrl: string;
   available: boolean;
   features: string[];
-  /** Vehicle selling price (AED) including insurance + plate */
+  /** Refundable security deposit, AED */
+  depositAed?: number;
+  /** Vehicle selling price (AED) — V2+ when buy/lease licences land */
   priceAed?: number;
-  /** Down payment for leasing (20% of price) */
+  /** Down payment for leasing (V3+) */
   downPaymentAed?: number;
-  /** Lease-to-own monthly instalment (36 months, 30% profit margin, no km limit) */
+  /** Lease-to-own monthly instalment (V3+) */
   leaseMonthlyAed?: number;
   /** Number of units in stock */
   stock?: number;
@@ -51,83 +53,109 @@ function placeholder(brand: string, model: string): string {
 }
 
 export const STATIC_VEHICLES: StaticVehicle[] = [
-  // ── NIO ────────────────────────────────────────────────────────────────────
+  // ── Sedans ───────────────────────────────────────────────────────
   {
-    id: 'nio-es6', brand: 'NIO', model: 'ES6', year: 2025,
-    category: 'Electric SUV', fuel: 'electric', transmission: 'Automatic',
-    seats: 5, colour: 'White / Black', monthlyAed: 8500, dailyAed: 400, mileageLimit: 3000,
-    available: true, priceAed: 240000, downPaymentAed: 48000, leaseMonthlyAed: 6933,
-    stock: 2, colours: ['White', 'Black'],
-    imageUrl: placeholder('NIO', 'ES6'),
-    features: ['100 kWh battery pack', 'NIO Pilot ADAS', 'NOMI AI assistant', '610 km range (CLTC)', 'Air suspension', 'Battery swap capable', 'Panoramic glass roof', 'Nappa leather interior'],
+    id: 'dongfeng-shine-e1', brand: 'Dongfeng', model: 'Shine E1', year: 2025,
+    category: 'Sedan', fuel: 'petrol', transmission: 'Automatic',
+    seats: 5, colour: 'Pearl White',
+    monthlyAed: 1400, dailyAed: 100, mileageLimit: 9000,
+    available: true, depositAed: 1500, stock: 1, colours: ['Pearl White'],
+    imageUrl: placeholder('Dongfeng', 'Shine E1'),
+    features: ['Compact sedan', 'Apple CarPlay & Android Auto', 'Reverse camera', 'Cruise control', '5-seater', 'Petrol — efficient daily driver'],
   },
   {
-    id: 'nio-es7', brand: 'NIO', model: 'ES7', year: 2025,
-    category: 'Electric SUV', fuel: 'electric', transmission: 'Automatic',
-    seats: 5, colour: 'White', monthlyAed: 11500, dailyAed: 530, mileageLimit: 3000,
-    available: true, priceAed: 318000, downPaymentAed: 63600, leaseMonthlyAed: 9187,
-    stock: 1, colours: ['White'],
-    imageUrl: placeholder('NIO', 'ES7'),
-    features: ['100 kWh battery pack', 'NIO Pilot ADAS', 'NOMI AI assistant', '620 km range (CLTC)', 'Air suspension', 'Battery swap capable', 'Premium Dolby Atmos audio', 'PanoCinema AR/VR'],
+    id: 'bestune-b70s', brand: 'Bestune', model: 'B70S', year: 2023,
+    category: 'Sedan', fuel: 'petrol', transmission: 'Automatic',
+    seats: 5, colour: 'Titanium Grey',
+    monthlyAed: 1500, dailyAed: 110, mileageLimit: 9000,
+    available: true, depositAed: 1500, stock: 1, colours: ['Titanium Grey'],
+    imageUrl: placeholder('Bestune', 'B70S'),
+    features: ['Sporty fastback styling', '12.3" infotainment', '360° camera', 'Lane-keep assist', 'Sunroof', 'Premium audio'],
   },
   {
-    id: 'nio-es8', brand: 'NIO', model: 'ES8', year: 2025,
-    category: 'Electric SUV', fuel: 'electric', transmission: 'Automatic',
-    seats: 7, colour: 'White / Black', monthlyAed: 11800, dailyAed: 540, mileageLimit: 3000,
-    available: true, priceAed: 325000, downPaymentAed: 65000, leaseMonthlyAed: 9389,
-    stock: 2, colours: ['White', 'Black'],
-    imageUrl: placeholder('NIO', 'ES8'),
-    features: ['100 kWh battery pack', '7-seat three-row layout', 'NIO Pilot ADAS', 'NOMI AI assistant', '580 km range (CLTC)', 'Air suspension', 'Battery swap capable', 'Executive rear seats'],
+    id: 'hongqi-h5', brand: 'Hongqi', model: 'H5', year: 2023,
+    category: 'Sedan', fuel: 'petrol', transmission: 'Automatic',
+    seats: 5, colour: 'Obsidian Black',
+    monthlyAed: 1700, dailyAed: 130, mileageLimit: 9000,
+    available: true, depositAed: 1500, stock: 1, colours: ['Obsidian Black'],
+    imageUrl: placeholder('Hongqi', 'H5'),
+    features: ['Mid-size executive sedan', 'Leather interior', 'Heated seats', 'Adaptive cruise control', 'Premium sound system', 'Panoramic roof'],
   },
   {
-    id: 'nio-et7', brand: 'NIO', model: 'ET7', year: 2025,
+    id: 'hongqi-h9', brand: 'Hongqi', model: 'H9', year: 2023,
+    category: 'Sedan', fuel: 'petrol', transmission: 'Automatic',
+    seats: 5, colour: 'Imperial Red',
+    monthlyAed: 4500, dailyAed: 380, mileageLimit: 5000,
+    available: true, depositAed: 2500, stock: 1, colours: ['Imperial Red'],
+    imageUrl: placeholder('Hongqi', 'H9'),
+    features: ['Full-size luxury flagship', 'Massaging Nappa leather seats', 'Rear executive recline', 'Refrigerated centre console', 'Ambient lighting', 'Premium 17-speaker audio'],
+  },
+  {
+    id: 'zeekr-001', brand: 'Zeekr', model: '001', year: 2025,
     category: 'Electric Sedan', fuel: 'electric', transmission: 'Automatic',
-    seats: 5, colour: 'White', monthlyAed: 10700, dailyAed: 490, mileageLimit: 3000,
-    available: true, priceAed: 295000, downPaymentAed: 59000, leaseMonthlyAed: 8522,
-    stock: 1, colours: ['White'],
-    imageUrl: placeholder('NIO', 'ET7'),
-    features: ['150 kWh ultra-long range battery', 'NIO Pilot ADAS with LiDAR', 'NOMI AI assistant', '1000 km range (CLTC)', 'Air suspension', 'Battery swap capable', 'Premium Dolby Atmos 7.1.4 audio', 'Nappa leather interior'],
+    seats: 5, colour: 'Cosmos Blue',
+    monthlyAed: 5200, dailyAed: 380, mileageLimit: 5000,
+    available: true, depositAed: 2500, stock: 1, colours: ['Cosmos Blue'],
+    imageUrl: placeholder('Zeekr', '001'),
+    features: ['Premium electric shooting brake', '100 kWh battery', '~700 km range (CLTC)', 'Air suspension', 'Dual-motor AWD', 'Yamaha 16-speaker audio', 'Level 2+ ADAS'],
   },
 
-  // ── Voyah (岚图) ──────────────────────────────────────────────────────────
+  // ── SUVs ────────────────────────────────────────────────────────
   {
-    id: 'voyah-free', brand: 'Voyah', model: 'Free', year: 2025,
-    category: 'Electric SUV', fuel: 'electric', transmission: 'Automatic',
-    seats: 5, colour: 'Multiple', monthlyAed: 6300, dailyAed: 290, mileageLimit: 3000,
-    available: true, priceAed: 173000, downPaymentAed: 34600, leaseMonthlyAed: 4998,
-    stock: 4, colours: ['White', 'Grey', 'Black', 'Blue'],
-    imageUrl: placeholder('Voyah', 'Free'),
-    features: ['Dual motor AWD', '106 kWh battery', '505 km range (CLTC)', 'Air suspension', 'Panoramic sunroof', '12.3" + 12.3" dual screens', 'Face recognition', 'Level 2+ ADAS'],
+    id: 'great-wall-jolion', brand: 'Great Wall', model: 'Jolion', year: 2023,
+    category: 'SUV', fuel: 'petrol', transmission: 'Automatic',
+    seats: 5, colour: 'Desert Sand',
+    monthlyAed: 1900, dailyAed: 120, mileageLimit: 9000,
+    available: true, depositAed: 1500, stock: 1, colours: ['Desert Sand'],
+    imageUrl: placeholder('Great Wall', 'Jolion'),
+    features: ['Compact crossover SUV', '10.25" touchscreen', 'Wireless phone charging', 'Lane departure warning', 'Hill-start assist', 'LED headlights'],
   },
   {
-    id: 'voyah-dreamer', brand: 'Voyah', model: 'Dreamer', year: 2025,
-    category: 'Electric MPV', fuel: 'electric', transmission: 'Automatic',
-    seats: 7, colour: 'Multiple', monthlyAed: 8200, dailyAed: 380, mileageLimit: 3000,
-    available: true, priceAed: 226000, downPaymentAed: 45200, leaseMonthlyAed: 6529,
-    stock: 3, colours: ['White', 'Black', 'Grey'],
-    imageUrl: placeholder('Voyah', 'Dreamer'),
-    features: ['Premium electric MPV', 'Dual motor AWD', '108 kWh battery', '475 km range (CLTC)', 'Second-row captain seats with massage', 'Rear entertainment screens', 'Air suspension', 'Tri-zone climate control'],
+    id: 'hongqi-hs5', brand: 'Hongqi', model: 'HS5', year: 2022,
+    category: 'SUV', fuel: 'petrol', transmission: 'Automatic',
+    seats: 5, colour: 'Glacier White',
+    monthlyAed: 2200, dailyAed: 150, mileageLimit: 9000,
+    available: true, depositAed: 1500, stock: 1, colours: ['Glacier White'],
+    imageUrl: placeholder('Hongqi', 'HS5'),
+    features: ['Mid-size luxury SUV', 'Leather interior', 'Panoramic sunroof', 'Powered tailgate', '360° camera', 'Heated and ventilated seats'],
   },
-
-  // ── Zeekr (极氪) ──────────────────────────────────────────────────────────
+  {
+    id: 'forting-t5-evo', brand: 'Forting', model: 'T5 EVO', year: 2024,
+    category: 'SUV', fuel: 'petrol', transmission: 'Automatic',
+    seats: 5, colour: 'Midnight Blue',
+    monthlyAed: 2500, dailyAed: 150, mileageLimit: 9000,
+    available: true, depositAed: 1500, stock: 1, colours: ['Midnight Blue'],
+    imageUrl: placeholder('Forting', 'T5 EVO'),
+    features: ['Stylish mid-size SUV', 'Twin 12.3" displays', 'Wireless CarPlay', 'Active safety suite', 'Sport-tuned suspension', 'Panoramic roof'],
+  },
   {
     id: 'zeekr-x', brand: 'Zeekr', model: 'X', year: 2025,
-    category: 'Electric Crossover', fuel: 'electric', transmission: 'Automatic',
-    seats: 5, colour: 'White', monthlyAed: 5600, dailyAed: 260, mileageLimit: 3000,
-    available: true, priceAed: 155000, downPaymentAed: 31000, leaseMonthlyAed: 4478,
-    stock: 1, colours: ['White'],
+    category: 'Electric SUV', fuel: 'electric', transmission: 'Automatic',
+    seats: 5, colour: 'Aurora Green',
+    monthlyAed: 2400, dailyAed: 180, mileageLimit: 5000,
+    available: true, depositAed: 2000, stock: 1, colours: ['Aurora Green'],
     imageUrl: placeholder('Zeekr', 'X'),
-    features: ['Compact electric crossover', 'SEA platform (Geely)', '66 kWh battery', '560 km range (CLTC)', '14.6" AMOLED display', 'Yamaha premium audio', 'Level 2+ ADAS', 'Vehicle-to-load (V2L)'],
+    features: ['Compact electric crossover', 'SEA platform (Geely)', '66 kWh battery', '~560 km range (CLTC)', '14.6" AMOLED display', 'Yamaha premium audio', 'Vehicle-to-load (V2L)'],
+  },
+  {
+    id: 'forting-u-tour-m4', brand: 'Forting', model: 'U-Tour M4', year: 2024,
+    category: 'SUV', fuel: 'petrol', transmission: 'Automatic',
+    seats: 7, colour: 'Silver Metallic',
+    monthlyAed: 2600, dailyAed: 180, mileageLimit: 9000,
+    available: true, depositAed: 2000, stock: 1, colours: ['Silver Metallic'],
+    imageUrl: placeholder('Forting', 'U-Tour M4'),
+    features: ['7-seat family SUV', 'Three-row seating', 'Captain second-row chairs', 'Tri-zone climate control', '360° camera', 'Rear-seat entertainment ports'],
   },
 
-  // ── BYD ────────────────────────────────────────────────────────────────────
+  // ── MPV ──────────────────────────────────────────────────────
   {
-    id: 'byd-coming-soon', brand: 'BYD', model: 'Fleet Coming Soon', year: 2025,
-    category: 'Electric', fuel: 'electric', transmission: 'Automatic',
-    seats: 5, colour: 'Various', monthlyAed: 5500, dailyAed: 250, mileageLimit: 3000,
-    available: false, priceAed: 135000, downPaymentAed: 27000, leaseMonthlyAed: 4500,
-    imageUrl: placeholder('BYD', 'Coming Soon'),
-    features: ['BYD Blade Battery', 'Multiple models available soon', 'Price range: AED 120,000–150,000', 'Electric and hybrid options', 'Advanced ADAS', 'OTA software updates'],
+    id: 'wey-gaoshan', brand: 'WEY', model: 'Gaoshan', year: 2023,
+    category: 'MPV', fuel: 'hybrid', transmission: 'Automatic',
+    seats: 7, colour: 'Champagne Gold',
+    monthlyAed: 5800, dailyAed: 400, mileageLimit: 5000,
+    available: true, depositAed: 2500, stock: 1, colours: ['Champagne Gold'],
+    imageUrl: placeholder('WEY', 'Gaoshan'),
+    features: ['Premium 7-seat hybrid MPV', 'Plug-in hybrid powertrain', 'Second-row captain chairs with massage', 'Refrigerator console', 'Rear entertainment screens', 'Tri-zone climate control', 'Quad-motor AWD'],
   },
 ];
 

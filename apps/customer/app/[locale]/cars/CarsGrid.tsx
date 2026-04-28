@@ -37,12 +37,21 @@ function getNoResultsText(locale: string): string {
   return 'No vehicles match these filters.';
 }
 
+/** Map a vehicle into one of the four UI filter buckets. */
+function toFilterCategory(fuel: string, category: string): string {
+  if (fuel === 'electric') return 'electric';
+  const c = category.toLowerCase();
+  if (c.includes('mpv')) return 'mpv';
+  if (c.includes('sedan')) return 'sedan';
+  return 'suv';
+}
+
 function staticFallback(): CarCard[] {
   return STATIC_VEHICLES.map((v) => ({
     id: v.id,
     brand: v.brand,
     model: v.model,
-    category: v.fuel === 'electric' ? 'electric' : (v.category.toLowerCase().includes('sedan') ? 'sedan' : 'suv'),
+    category: toFilterCategory(v.fuel, v.category),
     fuel: v.fuel,
     monthlyAed: v.monthlyAed,
     seats: v.seats,
@@ -64,12 +73,14 @@ async function fetchCarsClient(): Promise<CarCard[] | null> {
       return json.data.map((v: Record<string, unknown>) => {
         const images = v.images as { url: string; isPrimary: boolean }[] | undefined;
         const img = images?.find((i) => i.isPrimary) ?? images?.[0];
+        const fuel = (v.fuelType as string)?.toLowerCase() ?? 'petrol';
+        const categoryName = (v.category as { nameEn?: string })?.nameEn ?? '';
         return {
           id: v.id as string,
           brand: v.brand as string,
           model: MODEL_CORRECTIONS[v.model as string] ?? (v.model as string),
-          category: (v.fuelType as string)?.toLowerCase() === 'electric' ? 'electric' : ((v.category as { nameEn?: string })?.nameEn?.toLowerCase().includes('sedan') ? 'sedan' : 'suv'),
-          fuel: (v.fuelType as string)?.toLowerCase() ?? 'petrol',
+          category: toFilterCategory(fuel, categoryName),
+          fuel,
           monthlyAed: Number(v.monthlyRateAed),
           seats: v.seats as number,
           available: v.status === 'AVAILABLE',
@@ -102,6 +113,7 @@ export default function CarsGrid({ locale }: { locale: string }) {
     { key: 'electric', label: t('fleet.filterElectric') },
     { key: 'suv',      label: t('fleet.filterSuv') },
     { key: 'sedan',    label: t('fleet.filterSedan') },
+    { key: 'mpv',      label: 'MPV' },
   ];
 
   const filtered =

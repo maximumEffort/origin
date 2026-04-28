@@ -14,7 +14,6 @@ This script is idempotent: it checks for existing categories and vehicles
 """
 
 import asyncio
-import sys
 from decimal import Decimal
 
 from prisma import Prisma
@@ -237,9 +236,7 @@ async def seed() -> None:
                 skipped_count += 1
                 continue
 
-            category_name = v.pop("category")
-            deposit = v.pop("depositAmountAed")
-            category_id = cat_map[category_name]
+            category_id = cat_map[v["category"]]
 
             await db.vehicle.create(
                 data={
@@ -256,9 +253,9 @@ async def seed() -> None:
                     "status": "AVAILABLE",
                     "dailyRateAed": v["dailyRateAed"],
                     "monthlyRateAed": v["monthlyRateAed"],
+                    "depositAmountAed": v["depositAmountAed"],
                     "mileageLimitMonthly": v["mileageLimitMonthly"],
                     "downPaymentPct": Decimal("0.20"),
-                    "notes": f"Deposit: AED {deposit}",
                 }
             )
             print(f"  Created {v['brand']} {v['model']} ({v['vin']})")
