@@ -10,9 +10,9 @@
     "cta": "احصل على عرض"
   },
   "hero": {
-    "badge": "السيارات الكهربائية الصينية في دبي",
-    "headline": "سيارات كهربائية صينية فاخرة، جاهزة للإيجار في دبي",
-    "subheadline": "NIO و Voyah و Zeekr و BYD — إيجار شهري مع تأمين شامل، باقات كيلومترات مرنة، وتوصيل إلى باب منزلك في أي مكان في دبي.",
+    "badge": "سيارات صينية متميزة في دبي",
+    "headline": "سيارات صينية فاخرة، جاهزة للإيجار في دبي",
+    "subheadline": "هونغتشي، Zeekr، WEY والمزيد — إيجار شهري مع تأمين شامل، باقات كيلومترات مرنة، وتوصيل إلى باب منزلك في أي مكان في دبي.",
     "ctaBrowse": "تصفح أسطولنا",
     "ctaCalculator": "حاسبة الإيجار",
     "trustBadge1": "متوافق مع هيئة الطرق",
@@ -33,6 +33,7 @@
     "filterSuv": "SUV",
     "filterSedan": "سيدان",
     "filterPickup": "بيك أب",
+    "filterMpv": "ميني فان",
     "fuel": {
       "electric": "كهربائية",
       "petrol": "بنزين",
@@ -49,7 +50,8 @@
       "7-Seat SUV": "SUV 7 مقاعد",
       "Electric Hatchback": "هاتشباك كهربائي",
       "Compact Crossover": "كروس أوفر مدمج",
-      "Sedan": "سيدان"
+      "Sedan": "سيدان",
+      "MPV": "ميني فان"
     }
   },
   "calculator": {
@@ -154,14 +156,14 @@
   },
   "about": {
     "title": "عن Origin",
-    "subtitle": "سيارات كهربائية صينية فاخرة للإيجار الشهري في دبي.",
+    "subtitle": "سيارات صينية فاخرة للإيجار الشهري في دبي.",
     "badge": "قصتنا",
-    "stat1Value": "14",
+    "stat1Value": "11",
     "stat1Label": "سيارة متاحة",
-    "stat2Value": "4",
+    "stat2Value": "7",
     "stat2Label": "علامات صينية",
-    "stat3Value": "100%",
-    "stat3Label": "أسطول كهربائي",
+    "stat3Value": "3",
+    "stat3Label": "خيارات المحرك",
     "stat4Value": "3",
     "stat4Label": "لغات مدعومة",
     "value1": "الشفافية",
@@ -212,7 +214,7 @@
   },
   "footer": {
     "companyName": "Origin",
-    "tagline": "تأجير سيارات صينية فاخرة في دبي.",
+    "tagline": "تأجير سيارات صينية في دبي.",
     "quickLinks": "روابط سريعة",
     "legal": "قانوني",
     "privacy": "سياسة الخصوصية",
@@ -234,6 +236,7 @@
     "fleetSuv": "سيارات SUV",
     "fleetSedan": "سيدانات",
     "fleetPickup": "بيك أب",
+    "fleetMpv": "ميني فان",
     "calcLink": "حاسبة الإيجار",
     "aboutLink": "عن Origin"
   },
@@ -253,7 +256,7 @@
     "greeting": "مرحبا، أنا مهتم باستئجار سيارة من Origin."
   },
   "home": {
-    "heroBadge": "إيجار شهري للسيارات الكهربائية في دبي",
+    "heroBadge": "إيجار شهري للسيارات في دبي",
     "fleetEyebrow": "أسطولنا",
     "viewAll": "عرض جميع المركبات",
     "processEyebrow": "خطوات بسيطة",
@@ -273,16 +276,20 @@
     "voyahTagline": "رائدة السيارات الكهربائية الفاخرة",
     "zeekrTagline": "أداء كهربائي",
     "bydTagline": "رائدة الكهرباء",
+    "hongqiTagline": "العلم الصيني الفاخر",
+    "fortingTagline": "تشكيلة SUV عصرية",
+    "weyTagline": "ميني فان هايبرد فاخرة",
+    "greatWallTagline": "كروس أوفر موثوقة",
     "calcEyebrow": "حاسبة الإيجار",
     "calcTitle": "احسب تكلفتك الشهرية",
     "calcSubtitle": "أسعار شفافة بدون رسوم خفية. احصل على تقدير فوري بناءً على السيارة المختارة ومدة الإيجار والمسافة المسموح بها.",
     "calcCta1": "جرّب الحاسبة",
     "calcCta2": "احصل على عرض مخصص",
-    "stat1Value": "14",
+    "stat1Value": "11",
     "stat1Label": "مركبة",
     "stat2Value": "1–36 شهر",
     "stat2Label": "مدد الإيجار",
-    "stat3Value": "4",
+    "stat3Value": "7",
     "stat3Label": "علامات صينية"
   },
   "cookies": {
