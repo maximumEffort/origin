@@ -9,8 +9,9 @@ Usage:
 import os
 import sys
 import uuid
-import psycopg2
 from datetime import datetime
+
+import psycopg2
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
