@@ -31,6 +31,7 @@ from origin_backend.config import settings
 from origin_backend.contact.router import router as contact_router
 from origin_backend.customers.router import router as customers_router
 from origin_backend.health.router import router as health_router
+from origin_backend.images.router import router as images_router
 from origin_backend.kyc.router import router as kyc_admin_router
 from origin_backend.leases.router import router as leases_router
 from origin_backend.maps.router import router as maps_router
@@ -60,8 +61,6 @@ app = FastAPI(
     description="REST API for the Origin car rental platform (Dubai/UAE).",
     version=__version__,
     lifespan=lifespan,
-    # OpenAPI docs are disabled in production. Mirror the Node backend's
-    # behaviour so the API surface isn't browsable on the public domain.
     openapi_url=None if settings.is_production else "/openapi.json",
     docs_url=None if settings.is_production else "/docs",
     redoc_url=None,
@@ -83,7 +82,6 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # ── Routers ─────────────────────────────────────────────────────────
-# Health endpoints are mounted at /health (NOT under /v1) — same as NestJS.
 app.include_router(health_router)
 
 # All API endpoints under /v1 prefix to match NestJS routing.
@@ -97,20 +95,17 @@ app.include_router(contact_router, prefix="/v1")
 app.include_router(payments_router, prefix="/v1")
 app.include_router(maps_router, prefix="/v1")
 app.include_router(admin_router, prefix="/v1")
-app.include_router(kyc_admin_router, prefix="/v1")  # /v1/admin/documents/{id}/{reocr,approve,reject}
+app.include_router(images_router, prefix="/v1")  # /v1/admin/vehicles/:id/images
+app.include_router(kyc_admin_router, prefix="/v1")
 app.include_router(checkout_webhook_router, prefix="/v1")
 
 # ── Serve locally-uploaded KYC files ─────────────────────────────
-# When Azure Blob is configured, KYC files are stored there and served
-# directly via Azure URLs. When it's NOT configured (Railway, local dev),
-# files land in the local uploads/ dir and need a static-file mount.
-# Always create the dir so blob.py's local fallback doesn't fail.
 _uploads = Path(settings.kyc_upload_dir)
 _uploads.mkdir(parents=True, exist_ok=True)
 
 if not settings.azure_storage_blob_endpoint:
     app.mount("/uploads", StaticFiles(directory=str(_uploads)), name="uploads")
 
-# ── Startup validation — fail fast if required config is missing ────
+# ── Startup validation ────────────────────────────────────────────
 if not settings.jwt_secret or len(settings.jwt_secret) < 16:
     raise RuntimeError("JWT_SECRET environment variable must be set and at least 16 characters.")
