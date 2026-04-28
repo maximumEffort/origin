@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -375,7 +375,8 @@ def test_curate_id_document_drops_low_confidence_fields():
     from origin_backend.kyc.ocr import _curate
 
     # Synthesize a fake DI response. Each field has .value_string + .confidence.
-    fake_field = lambda v, c: SimpleNamespace(value_string=v, value=v, confidence=c)
+    def fake_field(v, c):
+        return SimpleNamespace(value_string=v, value=v, confidence=c)
     fake_doc = SimpleNamespace(
         fields={
             "FirstName": fake_field("Amr", 0.98),
@@ -403,6 +404,7 @@ def test_extract_raises_when_not_configured(monkeypatch):
     """Calling extract() without KYC_OCR_ENABLED raises OcrError, not silently
     fall through to a half-configured Azure call."""
     import asyncio
+
     from origin_backend.config import settings as live_settings
     from origin_backend.customers.schemas import DocumentType
     from origin_backend.kyc.ocr import OcrError, extract
