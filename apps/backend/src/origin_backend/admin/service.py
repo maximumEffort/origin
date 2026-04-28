@@ -46,10 +46,8 @@ async def list_all_bookings(db: Prisma, status_filter: str | None) -> list[Any]:
     return await db.booking.find_many(
         where=where,
         include={
-            "customer": {"select": {"fullName": True, "phone": True, "kycStatus": True}},
-            "vehicle": {
-                "select": {"brand": True, "model": True, "year": True, "plateNumber": True}
-            },
+            "customer": True,
+            "vehicle": True,
         },
         order={"createdAt": "desc"},
     )
@@ -109,7 +107,7 @@ async def list_all_customers(db: Prisma, kyc_status: str | None) -> list[Any]:
     return await db.customer.find_many(
         where=where,
         include={
-            "documents": {"select": {"type": True, "status": True, "fileUrl": True}},
+            "documents": True,
         },
         order={"createdAt": "desc"},
     )
@@ -123,7 +121,7 @@ async def get_customer(db: Prisma, customer_id: str) -> Any:
             "bookings": {
                 "order_by": {"createdAt": "desc"},
                 "take": 10,
-                "include": {"vehicle": {"select": {"brand": True, "model": True}}},
+                "include": {"vehicle": True},
             },
             "leases": {"order_by": {"startDate": "desc"}, "take": 5},
         },
@@ -266,10 +264,8 @@ async def list_all_leases(db: Prisma, status_filter: str | None) -> list[Any]:
     return await db.lease.find_many(
         where=where,
         include={
-            "customer": {"select": {"fullName": True, "phone": True}},
-            "vehicle": {
-                "select": {"brand": True, "model": True, "year": True, "plateNumber": True}
-            },
+            "customer": True,
+            "vehicle": True,
             "payments": {"order_by": {"dueDate": "asc"}},
         },
         order={"createdAt": "desc"},
