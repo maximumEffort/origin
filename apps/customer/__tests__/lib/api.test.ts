@@ -13,7 +13,7 @@ beforeEach(() => {
   mockFetch.mockReset();
 });
 
-const API_BASE = 'https://car-leasing-business-production.up.railway.app/v1';
+const API_BASE = 'https://ca-origin-backend-prod.proudriver-25bede2a.uaenorth.azurecontainerapps.io/v1';
 
 function okJson(body: unknown) {
   return Promise.resolve({

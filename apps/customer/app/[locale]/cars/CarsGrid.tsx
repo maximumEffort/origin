@@ -21,7 +21,7 @@ interface CarCard {
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ??
-  'https://car-leasing-business-production.up.railway.app/v1';
+  'https://ca-origin-backend-prod.proudriver-25bede2a.uaenorth.azurecontainerapps.io/v1';
 
 /** Correct known backend data errors. */
 const MODEL_CORRECTIONS: Record<string, string> = {

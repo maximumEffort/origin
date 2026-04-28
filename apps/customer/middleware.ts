@@ -53,7 +53,7 @@ export function middleware(request: NextRequest) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://car-leasing-business-production.up.railway.app https://api.stripe.com https://*.sentry.io",
+    "connect-src 'self' https://*.azurecontainerapps.io https://api.stripe.com https://*.sentry.io",
     "frame-src https://wa.me https://js.stripe.com https://hooks.stripe.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
