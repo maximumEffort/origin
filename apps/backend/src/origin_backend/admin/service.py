@@ -618,7 +618,12 @@ async def set_vehicle_status(
 
 
 async def get_dashboard_stats(db: Prisma) -> dict[str, Any]:
-    """Aggregate the back-office KPIs in one round-trip via gather()."""
+    """Aggregate the back-office KPIs in one round-trip via gather().
+
+    Revenue uses a SUM() at the DB layer rather than streaming every paid
+    payment back into Python — the latter degrades linearly with payment
+    volume (#116).
+    """
     import asyncio
 
     (
@@ -627,20 +632,21 @@ async def get_dashboard_stats(db: Prisma) -> dict[str, Any]:
         pending_bookings,
         active_leases,
         available_vehicles,
-        paid_payments,
+        revenue_row,
     ) = await asyncio.gather(
         db.customer.count(),
         db.customer.count(where={"kycStatus": "SUBMITTED"}),
         db.booking.count(where={"status": "SUBMITTED"}),
         db.lease.count(where={"status": "ACTIVE"}),
         db.vehicle.count(where={"status": "AVAILABLE"}),
-        db.payment.find_many(where={"status": "PAID"}),
+        db.query_first(
+            'SELECT COALESCE(SUM("amountAed"), 0)::float AS total '
+            'FROM payments WHERE status = $1',
+            "PAID",
+        ),
     )
 
-    # Prisma Python's aggregate API surface differs from the Node SDK; fetch
-    # paid rows and sum in Python. Volume is dashboard-scale (low) so this
-    # is fine.
-    revenue_aed = float(sum((p.amountAed for p in paid_payments), start=0))
+    revenue_aed = float((revenue_row or {}).get("total", 0) or 0)
 
     return {
         "totalCustomers": total_customers,

@@ -69,6 +69,8 @@ def mock_prisma() -> MagicMock:
     mock.auditlog = _model_mock()
     mock.errorlog = _model_mock()
     mock.execute_raw = AsyncMock(return_value=None)
+    mock.query_first = AsyncMock(return_value=None)
+    mock.query_raw = AsyncMock(return_value=[])
     return mock
 
 

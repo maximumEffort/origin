@@ -128,6 +128,33 @@ def test_admin_role_gate_allows_super_admin(client: TestClient, mock_prisma: Mag
 # ── /admin/stats ───────────────────────────────────────────────────────
 
 
+def test_stats_revenue_uses_db_sum_not_python_sum(
+    client: TestClient, mock_prisma: MagicMock
+):
+    """#116 — the dashboard must SUM at the DB layer, never stream every paid
+    payment row into Python memory."""
+    mock_prisma.adminuser.find_unique.return_value = _admin("FINANCE")
+    mock_prisma.customer.count.return_value = 0
+    mock_prisma.booking.count.return_value = 0
+    mock_prisma.lease.count.return_value = 0
+    mock_prisma.vehicle.count.return_value = 0
+    mock_prisma.query_first.return_value = {"total": 12345.67}
+
+    r = client.get("/v1/admin/stats", headers=_admin_headers("FINANCE"))
+    assert r.status_code == 200
+    assert r.json()["totalRevenueAed"] == 12345.67
+
+    # Stream-and-sum must not be used.
+    mock_prisma.payment.find_many.assert_not_called()
+    # And the SQL we send must be a SUM filtering on PAID.
+    sql_call = mock_prisma.query_first.await_args
+    assert sql_call is not None
+    sql = sql_call.args[0]
+    assert "SUM" in sql.upper()
+    assert "amountAed" in sql
+    assert sql_call.args[1] == "PAID"
+
+
 def test_stats_aggregates_across_models(client: TestClient, mock_prisma: MagicMock):
     mock_prisma.adminuser.find_unique.return_value = _admin("FINANCE")
 
@@ -141,7 +168,8 @@ def test_stats_aggregates_across_models(client: TestClient, mock_prisma: MagicMo
     mock_prisma.booking.count.return_value = 3
     mock_prisma.lease.count.return_value = 12
     mock_prisma.vehicle.count.return_value = 18
-    mock_prisma.payment.find_many.return_value = [_payment("1000"), _payment("2500")]
+    # Revenue is now aggregated DB-side via SUM("amountAed") (#116)
+    mock_prisma.query_first.return_value = {"total": 3500.0}
 
     r = client.get("/v1/admin/stats", headers=_admin_headers("FINANCE"))
     assert r.status_code == 200
