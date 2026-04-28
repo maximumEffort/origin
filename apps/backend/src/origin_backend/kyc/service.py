@@ -21,10 +21,10 @@ trivially mockable from tests.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import BackgroundTasks, HTTPException, status
+from fastapi import BackgroundTasks, HTTPException
 
 from origin_backend.config import settings
 from origin_backend.customers.schemas import DocumentType
@@ -106,7 +106,7 @@ async def run_ocr(
         where={"id": document_id},
         data={
             "ocrStatus": "PROCESSING",
-            "ocrRequestedAt": datetime.now(timezone.utc),
+            "ocrRequestedAt": datetime.now(UTC),
             "ocrProvider": ocr_client.PROVIDER_ID,
             "ocrModel": ocr_client.model_for(doc_type),
         },
@@ -139,7 +139,7 @@ async def run_ocr(
                     }
                 },
                 "ocrConfidence": curated["overallConfidence"],
-                "ocrCompletedAt": datetime.now(timezone.utc),
+                "ocrCompletedAt": datetime.now(UTC),
                 "ocrFailureReason": None,
             },
         )
@@ -151,7 +151,7 @@ async def run_ocr(
         data={
             "ocrStatus": "FAILED",
             "ocrFailureReason": str(last_error)[:500] if last_error else "OCR failed (unknown reason)",
-            "ocrCompletedAt": datetime.now(timezone.utc),
+            "ocrCompletedAt": datetime.now(UTC),
         },
     )
 
@@ -162,8 +162,8 @@ async def _mark_skipped(db: Prisma, document_id: str) -> None:
         where={"id": document_id},
         data={
             "ocrStatus": "SKIPPED",
-            "ocrRequestedAt": datetime.now(timezone.utc),
-            "ocrCompletedAt": datetime.now(timezone.utc),
+            "ocrRequestedAt": datetime.now(UTC),
+            "ocrCompletedAt": datetime.now(UTC),
         },
     )
 
@@ -203,7 +203,7 @@ async def reocr(
     return {
         "documentId": document_id,
         "ocrStatus": "PROCESSING",
-        "enqueuedAt": datetime.now(timezone.utc),
+        "enqueuedAt": datetime.now(UTC),
     }
 
 
@@ -219,7 +219,7 @@ async def approve(
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     overrides_clean = {k: v for k, v in (overrides or {}).items() if v}
 
     updated = await db.document.update(
@@ -257,7 +257,7 @@ async def reject(
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await db.document.update(
         where={"id": document_id},
         data={

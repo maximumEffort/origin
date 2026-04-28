@@ -285,12 +285,12 @@ async def upload_and_create_document(
     # ── Validate document type ──
     try:
         doc_type = DocumentType(document_type)
-    except ValueError:
+    except ValueError as e:
         valid = ", ".join(t.value for t in DocumentType)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid document type: {document_type}. Must be one of: {valid}",
-        )
+        ) from e
 
     # ── Validate file ──
     if not file.filename:

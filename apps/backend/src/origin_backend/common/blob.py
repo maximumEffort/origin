@@ -28,7 +28,7 @@ _azure_available: bool | None = None
 
 def _check_azure_available() -> bool:
     """Return True if Azure Blob SDK is importable AND an endpoint is configured."""
-    global _azure_available  # noqa: PLW0603
+    global _azure_available
     if _azure_available is not None:
         return _azure_available
 
@@ -40,7 +40,7 @@ def _check_azure_available() -> bool:
         return False
 
     try:
-        import azure.identity.aio  # noqa: F401
+        import azure.identity.aio
         import azure.storage.blob.aio  # noqa: F401
     except ImportError:
         _azure_available = False

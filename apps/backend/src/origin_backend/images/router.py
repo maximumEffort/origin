@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from origin_backend.common.auth import require_admin
 from origin_backend.common.prisma import get_db
-from origin_backend.images.service import delete_image, upload_image, update_image_meta
+from origin_backend.images.service import delete_image, update_image_meta, upload_image
 from prisma import Prisma
 
 logger = logging.getLogger(__name__)

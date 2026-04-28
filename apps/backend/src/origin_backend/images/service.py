@@ -22,11 +22,11 @@ def _get_blob_service_client():
     try:
         from azure.identity import DefaultAzureCredential
         from azure.storage.blob import BlobServiceClient
-    except ImportError:
+    except ImportError as e:
         raise RuntimeError(
             "azure-storage-blob and azure-identity are required. "
             "Install with: pip install azure-storage-blob azure-identity"
-        )
+        ) from e
 
     endpoint = settings.azure_storage_blob_endpoint
     if endpoint:
