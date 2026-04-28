@@ -10,9 +10,9 @@
     "cta": "Get a Quote"
   },
   "hero": {
-    "badge": "Chinese Electric Vehicles in Dubai",
-    "headline": "Premium Chinese Electric Vehicles, Ready to Rent in Dubai",
-    "subheadline": "NIO, Voyah, Zeekr and BYD — monthly rental with insurance included, flexible km packages, and door-to-door delivery anywhere in Dubai.",
+    "badge": "Premium Chinese Cars in Dubai",
+    "headline": "Premium Chinese Cars, Ready to Rent in Dubai",
+    "subheadline": "Hongqi, Zeekr, WEY and more — monthly rental with insurance included, flexible km packages, and door-to-door delivery anywhere in Dubai.",
     "ctaBrowse": "Browse Our Fleet",
     "ctaCalculator": "Rental Calculator",
     "trustBadge1": "RTA Compliant",
@@ -33,6 +33,7 @@
     "filterSuv": "SUV",
     "filterSedan": "Sedan",
     "filterPickup": "Pickup",
+    "filterMpv": "MPV",
     "fuel": {
       "electric": "Electric",
       "petrol": "Petrol",
@@ -49,7 +50,8 @@
       "7-Seat SUV": "7-Seat SUV",
       "Electric Hatchback": "Electric Hatchback",
       "Compact Crossover": "Compact Crossover",
-      "Sedan": "Sedan"
+      "Sedan": "Sedan",
+      "MPV": "MPV"
     }
   },
   "calculator": {
@@ -154,14 +156,14 @@
   },
   "about": {
     "title": "About Origin",
-    "subtitle": "Premium Chinese electric vehicles for monthly rental in Dubai.",
+    "subtitle": "Premium Chinese cars for monthly rental in Dubai.",
     "badge": "Our Story",
-    "stat1Value": "14",
+    "stat1Value": "11",
     "stat1Label": "Vehicles Available",
-    "stat2Value": "4",
+    "stat2Value": "7",
     "stat2Label": "Chinese Brands",
-    "stat3Value": "100%",
-    "stat3Label": "Electric Fleet",
+    "stat3Value": "3",
+    "stat3Label": "Powertrain Options",
     "stat4Value": "3",
     "stat4Label": "Languages Supported",
     "value1": "Transparency",
@@ -173,7 +175,7 @@
     "value4": "Support",
     "value4Desc": "24/7 assistance via WhatsApp and phone.",
     "missionTitle": "Our Mission",
-    "missionText": "To make premium Chinese electric vehicles accessible — through transparent monthly rental — for everyone in Dubai.",
+    "missionText": "To make premium Chinese cars accessible — through transparent monthly rental — for everyone in Dubai.",
     "whyTitle": "Why Chinese Cars?",
     "whyText": "Chinese automotive brands have transformed the industry — advanced technology, modern design, and competitive pricing without compromise.",
     "valuesTitle": "Our Values",
@@ -212,7 +214,7 @@
   },
   "footer": {
     "companyName": "Origin",
-    "tagline": "Monthly Chinese EV rental in Dubai.",
+    "tagline": "Monthly Chinese car rental in Dubai.",
     "quickLinks": "Quick Links",
     "legal": "Legal",
     "privacy": "Privacy Policy",
@@ -234,6 +236,7 @@
     "fleetSuv": "SUVs",
     "fleetSedan": "Sedans",
     "fleetPickup": "Pickups",
+    "fleetMpv": "MPVs",
     "calcLink": "Rental Calculator",
     "aboutLink": "About Origin"
   },
@@ -253,13 +256,13 @@
     "greeting": "Hi, I'm interested in renting a car from Origin."
   },
   "home": {
-    "heroBadge": "Monthly EV Rentals in Dubai",
+    "heroBadge": "Monthly Car Rentals in Dubai",
     "fleetEyebrow": "Our Fleet",
     "viewAll": "View all vehicles",
     "processEyebrow": "Simple Process",
     "processTitle": "How It Works",
     "step1Title": "Browse & Choose",
-    "step1Desc": "Explore our full fleet of premium Chinese electric vehicles. Filter by brand, category, or budget.",
+    "step1Desc": "Explore our full fleet of premium Chinese vehicles. Filter by brand, category, or budget.",
     "step2Title": "Choose Your Plan",
     "step2Desc": "Pick your rental duration (1 to 24 months) and km package. Add optional insurance, additional driver, or GPS. See the all-in monthly rate with VAT.",
     "step3Title": "Drive Away",
@@ -273,16 +276,20 @@
     "voyahTagline": "Luxury EV Pioneer",
     "zeekrTagline": "Electric Performance",
     "bydTagline": "Electric Pioneer",
+    "hongqiTagline": "Chinese Flagship",
+    "fortingTagline": "Modern SUV Lineup",
+    "weyTagline": "Luxury Hybrid MPV",
+    "greatWallTagline": "Trusted Crossovers",
     "calcEyebrow": "Rental Calculator",
     "calcTitle": "Calculate Your Monthly Cost",
     "calcSubtitle": "Transparent pricing with no hidden fees. Get an instant estimate based on your chosen vehicle, rental duration, and mileage allowance.",
     "calcCta1": "Try the Calculator",
     "calcCta2": "Get a Custom Quote",
-    "stat1Value": "14",
+    "stat1Value": "11",
     "stat1Label": "Vehicles",
     "stat2Value": "1–36 mo",
     "stat2Label": "Rental Terms",
-    "stat3Value": "4",
+    "stat3Value": "7",
     "stat3Label": "Chinese Brands"
   },
   "cookies": {
