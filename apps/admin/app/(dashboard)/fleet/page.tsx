@@ -7,13 +7,15 @@ import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useData, Vehicle } from '@/lib/data-store';
 
-const BRANDS = ['NIO', 'VOYAH', 'ZEEKR', 'BYD', 'HAVAL', 'GWM', 'CHERY', 'OMODA', 'GEELY', 'JAECOO'];
-const FUELS: Vehicle['fuel'][] = ['petrol', 'electric', 'hybrid'];
+const BRANDS = [
+  'DONGFENG', 'BESTUNE', 'HONGQI', 'FORTING', 'WEY', 'GREAT_WALL', 'ZEEKR',
+  'BYD', 'HAVAL', 'GWM', 'CHERY', 'OMODA', 'GEELY', 'JAECOO', 'NIO', 'VOYAH',
+];
+const FUELS: Vehicle['fuel'][] = ['petrol', 'electric', 'hybrid', 'diesel'];
 const STATUSES: Vehicle['status'][] = ['AVAILABLE', 'LEASED', 'MAINTENANCE', 'RETIRED'];
 
 function daysUntil(dateStr: string) {
   if (!dateStr) return NaN;
-  // Handle DD/MM/YYYY format from the mapper
   const parts = dateStr.split('/');
   const date = parts.length === 3
     ? new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
@@ -23,8 +25,8 @@ function daysUntil(dateStr: string) {
 }
 
 const emptyForm = (): Omit<Vehicle, 'id'> => ({
-  brand: 'NIO', model: '', year: 2025, plate: '', category: '', fuel: 'electric',
-  colour: '', seats: 5, monthlyAed: 0, dailyAed: 0, mileage: 0,
+  brand: 'DONGFENG', model: '', year: 2025, plate: '', category: '', fuel: 'petrol',
+  colour: '', seats: 5, monthlyAed: 0, dailyAed: 0, depositAed: 0, mileage: 0,
   status: 'AVAILABLE', insuranceExpiry: '', rtaExpiry: '', features: [],
   priceAed: 0, leaseMonthlyAed: 0,
 });
@@ -34,13 +36,11 @@ export default function FleetPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
-  // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Vehicle, 'id'>>(emptyForm());
   const [featuresText, setFeaturesText] = useState('');
 
-  // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -61,12 +61,11 @@ export default function FleetPage() {
     setModalOpen(true);
   };
 
-  // Convert DD/MM/YYYY to YYYY-MM-DD for date inputs
   const toInputDate = (ddmmyyyy: string): string => {
     if (!ddmmyyyy) return '';
     const parts = ddmmyyyy.split('/');
     if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    return ddmmyyyy; // already in correct format or unknown
+    return ddmmyyyy;
   };
 
   const openEdit = (v: Vehicle) => {
@@ -100,7 +99,6 @@ export default function FleetPage() {
     }
   };
 
-  // Filtering
   const filtered = vehicles.filter(v => {
     const matchesSearch = `${v.brand} ${v.model} ${v.plate}`.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = filterStatus === 'ALL' || v.status === filterStatus;
@@ -124,7 +122,6 @@ export default function FleetPage() {
         </button>
       </div>
 
-      {/* Summary chips */}
       <div className="flex gap-3 mb-4 flex-wrap">
         {[
           { label: `${available} Available`, color: 'bg-green-50 text-green-700 border-green-200' },
@@ -135,7 +132,6 @@ export default function FleetPage() {
         ))}
       </div>
 
-      {/* Insurance expiry alert */}
       {expiringInsurance.length > 0 && (
         <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-amber-700">
           <AlertTriangle size={16} className="shrink-0" />
@@ -143,7 +139,6 @@ export default function FleetPage() {
         </div>
       )}
 
-      {/* Search + filter */}
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -170,7 +165,6 @@ export default function FleetPage() {
         </div>
       </div>
 
-      {/* Fleet table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -180,7 +174,8 @@ export default function FleetPage() {
                 <th className="px-5 py-3">Plate</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Rate (AED/mo)</th>
-                <th className="px-5 py-3">Mileage</th>
+                <th className="px-5 py-3">Deposit (AED)</th>
+                <th className="px-5 py-3">Mileage Limit</th>
                 <th className="px-5 py-3">Insurance Expiry</th>
                 <th className="px-5 py-3">RTA Expiry</th>
                 <th className="px-5 py-3 text-right">Actions</th>
@@ -199,7 +194,8 @@ export default function FleetPage() {
                     <td className="px-5 py-4 font-mono text-xs text-gray-600">{v.plate}</td>
                     <td className="px-5 py-4"><StatusBadge status={v.status} /></td>
                     <td className="px-5 py-4 font-semibold">{v.monthlyAed.toLocaleString()}</td>
-                    <td className="px-5 py-4 text-gray-600">{v.mileage.toLocaleString()} km</td>
+                    <td className="px-5 py-4 text-gray-600">{v.depositAed ? v.depositAed.toLocaleString() : '—'}</td>
+                    <td className="px-5 py-4 text-gray-600">{v.mileage.toLocaleString()} km/mo</td>
                     <td className="px-5 py-4">
                       <span className={insDays <= 30 && insDays > 0 ? 'text-red-600 font-semibold' : 'text-gray-600'}>
                         {v.insuranceExpiry} {insDays <= 30 && insDays > 0 && `(${insDays}d)`}
@@ -212,7 +208,6 @@ export default function FleetPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex gap-1.5 justify-end flex-wrap">
-                        {/* Status actions */}
                         {v.status === 'AVAILABLE' && (
                           <button
                             onClick={() => setStatusAction({ id: v.id, brand: v.brand, model: v.model, to: 'MAINTENANCE' })}
@@ -249,7 +244,6 @@ export default function FleetPage() {
                             <RotateCcw size={12} /> Reactivate
                           </button>
                         )}
-                        {/* Edit / Delete */}
                         <button onClick={() => openEdit(v)} className="p-1.5 text-gray-400 hover:text-brand hover:bg-brand-light rounded-lg transition-colors" title="Edit">
                           <Pencil size={14} />
                         </button>
@@ -262,14 +256,13 @@ export default function FleetPage() {
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="px-5 py-12 text-center text-gray-400">No vehicles found.</td></tr>
+                <tr><td colSpan={9} className="px-5 py-12 text-center text-gray-400">No vehicles found.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Edit Vehicle' : 'Add Vehicle'} wide>
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -280,7 +273,7 @@ export default function FleetPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
-            <input type="text" value={form.model} onChange={e => setForm({...form, model: e.target.value})} placeholder="e.g. Atto 3" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
+            <input type="text" value={form.model} onChange={e => setForm({...form, model: e.target.value})} placeholder="e.g. Shine E1" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
@@ -292,7 +285,7 @@ export default function FleetPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <input type="text" value={form.category} onChange={e => setForm({...form, category: e.target.value})} placeholder="e.g. Electric SUV" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
+            <input type="text" value={form.category} onChange={e => setForm({...form, category: e.target.value})} placeholder="e.g. Sedan, SUV, MPV" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
@@ -311,7 +304,6 @@ export default function FleetPage() {
           <div className="col-span-2 mt-2 mb-1">
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Rental Pricing</h4>
           </div>
-          {/* V1 rental-only: Selling Price hidden — re-enable when UAE commercial dealership licence is obtained (see CLAUDE.md § V1 Scope). */}
           <div className="hidden">
             <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price (AED)</label>
             <input type="number" value={form.priceAed || ''} onChange={e => setForm({...form, priceAed: +e.target.value})} placeholder="e.g. 240000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
@@ -324,14 +316,17 @@ export default function FleetPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Rent — Daily (AED)</label>
             <input type="number" value={form.dailyAed || ''} onChange={e => setForm({...form, dailyAed: +e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
-          {/* V1 rental-only: Lease Monthly hidden — re-enable when UAE finance licence is obtained (see CLAUDE.md § V1 Scope). */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Deposit (AED)</label>
+            <input type="number" value={form.depositAed || ''} onChange={e => setForm({...form, depositAed: +e.target.value})} placeholder="e.g. 1500" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
+          </div>
           <div className="hidden">
             <label className="block text-sm font-medium text-gray-700 mb-1">Lease — Monthly (AED)</label>
             <input type="number" value={form.leaseMonthlyAed || ''} onChange={e => setForm({...form, leaseMonthlyAed: +e.target.value})} placeholder="36-month instalment" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Current Mileage (km)</label>
-            <input type="number" value={form.mileage || ''} onChange={e => setForm({...form, mileage: +e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mileage Limit (km/month)</label>
+            <input type="number" value={form.mileage || ''} onChange={e => setForm({...form, mileage: +e.target.value})} placeholder="e.g. 9000" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -348,7 +343,7 @@ export default function FleetPage() {
             <input type="date" value={form.rtaExpiry} onChange={e => setForm({...form, rtaExpiry: e.target.value})} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
           <div className="col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Features (comma separated)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes (comma separated)</label>
             <input type="text" value={featuresText} onChange={e => setFeaturesText(e.target.value)} placeholder="e.g. Panoramic sunroof, Apple CarPlay, 420 km range" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-brand" />
           </div>
         </div>
@@ -369,7 +364,6 @@ export default function FleetPage() {
         </div>
       </Modal>
 
-      {/* Delete Confirm */}
       <ConfirmDialog
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
@@ -380,7 +374,6 @@ export default function FleetPage() {
         danger
       />
 
-      {/* Status Change Confirm */}
       <ConfirmDialog
         open={!!statusAction}
         onClose={() => setStatusAction(null)}

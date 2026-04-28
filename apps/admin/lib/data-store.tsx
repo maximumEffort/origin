@@ -12,11 +12,12 @@ export interface Vehicle {
   year: number;
   plate: string;
   category: string;
-  fuel: 'petrol' | 'electric' | 'hybrid';
+  fuel: 'petrol' | 'electric' | 'hybrid' | 'diesel';
   colour: string;
   seats: number;
   monthlyAed: number;
   dailyAed: number;
+  depositAed: number;
   mileage: number;
   status: 'AVAILABLE' | 'LEASED' | 'MAINTENANCE' | 'RETIRED';
   insuranceExpiry: string;
@@ -83,6 +84,7 @@ interface ApiVehicle {
   plateNumber?: string; colour: string; seats: number; fuelType?: string;
   transmission?: string; status: string; monthlyRateAed: number;
   dailyRateAed?: number; mileageLimitMonthly?: number;
+  depositAmountAed?: number | null;
   notes?: string | null;
   priceAed?: number | null;
   leaseMonthlyAed?: number | null;
@@ -136,6 +138,7 @@ function mapVehicle(v: ApiVehicle): Vehicle {
     plate: v.plateNumber ?? '', colour: v.colour, seats: v.seats,
     category: v.category?.nameEn ?? '', fuel: (v.fuelType?.toLowerCase() ?? 'petrol') as Vehicle['fuel'],
     monthlyAed: v.monthlyRateAed, dailyAed: v.dailyRateAed ?? 0,
+    depositAed: Number(v.depositAmountAed ?? 0),
     mileage: v.mileageLimitMonthly ?? 0,
     status: v.status as Vehicle['status'],
     insuranceExpiry: v.insuranceExpiry ? fmtDate(v.insuranceExpiry) : '',
@@ -265,6 +268,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         brand: v.brand, model: v.model, year: v.year, colour: v.colour,
         plateNumber: v.plate, seats: v.seats, monthlyRateAed: v.monthlyAed,
         dailyRateAed: v.dailyAed, mileageLimitMonthly: v.mileage,
+        depositAmountAed: v.depositAed || undefined,
         fuelType: v.fuel.toUpperCase(),
         notes: v.features.length > 0 ? v.features.join(', ') : undefined,
         priceAed: v.priceAed || undefined,
@@ -295,6 +299,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (patch.plate !== undefined) apiPatch.plateNumber = patch.plate;
       if (patch.monthlyAed !== undefined) apiPatch.monthlyRateAed = patch.monthlyAed;
       if (patch.dailyAed !== undefined) apiPatch.dailyRateAed = patch.dailyAed;
+      if (patch.depositAed !== undefined) apiPatch.depositAmountAed = patch.depositAed;
       if (patch.mileage !== undefined) apiPatch.mileageLimitMonthly = patch.mileage;
       if (patch.features !== undefined) apiPatch.notes = patch.features.join(', ');
       if (patch.brand !== undefined) apiPatch.brand = patch.brand;
@@ -324,14 +329,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ── Customer CRUD ──
   const addCustomer = useCallback((c: Omit<Customer, 'id'>) => {
-    // No create customer from admin — just local
     const id = `local_${Date.now()}`;
     setCustomers(prev => [...prev, { ...c, id }]);
   }, []);
 
   const updateCustomer = useCallback(async (id: string, patch: Partial<Customer>) => {
     setCustomers(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c));
-    // If KYC status is being changed, call the API
     if (patch.kycStatus === 'APPROVED') {
       try { await api.post(`/admin/customers/${id}/kyc/approve`); } catch (err) {
         fetchAll(); throw err;
