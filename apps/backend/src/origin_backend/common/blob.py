@@ -34,9 +34,7 @@ def _check_azure_available() -> bool:
 
     if not settings.azure_storage_blob_endpoint:
         _azure_available = False
-        logger.info(
-            "AZURE_STORAGE_BLOB_ENDPOINT not set — KYC uploads will use local filesystem"
-        )
+        logger.info("AZURE_STORAGE_BLOB_ENDPOINT not set — KYC uploads will use local filesystem")
         return False
 
     try:
@@ -52,7 +50,10 @@ def _check_azure_available() -> bool:
         return False
 
     _azure_available = True
-    logger.info("Azure Blob Storage configured — KYC uploads will go to %s", settings.azure_storage_blob_endpoint)
+    logger.info(
+        "Azure Blob Storage configured — KYC uploads will go to %s",
+        settings.azure_storage_blob_endpoint,
+    )
     return True
 
 

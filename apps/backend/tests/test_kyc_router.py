@@ -126,9 +126,7 @@ def test_get_my_document_404_when_not_found(client: TestClient, mock_prisma: Mag
     assert r.status_code == 404
 
 
-def test_get_my_document_404_on_cross_tenant_access(
-    client: TestClient, mock_prisma: MagicMock
-):
+def test_get_my_document_404_on_cross_tenant_access(client: TestClient, mock_prisma: MagicMock):
     """A customer asking for someone else's doc gets 404 (not 403, to avoid
     leaking existence)."""
     mock_prisma.customer.find_unique.return_value = _customer_user()
@@ -160,9 +158,7 @@ def test_add_document_enqueues_ocr_when_flag_on(
     mock_prisma.document.create.return_value = _document()
     mock_prisma.document.count.return_value = 1
 
-    with patch(
-        "origin_backend.kyc.service.schedule_ocr_if_enabled"
-    ) as mock_schedule:
+    with patch("origin_backend.kyc.service.schedule_ocr_if_enabled") as mock_schedule:
         r = client.post(
             "/v1/customers/me/documents",
             headers=_customer_headers(),
@@ -178,9 +174,7 @@ def test_add_document_enqueues_ocr_when_flag_on(
     assert kwargs["file_url"] == "https://storage.test/eid.pdf"
 
 
-def test_add_document_no_op_when_flag_off(
-    client: TestClient, mock_prisma: MagicMock, monkeypatch
-):
+def test_add_document_no_op_when_flag_off(client: TestClient, mock_prisma: MagicMock, monkeypatch):
     """With the feature flag off, schedule_ocr_if_enabled is still called
     but it short-circuits internally — verified at the function level
     elsewhere; here we just confirm the upload still succeeds."""
@@ -266,9 +260,7 @@ def test_approve_with_no_overrides(client: TestClient, mock_prisma: MagicMock):
     assert update_call.kwargs["data"]["reviewerOverrides"] is None
 
 
-def test_approve_with_overrides_persists_them(
-    client: TestClient, mock_prisma: MagicMock
-):
+def test_approve_with_overrides_persists_them(client: TestClient, mock_prisma: MagicMock):
     mock_prisma.adminuser.find_unique.return_value = _admin_user()
     mock_prisma.document.find_unique.return_value = _document()
     mock_prisma.document.update.return_value = _document(status="APPROVED")
@@ -288,16 +280,12 @@ def test_approve_with_overrides_persists_them(
     }
 
 
-def test_approve_promotes_kyc_when_eid_and_dl_approved(
-    client: TestClient, mock_prisma: MagicMock
-):
+def test_approve_promotes_kyc_when_eid_and_dl_approved(client: TestClient, mock_prisma: MagicMock):
     """After approving an Emirates ID, if a DL is already approved, the
     customer's kycStatus flips to APPROVED."""
     mock_prisma.adminuser.find_unique.return_value = _admin_user()
     mock_prisma.document.find_unique.return_value = _document(type_="EMIRATES_ID")
-    mock_prisma.document.update.return_value = _document(
-        type_="EMIRATES_ID", status="APPROVED"
-    )
+    mock_prisma.document.update.return_value = _document(type_="EMIRATES_ID", status="APPROVED")
     # find_many returns the freshly-approved EID + an already-approved DL.
     mock_prisma.document.find_many.return_value = [
         SimpleNamespace(type=SimpleNamespace(value="EMIRATES_ID")),
@@ -348,8 +336,7 @@ def test_reject_with_reason(client: TestClient, mock_prisma: MagicMock):
     update_call = mock_prisma.document.update.call_args
     assert update_call.kwargs["data"]["status"] == "REJECTED"
     assert (
-        update_call.kwargs["data"]["rejectionReason"]
-        == "Image is too blurry to read the ID number"
+        update_call.kwargs["data"]["rejectionReason"] == "Image is too blurry to read the ID number"
     )
 
 
@@ -377,6 +364,7 @@ def test_curate_id_document_drops_low_confidence_fields():
     # Synthesize a fake DI response. Each field has .value_string + .confidence.
     def fake_field(v, c):
         return SimpleNamespace(value_string=v, value=v, confidence=c)
+
     fake_doc = SimpleNamespace(
         fields={
             "FirstName": fake_field("Amr", 0.98),

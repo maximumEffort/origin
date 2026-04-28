@@ -80,8 +80,11 @@ async def delete_image(url: str) -> None:
 
 
 async def update_image_meta(
-    db: Any, vehicle_id: str, image_id: str,
-    is_primary: bool | None, sort_order: int | None,
+    db: Any,
+    vehicle_id: str,
+    image_id: str,
+    is_primary: bool | None,
+    sort_order: int | None,
 ) -> dict[str, Any]:
     """Update image metadata. If setting primary, unset others first."""
     data: dict[str, Any] = {}
@@ -90,7 +93,8 @@ async def update_image_meta(
         # Unset all other primaries for this vehicle
         await db.execute_raw(
             'UPDATE vehicle_images SET "isPrimary" = false WHERE "vehicleId" = $1 AND id != $2',
-            vehicle_id, image_id,
+            vehicle_id,
+            image_id,
         )
         data["isPrimary"] = True
     elif is_primary is False:
@@ -105,12 +109,16 @@ async def update_image_meta(
             data=data,
         )
         return {
-            "id": updated.id, "url": updated.url,
-            "isPrimary": updated.isPrimary, "sortOrder": updated.sortOrder,
+            "id": updated.id,
+            "url": updated.url,
+            "isPrimary": updated.isPrimary,
+            "sortOrder": updated.sortOrder,
         }
 
     image = await db.vehicleimage.find_unique(where={"id": image_id})
     return {
-        "id": image.id, "url": image.url,
-        "isPrimary": image.isPrimary, "sortOrder": image.sortOrder,
+        "id": image.id,
+        "url": image.url,
+        "isPrimary": image.isPrimary,
+        "sortOrder": image.sortOrder,
     }

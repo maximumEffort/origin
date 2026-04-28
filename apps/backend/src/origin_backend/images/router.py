@@ -84,9 +84,7 @@ async def update_vehicle_image(
     db: Prisma = Depends(get_db),
 ) -> dict[str, Any]:
     """Update image metadata (set primary, reorder)."""
-    image = await db.vehicleimage.find_first(
-        where={"id": image_id, "vehicleId": vehicle_id}
-    )
+    image = await db.vehicleimage.find_first(where={"id": image_id, "vehicleId": vehicle_id})
     if image is None:
         raise HTTPException(status_code=404, detail="Image not found")
 
@@ -102,9 +100,7 @@ async def delete_vehicle_image(
     db: Prisma = Depends(get_db),
 ) -> None:
     """Delete a vehicle image from Blob Storage and database."""
-    image = await db.vehicleimage.find_first(
-        where={"id": image_id, "vehicleId": vehicle_id}
-    )
+    image = await db.vehicleimage.find_first(where={"id": image_id, "vehicleId": vehicle_id})
     if image is None:
         raise HTTPException(status_code=404, detail="Image not found")
 

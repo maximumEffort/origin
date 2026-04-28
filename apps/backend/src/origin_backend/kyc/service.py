@@ -131,7 +131,8 @@ async def run_ocr(
             where={"id": document_id},
             data={
                 "ocrStatus": "COMPLETED",
-                "ocrFields": curated["fields"] | {
+                "ocrFields": curated["fields"]
+                | {
                     "_meta": {
                         "modelId": curated["modelId"],
                         "documentType": curated["documentType"],
@@ -150,7 +151,9 @@ async def run_ocr(
         where={"id": document_id},
         data={
             "ocrStatus": "FAILED",
-            "ocrFailureReason": str(last_error)[:500] if last_error else "OCR failed (unknown reason)",
+            "ocrFailureReason": str(last_error)[:500]
+            if last_error
+            else "OCR failed (unknown reason)",
             "ocrCompletedAt": datetime.now(UTC),
         },
     )
@@ -288,7 +291,9 @@ async def _maybe_promote_kyc(db: Prisma, *, customer_id: str) -> None:
     docs = await db.document.find_many(
         where={"customerId": customer_id, "status": "APPROVED"},
     )
-    has_eid = any((d.type if isinstance(d.type, str) else d.type.value) == "EMIRATES_ID" for d in docs)
+    has_eid = any(
+        (d.type if isinstance(d.type, str) else d.type.value) == "EMIRATES_ID" for d in docs
+    )
     has_dl = any(
         (d.type if isinstance(d.type, str) else d.type.value) == "DRIVING_LICENCE" for d in docs
     )
@@ -322,6 +327,7 @@ def serialise_document(doc: Any) -> dict[str, Any]:
     router (list/get-by-id) and the admin router. Mirrors customers.service
     `_serialise_document` but with the OCR additions.
     """
+
     def enum_val(v: Any) -> str | None:
         if v is None:
             return None

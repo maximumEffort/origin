@@ -21,10 +21,10 @@ from prisma import Prisma
 # ── Vehicle categories ──────────────────────────────────────────
 
 CATEGORIES = [
-    {"nameEn": "Sedan",    "nameAr": "سيدان",        "nameZh": "轿车",   "icon": "sedan"},
-    {"nameEn": "SUV",      "nameAr": "دفع رباعي",    "nameZh": "SUV",    "icon": "suv"},
-    {"nameEn": "Electric", "nameAr": "كهربائية",      "nameZh": "电动车", "icon": "electric"},
-    {"nameEn": "MPV",      "nameAr": "ميني فان",     "nameZh": "MPV",    "icon": "mpv"},
+    {"nameEn": "Sedan", "nameAr": "سيدان", "nameZh": "轿车", "icon": "sedan"},
+    {"nameEn": "SUV", "nameAr": "دفع رباعي", "nameZh": "SUV", "icon": "suv"},
+    {"nameEn": "Electric", "nameAr": "كهربائية", "nameZh": "电动车", "icon": "electric"},
+    {"nameEn": "MPV", "nameAr": "ميني فان", "nameZh": "MPV", "icon": "mpv"},
 ]
 
 # ── Fleet data ──────────────────────────────────────────────────
@@ -214,9 +214,7 @@ async def seed() -> None:
         cat_map: dict[str, str] = {}  # nameEn -> id
 
         for cat in CATEGORIES:
-            existing = await db.vehiclecategory.find_first(
-                where={"nameEn": cat["nameEn"]}
-            )
+            existing = await db.vehiclecategory.find_first(where={"nameEn": cat["nameEn"]})
             if existing:
                 cat_map[cat["nameEn"]] = existing.id
                 print(f"  Category '{cat['nameEn']}' already exists (id={existing.id})")

@@ -210,9 +210,7 @@ def _curate_driving_licence(raw: Any) -> dict[str, Any]:
     out: dict[str, Any] = {}
 
     for pair in kv_pairs:
-        key_text = (
-            getattr(getattr(pair, "key", None), "content", "") or ""
-        ).strip().lower()
+        key_text = (getattr(getattr(pair, "key", None), "content", "") or "").strip().lower()
         val = getattr(pair, "value", None)
         val_text = (getattr(val, "content", "") or "").strip()
         confidence = float(getattr(pair, "confidence", 0.0) or 0.0)
@@ -221,7 +219,9 @@ def _curate_driving_licence(raw: Any) -> dict[str, Any]:
             continue
 
         target_field: str | None = None
-        if any(t in key_text for t in ("licence no", "license no", "licence number", "license number")):
+        if any(
+            t in key_text for t in ("licence no", "license no", "licence number", "license number")
+        ):
             target_field = "licenceNumber"
         elif "date of birth" in key_text or "dob" in key_text:
             target_field = "dateOfBirth"
