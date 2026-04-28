@@ -10,9 +10,9 @@
     "cta": "获取报价"
   },
   "hero": {
-    "badge": "迪拜中国电动汽车",
-    "headline": "迪拜高端中国电动汽车，立即可租",
-    "subheadline": "蔚来、岚图、极氪和比亚迪——月租含保险、灵活的里程套餐、迪拜境内送车上门。",
+    "badge": "迪拜高端中国汽车",
+    "headline": "迪拜高端中国汽车，立即可租",
+    "subheadline": "红旗、极氪、WEY 等 — 月租含保险、灵活的里程套餐、迪拜境内送车上门。",
     "ctaBrowse": "浏览车辆",
     "ctaCalculator": "租赁计算器",
     "trustBadge1": "符合交通局法规",
@@ -33,6 +33,7 @@
     "filterSuv": "SUV",
     "filterSedan": "轿车",
     "filterPickup": "皮卡",
+    "filterMpv": "MPV",
     "fuel": {
       "electric": "电动",
       "petrol": "汽油",
@@ -49,7 +50,8 @@
       "7-Seat SUV": "7座SUV",
       "Electric Hatchback": "电动掀背车",
       "Compact Crossover": "紧凑型跨界车",
-      "Sedan": "轿车"
+      "Sedan": "轿车",
+      "MPV": "MPV"
     }
   },
   "calculator": {
@@ -154,14 +156,14 @@
   },
   "about": {
     "title": "关于 Origin",
-    "subtitle": "迪拜高端中国电动汽车月租服务。",
+    "subtitle": "迪拜高端中国汽车月租服务。",
     "badge": "我们的故事",
-    "stat1Value": "14",
+    "stat1Value": "11",
     "stat1Label": "可租车辆",
-    "stat2Value": "4",
+    "stat2Value": "7",
     "stat2Label": "中国品牌",
-    "stat3Value": "100%",
-    "stat3Label": "电动车队",
+    "stat3Value": "3",
+    "stat3Label": "动力类型",
     "stat4Value": "3",
     "stat4Label": "支持语言",
     "value1": "透明",
@@ -212,7 +214,7 @@
   },
   "footer": {
     "companyName": "Origin",
-    "tagline": "迪拜优质中国汽车租赁",
+    "tagline": "迪拜中国汽车月租。",
     "quickLinks": "快速链接",
     "legal": "法律信息",
     "privacy": "隐私政策",
@@ -234,6 +236,7 @@
     "fleetSuv": "SUV",
     "fleetSedan": "轿车",
     "fleetPickup": "皮卡",
+    "fleetMpv": "MPV",
     "calcLink": "租车计算器",
     "aboutLink": "关于 Origin"
   },
@@ -253,7 +256,7 @@
     "carInterest": "你好，我对租赁 {brand} {model} 感兴趣。"
   },
   "home": {
-    "heroBadge": "迪拜中国电动汽车月租",
+    "heroBadge": "迪拜汽车月租",
     "fleetEyebrow": "我们的车队",
     "viewAll": "查看所有车辆",
     "processEyebrow": "简单流程",
@@ -273,16 +276,20 @@
     "voyahTagline": "豪华电动先驱",
     "zeekrTagline": "电动性能",
     "bydTagline": "电动先锋",
+    "hongqiTagline": "中国旗舰",
+    "fortingTagline": "现代SUV车型",
+    "weyTagline": "豪华混动MPV",
+    "greatWallTagline": "可靠的跨界车",
     "calcEyebrow": "租赁计算器",
     "calcTitle": "计算您的月租费用",
     "calcSubtitle": "透明定价，无隐藏费用。根据您选择的车型、租期和里程即时获取报价。",
     "calcCta1": "使用计算器",
     "calcCta2": "获取定制报价",
-    "stat1Value": "14",
+    "stat1Value": "11",
     "stat1Label": "车辆",
     "stat2Value": "1–36 月",
     "stat2Label": "租期",
-    "stat3Value": "4",
+    "stat3Value": "7",
     "stat3Label": "中国品牌"
   },
   "cookies": {
