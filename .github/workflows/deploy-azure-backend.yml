@@ -3,10 +3,6 @@ name: Deploy backend (Azure)
 # Builds the FastAPI image into ACR and rolls a new Container App revision
 # whenever apps/backend/** changes on main. Authenticates to Azure via OIDC
 # federated credential — no long-lived secret stored anywhere.
-#
-# This is the sole backend deploy workflow. The Railway workflow
-# (.github/workflows/deploy-backend.yml) has been decommissioned per
-# ADR-0001 Phase 5.
 
 on:
   push:
@@ -29,7 +25,7 @@ permissions:
 env:
   AZURE_RG: rg-origin-prod-uaenorth
   ACR_NAME: acroriginprod
-  CONTAINER_APP: ca-origin-backend-prod
+  CONTAINER_APP: ca-origin-api
   IMAGE: origin-backend
 
 jobs:
@@ -38,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -48,9 +44,6 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Build + push image via ACR
-        # `az acr build` runs the Docker build inside Azure (no docker daemon
-        # needed on the runner). We tag both the commit SHA (immutable, used
-        # for the Container App update) and 'latest' (convenience).
         run: |
           az acr build \
             --registry $ACR_NAME \
@@ -60,8 +53,6 @@ jobs:
             apps/backend
 
       - name: Update Container App
-        # Pinning to the SHA tag — never to 'latest' on the Container App
-        # itself — so revisions are deterministic and rollback-able.
         run: |
           az containerapp update \
             --name $CONTAINER_APP \
@@ -70,12 +61,6 @@ jobs:
             --revision-suffix sha-$(echo ${{ github.sha }} | cut -c1-8)
 
       - name: Run Prisma migrations
-        # Run `prisma migrate deploy` inside the running container to apply
-        # any pending schema migrations. This is idempotent — if no pending
-        # migrations exist, it's a no-op.
-        #
-        # We exec into the latest revision rather than connecting from the
-        # runner, because the runner can't reach Azure PostgreSQL (firewall).
         run: |
           az containerapp exec \
             --name $CONTAINER_APP \
@@ -84,9 +69,6 @@ jobs:
           || echo "⚠️ Prisma migrate failed or exec not available — check manually"
 
       - name: Health check
-        # Give the new revision ~60s to roll, then verify /health/ready.
-        # Doesn't fail the workflow on healthcheck miss — Container App's
-        # own probe gating handles that — but surfaces it in the run summary.
         run: |
           sleep 60
           fqdn=$(az containerapp show --name $CONTAINER_APP --resource-group $AZURE_RG --query properties.configuration.ingress.fqdn -o tsv)
