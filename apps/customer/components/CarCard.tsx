@@ -64,7 +64,7 @@ export default async function CarCard({
                 : 'bg-neutral-500/15 text-neutral-500 border-neutral-400/20'
             }`}
           >
-            {available ? t('fleet.available') : t('fleet.leased')}
+            {available ? t('fleet.available') : t('fleet.rented')}
           </span>
         </div>
 
@@ -84,7 +84,7 @@ export default async function CarCard({
               <p className="text-[10px] text-neutral-500 mt-0.5">{t('fleet.vatNote')}</p>
             </div>
             <span className="text-xs font-semibold text-brand group-hover:text-brand-dark transition-colors flex items-center gap-1">
-              {t('fleet.leaseNow')}
+              {t('fleet.rentNow')}
               <ChevronRight size={13} className="rtl-flip" strokeWidth={2.5} />
             </span>
           </div>

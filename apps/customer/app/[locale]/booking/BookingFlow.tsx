@@ -528,7 +528,7 @@ export default function BookingFlow({ locale }: { locale: string }) {
                   <span className="font-medium text-neutral-900">{selectedCar.brand} {selectedCar.model}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-500">{t('leasePeriod')}</span>
+                  <span className="text-neutral-500">{t('rentalPeriod')}</span>
                   <span className="font-medium text-neutral-900">{duration} {t('months')}</span>
                 </div>
                 <div className="flex justify-between text-sm">

@@ -56,11 +56,11 @@ describe('CarCard', () => {
     expect(screen.getByText('fleet.available')).toBeInTheDocument();
   });
 
-  it('shows leased badge when not available', async () => {
+  it('shows rented badge when not available', async () => {
     const Card = await CarCard({ ...defaultProps, available: false });
     render(Card);
 
-    expect(screen.getByText('fleet.leased')).toBeInTheDocument();
+    expect(screen.getByText('fleet.rented')).toBeInTheDocument();
   });
 
   it('links to the vehicle detail page', async () => {

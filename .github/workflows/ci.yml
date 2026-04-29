@@ -60,6 +60,36 @@ jobs:
       - run: npm ci
       - run: npm run type-check --workspace=customer
       - run: npm run lint --workspace=customer
+      - name: V1 rental-only copy guard (#133)
+        # V1 operates under an RTA Fleet Operator licence only — customer-facing copy
+        # must not say "buy", "lease", "leasing", "down payment", "instalment". Allow
+        # the words inside i18n keys (e.g. "rentNow") but block them in any string
+        # value or hardcoded text. This guard blocks regressions until the dealership
+        # / finance licences land.
+        run: |
+          set -e
+          # Locale files — block forbidden words in JSON values (anything between `:` and the next `,` or `}`).
+          if grep -nEi ':\s*"[^"]*\b(buy|leas(e|ing|ed)|own your|purchase price|down payment|instalment)\b[^"]*"' apps/customer/locales/*.json; then
+            echo "::error::Forbidden V2/V3 copy found in customer locales — see #133"
+            exit 1
+          fi
+          # Source TSX/TS — block forbidden words in JSX text content and string literals.
+          # Allow false positives in:
+          #   - URL constants (e.g. car-leasing-business-production.up.railway.app — legacy backend, see #21)
+          #   - internal type/variable names (Lease, leases.filter)
+          #   - comments
+          # We grep only TSX text content and quoted string literals that match a user-facing word.
+          violations=$(grep -rEn -i \
+            --include='*.tsx' --include='*.ts' \
+            --exclude-dir=node_modules --exclude-dir=.next \
+            "(>([^<]*\b(Buy|Lease|Leasing|Leased)\b)|\"[^\"]*\b(Buy|Lease|Leasing|Leased)\b[^\"]*\"|'[^']*\b(Buy|Lease|Leasing|Leased)\b[^']*')" \
+            apps/customer/app apps/customer/components 2>/dev/null \
+            | grep -Ev "(car-leasing-business-production|//.*|/\*.*|interface |type |const \[?leases|leases\.|\.flatMap|useState<Lease|authFetch<Lease|allPayments)" || true)
+          if [ -n "$violations" ]; then
+            echo "::error::Forbidden V2/V3 copy found in customer source — see #133"
+            echo "$violations"
+            exit 1
+          fi
       - run: npm test --workspace=customer --if-present
       - run: npm run build --workspace=customer
         env:

@@ -72,7 +72,7 @@ export default async function CheckoutPage({
                 <span className="font-medium text-neutral-900">{car}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">{t('leasePeriod')}</span>
+                <span className="text-neutral-500">{t('rentalPeriod')}</span>
                 <span className="font-medium text-neutral-900">{duration}</span>
               </div>
               {startDate !== '—' && (
