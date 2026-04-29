@@ -320,6 +320,10 @@ async def create_lease_from_booking(
         data={"status": "CONVERTED"},
     )
 
+    # Reconcile the deposit collected at checkout (#129). If the customer paid
+    # the deposit on the booking, the first month's payment is already settled
+    # — leave it PENDING and we'd double-bill them on day 1 of the lease.
+    deposit_paid = bool(getattr(booking, "depositPaid", False))
     payments: list[dict[str, Any]] = []
     for i in range(duration_months):
         # Match JS Date.setMonth(i) — preserve day-of-month, advance month.
@@ -327,18 +331,20 @@ async def create_lease_from_booking(
             month=((booking.startDate.month - 1 + i) % 12) + 1,
             year=booking.startDate.year + ((booking.startDate.month - 1 + i) // 12),
         )
-        payments.append(
-            {
-                "leaseId": lease.id,
-                "customerId": booking.customerId,
-                "type": "DEPOSIT" if i == 0 else "MONTHLY",
-                "amountAed": monthly_rate,
-                "vatAmountAed": monthly_rate * 0.05,
-                "totalAed": monthly_rate * 1.05,
-                "dueDate": due,
-                "status": "PENDING",
-            }
-        )
+        is_first = i == 0
+        row: dict[str, Any] = {
+            "leaseId": lease.id,
+            "customerId": booking.customerId,
+            "type": "DEPOSIT" if is_first else "MONTHLY",
+            "amountAed": monthly_rate,
+            "vatAmountAed": monthly_rate * 0.05,
+            "totalAed": monthly_rate * 1.05,
+            "dueDate": due,
+            "status": "PAID" if (is_first and deposit_paid) else "PENDING",
+        }
+        if is_first and deposit_paid:
+            row["paidAt"] = datetime.now(UTC)
+        payments.append(row)
 
     if payments:
         await db.payment.create_many(data=payments)

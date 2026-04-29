@@ -37,7 +37,9 @@ def _admin(role: str, *, admin_id: str | None = None) -> SimpleNamespace:
     )
 
 
-def _booking(*, bid: str = "bk-1", status: str = "SUBMITTED") -> SimpleNamespace:
+def _booking(
+    *, bid: str = "bk-1", status: str = "SUBMITTED", deposit_paid: bool = False
+) -> SimpleNamespace:
     return SimpleNamespace(
         id=bid,
         reference=f"BK-2026-{bid.upper()}",
@@ -47,6 +49,8 @@ def _booking(*, bid: str = "bk-1", status: str = "SUBMITTED") -> SimpleNamespace
         startDate=datetime(2026, 4, 1, tzinfo=UTC),
         endDate=datetime(2026, 7, 1, tzinfo=UTC),
         quotedTotalAed=Decimal("3000.00"),
+        depositAmountAed=Decimal("1000.00"),
+        depositPaid=deposit_paid,
         mileagePackage=3000,
         notes=None,
         vehicle=SimpleNamespace(monthlyRateAed=Decimal("1000.00")),
@@ -312,6 +316,33 @@ def test_create_lease_happy_path(client: TestClient, mock_prisma: MagicMock):
     assert all(p["type"] == "MONTHLY" for p in payments_call[1:])
     # 3 months between 2026-04-01 and 2026-07-01
     assert len(payments_call) == 3
+    # Booking with depositPaid=False (default) leaves first payment PENDING
+    assert payments_call[0]["status"] == "PENDING"
+    assert "paidAt" not in payments_call[0]
+
+
+def test_create_lease_marks_first_payment_paid_when_deposit_collected(
+    client: TestClient, mock_prisma: MagicMock
+):
+    """#129 — if checkout already collected the deposit, the first lease
+    payment must be PAID, not PENDING. Otherwise the customer is double-billed."""
+    mock_prisma.adminuser.find_unique.return_value = _admin("SALES")
+    mock_prisma.booking.find_unique.return_value = _booking(
+        status="APPROVED", deposit_paid=True
+    )
+    mock_prisma.lease.find_first.return_value = None
+    mock_prisma.lease.count.return_value = 0
+    mock_prisma.lease.create.return_value = SimpleNamespace(id="ls-new")
+
+    r = client.post("/v1/admin/bookings/bk-1/create-lease", headers=_admin_headers("SALES"))
+    assert r.status_code == 201
+
+    payments = mock_prisma.payment.create_many.call_args.kwargs["data"]
+    assert payments[0]["type"] == "DEPOSIT"
+    assert payments[0]["status"] == "PAID"
+    assert payments[0]["paidAt"] is not None
+    # Subsequent rents stay PENDING
+    assert all(p["status"] == "PENDING" for p in payments[1:])
 
 
 # ── /admin/leases ──────────────────────────────────────────────────────

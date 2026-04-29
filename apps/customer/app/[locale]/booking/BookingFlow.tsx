@@ -179,7 +179,13 @@ export default function BookingFlow({ locale }: { locale: string }) {
         throw new Error(err.message ?? 'Failed to submit booking');
       }
 
-      // Step 3: Redirect to checkout with booking details
+      // Step 3: Redirect to checkout with booking details. The chargeable
+      // amount at checkout is the deposit (1 month) plus 5% VAT — NOT the
+      // full lease total. See #129. Backend re-derives the Stripe charge
+      // from the booking row independently of these display values (#128).
+      const depositValue = Number(booking.depositAmountAed ?? deposit);
+      const depositVat = parseFloat((depositValue * 0.05).toFixed(2));
+      const depositTotal = parseFloat((depositValue + depositVat).toFixed(2));
       const params = new URLSearchParams({
         bookingId: booking.id,
         ref: booking.reference,
@@ -188,9 +194,9 @@ export default function BookingFlow({ locale }: { locale: string }) {
         startDate,
         service: 'rent',
         monthlyRate: String(booking.quotedTotalAed ? Math.round(booking.quotedTotalAed / duration) : monthlyRate),
-        deposit: String(booking.depositAmountAed ?? deposit),
-        vat: String(booking.vatAmountAed ?? vat),
-        total: String(booking.grandTotalAed ?? totalDue),
+        deposit: String(depositValue),
+        vat: String(depositVat),
+        total: String(depositTotal),
       });
       router.push(`/${locale}/booking/checkout?${params.toString()}`);
     } catch (err) {
