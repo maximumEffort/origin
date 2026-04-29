@@ -6,10 +6,7 @@
 //   3. storage                                        — KYC docs + vehicle imagery
 //   4. postgres                                       — slowest, kicked off in parallel
 //   5. acr (container registry)                       — Container App pulls images from here
-//   6. docIntel (Azure AI Document Intelligence)      — KYC OCR (ADR-0002)
-//   7. containerapp (env + app)                       — depends on observability, kv, acr
-//   8. acrRoles, docIntelRoles                        — assign managed-identity roles
-//      after the Container App principal-id is known.
+//   6. containerapp (env + app)                       — depends on observability, kv, acr
 //
 // See docs/adr/0001-azure-uae-north-architecture.md for the why behind every choice.
 
@@ -72,7 +69,6 @@ var containerRegistryName = 'acr${appName}${environment}'                 // no 
 var storageAccountName    = 'stor${appName}${environment}${location}'      // no dashes, lowercase, ≤24
 var containerAppEnvName   = 'cae-${appName}-${environment}-${location}'
 var containerAppName      = 'ca-${appName}-backend-${environment}'
-var docIntelName          = 'di-${appName}-${environment}-${location}'
 
 // ── Resource group ──────────────────────────────────────────────────────────
 
@@ -140,16 +136,6 @@ module acr 'modules/containerregistry.bicep' = {
   }
 }
 
-module docIntel 'modules/docintel.bicep' = {
-  name: 'docintel'
-  scope: rg
-  params: {
-    location: location
-    accountName: docIntelName
-    tags: tags
-  }
-}
-
 module containerApp 'modules/containerapp.bicep' = {
   name: 'containerapp'
   scope: rg
@@ -161,9 +147,6 @@ module containerApp 'modules/containerapp.bicep' = {
     logAnalyticsName: logAnalyticsName
     appInsightsConnectionString: observability.outputs.appInsightsConnectionString
     vatRate: vatRate
-    corsAllowedOrigins: corsAllowedOrigins
-    azureDocIntelEndpoint: docIntel.outputs.endpoint
-    azureStorageBlobEndpoint: storage.outputs.blobEndpoint
     keyVaultSecretsUserRoleGuid: keyVaultSecretsUserRoleGuid
     tags: tags
   }
@@ -172,32 +155,14 @@ module containerApp 'modules/containerapp.bicep' = {
   ]
 }
 
-// Role assignments depend on the Container App's principalId being known, so they
-// run after containerApp completes. Splitting into separate modules keeps each
-// scoped to a single resource — Bicep can't assign cross-resource roles inline.
-module acrRoles 'modules/acr-roles.bicep' = {
-  name: 'acr-roles'
-  scope: rg
-  params: {
-    containerRegistryName: containerRegistryName
-    containerAppPrincipalId: containerApp.outputs.principalId
-  }
-  dependsOn: [
-    acr
-  ]
-}
-
-// docIntel + storage dependencies are inferred via the `existing` resource
-// references in the module — no explicit dependsOn needed.
-module docIntelRoles 'modules/docintel-roles.bicep' = {
-  name: 'docintel-roles'
-  scope: rg
-  params: {
-    docIntelName: docIntelName
-    storageAccountName: storageAccountName
-    containerAppPrincipalId: containerApp.outputs.principalId
-  }
-}
+// NOTE: The docintel.bicep, acr-roles.bicep, and docintel-roles.bicep modules
+// remain on disk but are NOT wired here. They were drafted ahead of a proper
+// reconciliation pass against the live Azure state — every attempt to deploy
+// them surfaced a different drift error (RoleAssignmentExists,
+// NetworkAclsBypassNotSupported, etc.). Until someone diffs each existing
+// resource against these templates and fixes the mismatches, leaving them
+// orphaned is safer than re-attaching and breaking the deploy. See the
+// follow-up issue tracking the reconciliation work.
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
 
@@ -206,4 +171,3 @@ output containerAppFqdn string   = containerApp.outputs.fqdn
 output keyVaultName string       = keyVault.outputs.name
 output postgresHost string       = postgres.outputs.fqdn
 output containerRegistryServer string = acr.outputs.loginServer
-output docIntelEndpoint string   = docIntel.outputs.endpoint
