@@ -23,6 +23,7 @@ from origin_backend.auth.schemas import (
     VerifyOtpRequest,
 )
 from origin_backend.common.prisma import get_db
+from origin_backend.common.ratelimit import check_rate_limit, rate_limit_by_ip
 from prisma import Prisma
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -33,7 +34,8 @@ async def send_otp_endpoint(
     body: SendOtpRequest,
     db: Prisma = Depends(get_db),
 ) -> dict[str, object]:
-    """Send an OTP via SMS to a UAE mobile number."""
+    """Send an OTP via SMS to a UAE mobile number. Limit: 3/min/phone."""
+    check_rate_limit(f"otp-send:phone:{body.phone}", limit=3, window_seconds=60)
     return await service.send_otp(db, body.phone)
 
 
@@ -42,7 +44,8 @@ async def verify_otp_endpoint(
     body: VerifyOtpRequest,
     db: Prisma = Depends(get_db),
 ) -> dict[str, object]:
-    """Verify the OTP and return tokens + the customer profile."""
+    """Verify the OTP and return tokens + the customer profile. Limit: 5/min/phone."""
+    check_rate_limit(f"otp-verify:phone:{body.phone}", limit=5, window_seconds=60)
     return await service.verify_otp(db, body.phone, body.otp)
 
 
@@ -52,10 +55,14 @@ async def refresh_endpoint(body: RefreshTokenRequest) -> dict[str, str]:
     return service.refresh_tokens(body.refresh_token)
 
 
-@router.post("/admin/login", response_model=AdminLoginResponse)
+@router.post(
+    "/admin/login",
+    response_model=AdminLoginResponse,
+    dependencies=[Depends(rate_limit_by_ip("admin-login", limit=5, window_seconds=60))],
+)
 async def admin_login_endpoint(
     body: AdminLoginRequest,
     db: Prisma = Depends(get_db),
 ) -> dict[str, object]:
-    """Email/password login for admin users."""
+    """Email/password login for admin users. Limit: 5/min/IP."""
     return await service.admin_login(db, str(body.email), body.password)

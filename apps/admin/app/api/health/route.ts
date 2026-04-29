@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const BACKEND_ORIGIN =
-  (process.env.NEXT_PUBLIC_API_URL ?? 'https://car-leasing-business-production.up.railway.app/v1')
+  (process.env.NEXT_PUBLIC_API_URL ?? 'https://ca-origin-backend-prod.proudriver-25bede2a.uaenorth.azurecontainerapps.io/v1')
     .replace(/\/v1\/?$/, '');
 
 const WEBSITE_URL =

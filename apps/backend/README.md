@@ -123,61 +123,62 @@ Stripe (PaymentIntent), Google Maps (Places + Geocoding + Distance),
 WhatsApp Business, Firebase Cloud Messaging, Tabby (BNPL),
 Checkout.com (cards / Apple Pay / Google Pay).
 
-## Deployment (Railway)
+## Deployment (Azure Container Apps — UAE North)
 
-`railway.toml` in this directory wires Railway up to the multi-stage
-Dockerfile and points the healthcheck at `/health/ready`.
+The backend runs on Azure Container Apps in the `uaenorth` region —
+provisioned by `infra/main.bicep` and deployed via
+`.github/workflows/deploy-azure-backend.yml` on every push to `main`
+that touches `apps/backend/**`. See `docs/adr/0001-azure-uae-north-architecture.md`
+and `docs/STATUS.md` for the broader picture.
 
-`.github/workflows/deploy-backend.yml` auto-deploys on every push to
-`main` that touches `apps/backend/**`. Manual re-deploys via the
-"Run workflow" button (e.g. after rotating a secret).
+Production target:
+`https://ca-origin-backend-prod.proudriver-25bede2a.uaenorth.azurecontainerapps.io`
+(custom domain `api.origin-auto.ae` pending DNS — task #27).
 
-### One-time setup
+### Runtime configuration
 
-1. **Create the Railway project** and a service named `backend` (or
-   set the `RAILWAY_SERVICE_NAME` repo variable to whatever you call
-   it). Point the service at this repo, root directory `apps/backend/`.
-2. **Provision Postgres** in the same Railway project; Railway will
-   inject `DATABASE_URL` into the service automatically.
-3. **Set the runtime env vars** in the Railway service settings:
+Secrets live in Azure Key Vault (`kv-origin-prod-uaenorth`) and are
+mounted as env vars on the Container App via Bicep. Container App MI
+has `Key Vault Secrets User`. Set/rotate via:
 
-   ```
-   JWT_SECRET                     # required, min 16 chars
-   JWT_REFRESH_SECRET             # recommended in prod
-   APP_ENV=production
-   CORS_ALLOWED_ORIGINS           # comma-separated; the customer + admin URLs
-   VAT_RATE=0.05
+```bash
+az keyvault secret set --vault-name kv-origin-prod-uaenorth \
+  --name "<SECRET-NAME>" --value "..."
+```
 
-   # Integrations — only set the ones in use for the current env
-   TWILIO_ACCOUNT_SID
-   TWILIO_AUTH_TOKEN
-   TWILIO_VERIFY_SERVICE_SID
-   SENDGRID_API_KEY
-   SENDGRID_FROM_EMAIL
-   STRIPE_SECRET_KEY
-   STRIPE_WEBHOOK_SECRET
-   GOOGLE_MAPS_API_KEY
-   WHATSAPP_ACCESS_TOKEN
-   WHATSAPP_PHONE_NUMBER_ID
-   FIREBASE_SERVICE_ACCOUNT_JSON  # whole service-account JSON, single line
-   TABBY_API_KEY
-   TABBY_MERCHANT_CODE
-   CHECKOUT_SECRET_KEY
-   CHECKOUT_WEBHOOK_SECRET
-   ```
+Env vars expected by the app:
 
-4. **Set repo secrets** for the deploy workflow:
-   - `RAILWAY_TOKEN` — project token from Railway dashboard → Project
-     Settings → Tokens.
-   - (optional) repo variable `RAILWAY_SERVICE_NAME` if the service
-     isn't called `backend`.
-5. **First deploy** runs on the next push to `main` (or trigger
-   manually via Actions → Deploy backend (Railway) → Run workflow).
-6. **Cut the frontends over** — set `NEXT_PUBLIC_API_URL` on both the
-   customer and admin Vercel projects to
-   `https://<railway-domain>/v1`. Vercel auto-redeploys on env-var
-   change.
-7. **Re-register webhooks** at the new domain:
-   - Checkout.com Dashboard → Webhooks →
-     `POST https://<railway-domain>/v1/webhooks/checkout`
-   - Stripe (when wired): same URL pattern.
+```
+JWT_SECRET                     # required, min 16 chars (KV: JWT-SECRET)
+JWT_REFRESH_SECRET             # recommended in prod
+APP_ENV=production
+CORS_ALLOWED_ORIGINS           # comma-separated customer + admin URLs
+VAT_RATE=0.05
+DATABASE_URL                   # pg-origin-prod-uaenorth
+AZURE_STORAGE_BLOB_ENDPOINT    # for KYC + vehicle image uploads
+
+# Integrations — only set the ones in use for the current env
+TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN
+TWILIO_VERIFY_SERVICE_SID
+SENDGRID_API_KEY
+SENDGRID_FROM_EMAIL
+STRIPE_SECRET_KEY
+STRIPE_WEBHOOK_SECRET
+GOOGLE_MAPS_API_KEY
+WHATSAPP_ACCESS_TOKEN
+WHATSAPP_PHONE_NUMBER_ID
+FIREBASE_SERVICE_ACCOUNT_JSON  # whole service-account JSON, single line
+TABBY_API_KEY
+TABBY_MERCHANT_CODE
+CHECKOUT_SECRET_KEY
+CHECKOUT_WEBHOOK_SECRET
+KYC_OCR_ENABLED=false          # ADR-0002 feature flag
+```
+
+### Webhooks
+
+Once `api.origin-auto.ae` is live, register webhooks at the canonical URL:
+
+- Checkout.com Dashboard → Webhooks → `POST https://api.origin-auto.ae/v1/webhooks/checkout`
+- Stripe (when wired): same URL pattern.

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ??
-  'https://car-leasing-business-production.up.railway.app/v1';
+  'https://ca-origin-backend-prod.proudriver-25bede2a.uaenorth.azurecontainerapps.io/v1';
 
 export async function POST(req: NextRequest) {
   const body = await req.text();

@@ -26,6 +26,7 @@ from origin_backend.admin.schemas import (
     UpdateVehicleRequest,
 )
 from origin_backend.common.auth import AuthenticatedUser, require_admin
+from origin_backend.common.pagination import parse_pagination
 from origin_backend.common.prisma import get_db
 from origin_backend.common.request_context import RequestInfo, get_request_info
 from prisma import Prisma
@@ -73,11 +74,13 @@ async def get_stats_endpoint(
 @router.get("/bookings")
 async def list_bookings_endpoint(
     status_filter: str | None = Query(None, alias="status"),
+    pagination: tuple[int, int] = Depends(parse_pagination),
     _=Depends(require_admin("SUPER_ADMIN", "SALES", "FINANCE")),
     db: Prisma = Depends(get_db),
 ) -> object:
-    """List all bookings (admin view with customer + vehicle details)."""
-    return _encode(await service.list_all_bookings(db, status_filter))
+    """List bookings (admin view with customer + vehicle details), paginated."""
+    page, limit = pagination
+    return _encode(await service.list_all_bookings(db, status_filter, page=page, limit=limit))
 
 
 @router.post("/bookings/{booking_id}/approve", status_code=status.HTTP_200_OK)
@@ -145,11 +148,13 @@ async def create_lease_endpoint(
 @router.get("/customers")
 async def list_customers_endpoint(
     kyc_status: str | None = Query(None, alias="kycStatus"),
+    pagination: tuple[int, int] = Depends(parse_pagination),
     _=Depends(require_admin("SUPER_ADMIN", "SALES")),
     db: Prisma = Depends(get_db),
 ) -> object:
-    """List customers with KYC status + document summary."""
-    return _encode(await service.list_all_customers(db, kyc_status))
+    """List customers with KYC status + document summary, paginated."""
+    page, limit = pagination
+    return _encode(await service.list_all_customers(db, kyc_status, page=page, limit=limit))
 
 
 @router.get("/customers/{customer_id}")
@@ -208,11 +213,13 @@ async def reject_kyc_endpoint(
 @router.get("/leases")
 async def list_leases_endpoint(
     status_filter: str | None = Query(None, alias="status"),
+    pagination: tuple[int, int] = Depends(parse_pagination),
     _=Depends(require_admin("SUPER_ADMIN", "SALES", "FINANCE")),
     db: Prisma = Depends(get_db),
 ) -> object:
-    """List leases with customer, vehicle, and payment details."""
-    return _encode(await service.list_all_leases(db, status_filter))
+    """List leases with customer, vehicle, and payment details, paginated."""
+    page, limit = pagination
+    return _encode(await service.list_all_leases(db, status_filter, page=page, limit=limit))
 
 
 # ── Fleet / Vehicles ──────────────────────────────────────────────────────
@@ -221,11 +228,13 @@ async def list_leases_endpoint(
 @router.get("/vehicles")
 async def list_vehicles_endpoint(
     status_filter: str | None = Query(None, alias="status"),
+    pagination: tuple[int, int] = Depends(parse_pagination),
     _=Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER", "SALES", "FINANCE")),
     db: Prisma = Depends(get_db),
 ) -> object:
-    """Admin view of vehicles with primary image + booking/lease counts."""
-    return _encode(await service.list_all_vehicles(db, status_filter))
+    """Admin view of vehicles with primary image, paginated."""
+    page, limit = pagination
+    return _encode(await service.list_all_vehicles(db, status_filter, page=page, limit=limit))
 
 
 @router.post("/vehicles", status_code=status.HTTP_201_CREATED)
