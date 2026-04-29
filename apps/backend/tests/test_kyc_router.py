@@ -64,16 +64,16 @@ def _customer_headers(customer_id: str = CUSTOMER_ID) -> dict[str, str]:
     return {"Authorization": f"Bearer {issue_access_token(sub=customer_id, role='customer')}"}
 
 
-def _admin_headers(admin_id: str = ADMIN_ID) -> dict[str, str]:
-    return {"Authorization": f"Bearer {issue_access_token(sub=admin_id, role='SUPER_ADMIN')}"}
+def _admin_headers(admin_id: str = ADMIN_ID, role: str = "SUPER_ADMIN") -> dict[str, str]:
+    return {"Authorization": f"Bearer {issue_access_token(sub=admin_id, role=role)}"}
 
 
-def _admin_user(admin_id: str = ADMIN_ID) -> SimpleNamespace:
+def _admin_user(admin_id: str = ADMIN_ID, role: str = "SUPER_ADMIN") -> SimpleNamespace:
     return SimpleNamespace(
         id=admin_id,
         email="ops@origin-auto.ae",
         fullName="Ops",
-        role=SimpleNamespace(value="SUPER_ADMIN"),
+        role=SimpleNamespace(value=role),
         isActive=True,
     )
 
@@ -206,6 +206,39 @@ def test_add_document_no_op_when_flag_off(client: TestClient, mock_prisma: Magic
 def test_reocr_requires_admin(client: TestClient):
     r = client.post(f"/v1/admin/documents/{DOC_ID}/reocr")
     assert r.status_code == 401
+
+
+def test_kyc_admin_allows_sales(client: TestClient, mock_prisma: MagicMock):
+    """KYC is a SALES function — SALES role must be allowed on review endpoints."""
+    mock_prisma.adminuser.find_unique.return_value = _admin_user(role="SALES")
+    mock_prisma.document.find_unique.return_value = _document()
+    r = client.post(
+        f"/v1/admin/documents/{DOC_ID}/reocr",
+        headers=_admin_headers(role="SALES"),
+    )
+    assert r.status_code == 200
+
+
+def test_kyc_admin_rejects_fleet_manager(client: TestClient, mock_prisma: MagicMock):
+    """FLEET_MANAGER is fleet-only and must NOT be able to review KYC docs (#131)."""
+    mock_prisma.adminuser.find_unique.return_value = _admin_user(role="FLEET_MANAGER")
+    r = client.post(
+        f"/v1/admin/documents/{DOC_ID}/reocr",
+        headers=_admin_headers(role="FLEET_MANAGER"),
+    )
+    assert r.status_code == 403
+    r = client.post(
+        f"/v1/admin/documents/{DOC_ID}/approve",
+        headers=_admin_headers(role="FLEET_MANAGER"),
+        json={},
+    )
+    assert r.status_code == 403
+    r = client.post(
+        f"/v1/admin/documents/{DOC_ID}/reject",
+        headers=_admin_headers(role="FLEET_MANAGER"),
+        json={"reason": "blurry"},
+    )
+    assert r.status_code == 403
 
 
 def test_reocr_returns_processing_state(client: TestClient, mock_prisma: MagicMock):

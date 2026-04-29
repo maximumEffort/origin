@@ -37,7 +37,7 @@ router = APIRouter(prefix="/admin/documents", tags=["kyc-admin"])
 async def reocr_endpoint(
     document_id: str,
     background_tasks: BackgroundTasks,
-    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "SALES")),
     db: Prisma = Depends(get_db),
 ) -> object:
     """Re-run OCR against the document. Resets ocrStatus and re-calls Azure DI."""
@@ -48,7 +48,7 @@ async def reocr_endpoint(
 async def approve_endpoint(
     document_id: str,
     body: ApproveDocumentRequest | None = None,
-    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "SALES")),
     db: Prisma = Depends(get_db),
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
@@ -71,7 +71,7 @@ async def approve_endpoint(
 async def reject_endpoint(
     document_id: str,
     body: dict[str, Any] = Body(...),
-    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "SALES")),
     db: Prisma = Depends(get_db),
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
