@@ -33,9 +33,7 @@ def test_jwt_secret_too_short_refuses_to_start():
 def test_production_without_azure_blob_refuses_to_start():
     """#130 — fail-open guard: production must not fall back to local /uploads."""
     with pytest.raises(RuntimeError, match="AZURE_STORAGE_BLOB_ENDPOINT"):
-        validate_startup_settings(
-            _settings(is_production=True, azure_storage_blob_endpoint=None)
-        )
+        validate_startup_settings(_settings(is_production=True, azure_storage_blob_endpoint=None))
 
 
 def test_production_with_azure_blob_starts():
@@ -49,6 +47,4 @@ def test_production_with_azure_blob_starts():
 
 def test_dev_without_azure_blob_starts():
     """Dev / staging must keep working without Azure Blob (local /uploads is fine there)."""
-    validate_startup_settings(
-        _settings(is_production=False, azure_storage_blob_endpoint=None)
-    )
+    validate_startup_settings(_settings(is_production=False, azure_storage_blob_endpoint=None))

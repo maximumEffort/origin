@@ -327,9 +327,7 @@ def test_create_lease_marks_first_payment_paid_when_deposit_collected(
     """#129 — if checkout already collected the deposit, the first lease
     payment must be PAID, not PENDING. Otherwise the customer is double-billed."""
     mock_prisma.adminuser.find_unique.return_value = _admin("SALES")
-    mock_prisma.booking.find_unique.return_value = _booking(
-        status="APPROVED", deposit_paid=True
-    )
+    mock_prisma.booking.find_unique.return_value = _booking(status="APPROVED", deposit_paid=True)
     mock_prisma.lease.find_first.return_value = None
     mock_prisma.lease.count.return_value = 0
     mock_prisma.lease.create.return_value = SimpleNamespace(id="ls-new")

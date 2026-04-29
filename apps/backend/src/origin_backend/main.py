@@ -101,6 +101,7 @@ app.include_router(images_router, prefix="/v1")  # /v1/admin/vehicles/:id/images
 app.include_router(kyc_admin_router, prefix="/v1")
 app.include_router(checkout_webhook_router, prefix="/v1")
 
+
 def validate_startup_settings(s: object) -> None:
     """
     Refuse to start the app on misconfigurations that would otherwise fail
