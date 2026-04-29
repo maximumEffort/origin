@@ -96,14 +96,14 @@ def test_quote_30_days_no_addons_no_discount(client, mock_prisma: MagicMock):
     )
     assert r.status_code == 200
     body = r.json()
-    assert body["duration_days"] == 30
-    assert body["subtotal_aed"] == 1000.0
-    assert body["vat_amount_aed"] == 50.0
-    assert body["total_aed"] == 1050.0
-    assert body["deposit_aed"] == 1000.0
-    assert len(body["monthly_breakdown"]) == 1
-    assert body["monthly_breakdown"][0]["amount_aed"] == 1000.0
-    assert body["monthly_breakdown"][0]["total_aed"] == 1050.0
+    assert body["durationDays"] == 30
+    assert body["subtotalAed"] == 1000.0
+    assert body["vatAmountAed"] == 50.0
+    assert body["totalAed"] == 1050.0
+    assert body["depositAed"] == 1000.0
+    assert len(body["monthlyBreakdown"]) == 1
+    assert body["monthlyBreakdown"][0]["amountAed"] == 1000.0
+    assert body["monthlyBreakdown"][0]["totalAed"] == 1050.0
 
 
 def test_quote_applies_mileage_surcharge(client, mock_prisma: MagicMock):
@@ -120,7 +120,7 @@ def test_quote_applies_mileage_surcharge(client, mock_prisma: MagicMock):
     )
     body = r.json()
     # monthly = 1000 + (5000-3000)*0.05 = 1100
-    assert body["subtotal_aed"] == 1100.0
+    assert body["subtotalAed"] == 1100.0
 
 
 def test_quote_applies_addons(client, mock_prisma: MagicMock):
@@ -137,7 +137,7 @@ def test_quote_applies_addons(client, mock_prisma: MagicMock):
     )
     body = r.json()
     # monthly = 1000 + 200 (cdw) + 150 (driver) = 1350
-    assert body["subtotal_aed"] == 1350.0
+    assert body["subtotalAed"] == 1350.0
 
 
 def test_quote_applies_long_term_discount(client, mock_prisma: MagicMock):
@@ -155,7 +155,7 @@ def test_quote_applies_long_term_discount(client, mock_prisma: MagicMock):
     body = r.json()
     # 365 days exactly. monthly = 1000 * 0.92 = 920. months = 365/30 = 12.166...
     # subtotal = round2(920 * 12.1666...) = round2(11193.33...) = 11193.33
-    assert body["subtotal_aed"] == 11193.33
+    assert body["subtotalAed"] == 11193.33
 
 
 def test_quote_discount_180_days(client, mock_prisma: MagicMock):
@@ -170,11 +170,11 @@ def test_quote_discount_180_days(client, mock_prisma: MagicMock):
         },
     )
     body = r.json()
-    assert body["duration_days"] == 180
+    assert body["durationDays"] == 180
     # monthly *= 0.96
     # months = 180/30 = 6.0
     # subtotal = round2(960 * 6) = 5760
-    assert body["subtotal_aed"] == 5760.0
+    assert body["subtotalAed"] == 5760.0
 
 
 def test_quote_unknown_addon_keys_are_ignored(client, mock_prisma: MagicMock):
@@ -190,4 +190,48 @@ def test_quote_unknown_addon_keys_are_ignored(client, mock_prisma: MagicMock):
         },
     )
     body = r.json()
-    assert body["subtotal_aed"] == 1000.0
+    assert body["subtotalAed"] == 1000.0
+
+
+def test_quote_accepts_camelcase_input(client, mock_prisma: MagicMock):
+    """#138 §1 — calculator now accepts camelCase keys on input.
+
+    populate_by_name=True on the schema means either spelling is accepted,
+    but the wire response is camelCase only. Backwards-compat for legacy
+    snake_case clients is verified by every other test in this file.
+    """
+    mock_prisma.vehicle.find_unique.return_value = _vehicle("1000.00", 3000)
+    r = client.post(
+        "/v1/calculator/quote",
+        json={
+            "vehicleId": "veh-1",
+            "startDate": "2026-04-01",
+            "endDate": "2026-05-01",
+            "mileagePackage": 3000,
+            "addOns": {"cdw_waiver": True},
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "subtotalAed" in body
+    assert "subtotal_aed" not in body
+    assert body["subtotalAed"] == 1200.0  # 1000 + 200 cdw add-on
+
+
+def test_quote_response_is_only_camelcase(client, mock_prisma: MagicMock):
+    """No snake_case keys leak through on the response side."""
+    mock_prisma.vehicle.find_unique.return_value = _vehicle("1000.00", 3000)
+    r = client.post(
+        "/v1/calculator/quote",
+        json={
+            "vehicle_id": "veh-1",
+            "start_date": "2026-04-01",
+            "end_date": "2026-05-01",
+            "mileage_package": 3000,
+        },
+    )
+    body = r.json()
+    snake_leaks = [k for k in body if "_" in k]
+    assert snake_leaks == []
+    monthly_keys = list(body["monthlyBreakdown"][0].keys())
+    assert all("_" not in k for k in monthly_keys)

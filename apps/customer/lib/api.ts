@@ -56,28 +56,29 @@ export interface VehiclesResponse {
 }
 
 export interface QuoteRequest {
-  vehicle_id: string;
-  start_date: string;
-  end_date: string;
-  mileage_package: number;
-  add_ons: string[];
+  vehicleId: string;
+  startDate: string;
+  endDate: string;
+  mileagePackage: number;
+  addOns?: Record<string, boolean>;
 }
 
 export interface MonthlyBreakdown {
-  month: number;
-  amount_aed: number;
-  vat_aed: number;
-  total_aed: number;
+  /** Display label, e.g. "April 2026". Backend formats this server-side. */
+  month: string;
+  amountAed: number;
+  vatAed: number;
+  totalAed: number;
 }
 
 export interface QuoteResponse {
-  duration_days: number;
-  subtotal_aed: number;
-  vat_rate: number;
-  vat_amount_aed: number;
-  total_aed: number;
-  deposit_aed: number;
-  monthly_breakdown: MonthlyBreakdown[];
+  durationDays: number;
+  subtotalAed: number;
+  vatRate: number;
+  vatAmountAed: number;
+  totalAed: number;
+  depositAed: number;
+  monthlyBreakdown: MonthlyBreakdown[];
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

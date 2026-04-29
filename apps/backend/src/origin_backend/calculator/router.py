@@ -18,7 +18,11 @@ from prisma import Prisma
 router = APIRouter(prefix="/calculator", tags=["calculator"])
 
 
-@router.post("/quote", response_model=QuoteResponse)
+@router.post(
+    "/quote",
+    response_model=QuoteResponse,
+    response_model_by_alias=True,  # emit camelCase on the wire (#138 §1)
+)
 async def get_quote_endpoint(
     body: QuoteRequest,
     db: Prisma = Depends(get_db),
