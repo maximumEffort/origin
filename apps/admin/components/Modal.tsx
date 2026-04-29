@@ -27,6 +27,16 @@ export default function Modal({ open, onClose, title, children, wide }: ModalPro
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const titleId = useId();
 
+  // Capture the latest `onClose` in a ref so the focus/keyboard-lock effect
+  // can stay stable while the modal is open. Without this, parents that pass
+  // an inline arrow function (the common case — e.g. customers/page.tsx
+  // edit form) would recreate `onClose` on every keystroke, re-running this
+  // effect's cleanup and causing the modal to refocus on every input event.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!open) return;
 
@@ -51,7 +61,7 @@ export default function Modal({ open, onClose, title, children, wide }: ModalPro
 
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -77,7 +87,7 @@ export default function Modal({ open, onClose, title, children, wide }: ModalPro
       // Restore focus to whatever opened the modal.
       previouslyFocused.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
