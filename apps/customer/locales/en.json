@@ -128,7 +128,11 @@
     "termsNote": "By confirming, you agree to our",
     "termsLink": "Terms & Conditions",
     "processing": "Processing…",
-    "confirmPay": "Confirm & Pay Deposit"
+    "confirmPay": "Confirm & Pay Deposit",
+    "kycPendingTitle": "KYC review in progress",
+    "kycPendingDesc": "Your documents are being verified. We'll notify you when KYC is approved (typically within 1 business day) — you can complete payment then.",
+    "kycRejectedTitle": "KYC verification failed",
+    "kycRejectedDesc": "Your documents couldn't be verified. Please check your dashboard for details and re-upload before continuing."
   },
   "trust": {
     "title": "Why Origin",

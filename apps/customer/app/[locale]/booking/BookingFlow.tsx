@@ -566,6 +566,29 @@ export default function BookingFlow({ locale }: { locale: string }) {
                 </div>
               )}
 
+              {/* KYC gate (#132): Pay Now is disabled until admin approves the
+                  uploaded documents — bookings on PENDING/REJECTED customers
+                  are rejected by the backend, so we surface the reason here
+                  rather than letting the user hit a 403 on submit. */}
+              {customer && customer.kycStatus !== 'APPROVED' && (
+                <div className={`rounded-xl p-5 mb-6 border ${
+                  customer.kycStatus === 'REJECTED'
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-amber-50 border-amber-200'
+                }`}>
+                  <p className={`text-sm font-semibold mb-1 ${
+                    customer.kycStatus === 'REJECTED' ? 'text-red-800' : 'text-amber-800'
+                  }`}>
+                    {customer.kycStatus === 'REJECTED' ? t('kycRejectedTitle') : t('kycPendingTitle')}
+                  </p>
+                  <p className={`text-sm ${
+                    customer.kycStatus === 'REJECTED' ? 'text-red-700' : 'text-amber-700'
+                  }`}>
+                    {customer.kycStatus === 'REJECTED' ? t('kycRejectedDesc') : t('kycPendingDesc')}
+                  </p>
+                </div>
+              )}
+
               {bookingError && (
                 <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 mb-4">
                   {bookingError}
@@ -579,7 +602,7 @@ export default function BookingFlow({ locale }: { locale: string }) {
                 </button>
                 <button
                   onClick={handlePayNow}
-                  disabled={processing || !customer}
+                  disabled={processing || !customer || customer.kycStatus !== 'APPROVED'}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-60"
                 >
                   {processing ? t('processing') : t('confirmPay')}

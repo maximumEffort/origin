@@ -128,7 +128,11 @@
     "termsNote": "确认即表示您同意我们的",
     "termsLink": "条款与条件",
     "processing": "处理中…",
-    "confirmPay": "确认并支付押金"
+    "confirmPay": "确认并支付押金",
+    "kycPendingTitle": "身份验证审核中",
+    "kycPendingDesc": "我们正在审核您的证件,通常在一个工作日内完成。审核通过后您将收到通知,届时即可完成付款。",
+    "kycRejectedTitle": "身份验证未通过",
+    "kycRejectedDesc": "您的证件未能通过验证。请在仪表板查看详情并重新上传后再继续。"
   },
   "trust": {
     "title": "为什么选择 Origin",

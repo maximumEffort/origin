@@ -17,18 +17,18 @@ CUSTOMER_ID = "cust-1"
 OTHER_CUSTOMER_ID = "cust-2"
 
 
-def _customer(customer_id: str = CUSTOMER_ID) -> SimpleNamespace:
+def _customer(customer_id: str = CUSTOMER_ID, kyc: str = "APPROVED") -> SimpleNamespace:
     return SimpleNamespace(
         id=customer_id,
         phone="+971501234567",
         email=None,
         fullName="Amr",
-        kycStatus=SimpleNamespace(value="PENDING"),
+        kycStatus=SimpleNamespace(value=kyc),
         preferredLanguage=SimpleNamespace(value="en"),
     )
 
 
-def _vehicle() -> SimpleNamespace:
+def _vehicle(vstatus: str = "AVAILABLE") -> SimpleNamespace:
     return SimpleNamespace(
         id="veh-1",
         monthlyRateAed=Decimal("1000.00"),
@@ -36,6 +36,7 @@ def _vehicle() -> SimpleNamespace:
         brand="BYD",
         model="Atto 3",
         year=2026,
+        status=SimpleNamespace(value=vstatus),
     )
 
 
@@ -193,7 +194,8 @@ def test_create_booking_rejects_unknown_field(client: TestClient, mock_prisma: M
 
 def test_submit_booking_happy_path(client: TestClient, mock_prisma: MagicMock):
     mock_prisma.customer.find_unique.return_value = _customer()
-    mock_prisma.booking.find_unique.return_value = _booking()
+    mock_prisma.booking.find_unique.return_value = _booking(with_vehicle=True)
+    mock_prisma.booking.find_first.return_value = None  # no overlap
     mock_prisma.booking.update.return_value = _booking(status="SUBMITTED")
 
     r = client.post("/v1/bookings/bk-1/submit", headers=_customer_headers())
@@ -214,7 +216,9 @@ def test_submit_booking_404_when_missing(client: TestClient, mock_prisma: MagicM
 
 def test_submit_booking_403_when_other_customers(client: TestClient, mock_prisma: MagicMock):
     mock_prisma.customer.find_unique.return_value = _customer()
-    mock_prisma.booking.find_unique.return_value = _booking(customer_id=OTHER_CUSTOMER_ID)
+    mock_prisma.booking.find_unique.return_value = _booking(
+        customer_id=OTHER_CUSTOMER_ID, with_vehicle=True
+    )
     r = client.post("/v1/bookings/bk-1/submit", headers=_customer_headers())
     assert r.status_code == 403
     mock_prisma.booking.update.assert_not_awaited()
@@ -222,10 +226,94 @@ def test_submit_booking_403_when_other_customers(client: TestClient, mock_prisma
 
 def test_submit_booking_400_when_not_draft(client: TestClient, mock_prisma: MagicMock):
     mock_prisma.customer.find_unique.return_value = _customer()
-    mock_prisma.booking.find_unique.return_value = _booking(status="SUBMITTED")
+    mock_prisma.booking.find_unique.return_value = _booking(status="SUBMITTED", with_vehicle=True)
     r = client.post("/v1/bookings/bk-1/submit", headers=_customer_headers())
     assert r.status_code == 400
     assert "draft" in r.json()["message"].lower()
+
+
+# ── #132 booking validation: KYC + availability + overlap ──────────────
+
+
+def test_create_booking_403_when_kyc_not_approved(client: TestClient, mock_prisma: MagicMock):
+    """Customers with PENDING/REJECTED KYC cannot create bookings (#132)."""
+    mock_prisma.customer.find_unique.return_value = _customer(kyc="PENDING")
+    r = client.post(
+        "/v1/bookings",
+        headers=_customer_headers(),
+        json={
+            "vehicle_id": "veh-1",
+            "start_date": "2026-04-01",
+            "end_date": "2026-05-01",
+            "mileage_package": 3000,
+        },
+    )
+    assert r.status_code == 403
+    assert r.headers.get("X-KYC-Status") == "PENDING"
+    mock_prisma.booking.create.assert_not_awaited()
+
+
+def test_create_booking_409_when_vehicle_unavailable(client: TestClient, mock_prisma: MagicMock):
+    """Vehicles in MAINTENANCE/RETIRED/LEASED cannot accept new bookings (#132)."""
+    mock_prisma.customer.find_unique.return_value = _customer()
+    mock_prisma.vehicle.find_unique.return_value = _vehicle(vstatus="MAINTENANCE")
+    r = client.post(
+        "/v1/bookings",
+        headers=_customer_headers(),
+        json={
+            "vehicle_id": "veh-1",
+            "start_date": "2026-04-01",
+            "end_date": "2026-05-01",
+            "mileage_package": 3000,
+        },
+    )
+    assert r.status_code == 409
+    mock_prisma.booking.create.assert_not_awaited()
+
+
+def test_create_booking_409_when_overlapping_existing_booking(
+    client: TestClient, mock_prisma: MagicMock
+):
+    """Two customers cannot book the same vehicle for overlapping dates (#132)."""
+    mock_prisma.customer.find_unique.return_value = _customer()
+    mock_prisma.vehicle.find_unique.return_value = _vehicle()
+    mock_prisma.booking.find_first.return_value = _booking(bid="bk-other")  # overlap exists
+    r = client.post(
+        "/v1/bookings",
+        headers=_customer_headers(),
+        json={
+            "vehicle_id": "veh-1",
+            "start_date": "2026-04-01",
+            "end_date": "2026-05-01",
+            "mileage_package": 3000,
+        },
+    )
+    assert r.status_code == 409
+    assert "already booked" in r.json()["message"].lower()
+    mock_prisma.booking.create.assert_not_awaited()
+
+
+def test_submit_booking_409_when_vehicle_no_longer_available(
+    client: TestClient, mock_prisma: MagicMock
+):
+    """A vehicle retired between draft and submit blocks the submit (#132)."""
+    mock_prisma.customer.find_unique.return_value = _customer()
+    booking = _booking(with_vehicle=True)
+    booking.vehicle.status = SimpleNamespace(value="RETIRED")
+    mock_prisma.booking.find_unique.return_value = booking
+    r = client.post("/v1/bookings/bk-1/submit", headers=_customer_headers())
+    assert r.status_code == 409
+    mock_prisma.booking.update.assert_not_awaited()
+
+
+def test_submit_booking_403_when_kyc_revoked(client: TestClient, mock_prisma: MagicMock):
+    """If KYC was rejected after the draft was created, submit is blocked (#132)."""
+    mock_prisma.customer.find_unique.return_value = _customer(kyc="REJECTED")
+    mock_prisma.booking.find_unique.return_value = _booking(with_vehicle=True)
+    r = client.post("/v1/bookings/bk-1/submit", headers=_customer_headers())
+    assert r.status_code == 403
+    assert r.headers.get("X-KYC-Status") == "REJECTED"
+    mock_prisma.booking.update.assert_not_awaited()
 
 
 # ── GET /bookings ──────────────────────────────────────────────────────
