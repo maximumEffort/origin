@@ -1,7 +1,7 @@
 # ADR-0002: KYC OCR data flow — Azure Document Intelligence
 
-**Status:** Proposed
-**Date:** 2026-04-26
+**Status:** Accepted — Phase A (backend) and Phase B (admin UI) shipped 2026-04-26. Phase C (customer pre-fill) deferred pending real upload pipeline. Feature flag `KYC_OCR_ENABLED=false` in production. See `docs/STATUS.md`.
+**Date:** 2026-04-26 (proposed) · 2026-04-26 (Phase A+B merged)
 **Deciders:** Amr (Engineering), Bella Ma (GM, MENA Region)
 **Related:** ADR-0001 (Azure UAE North architecture), issues #17 (legal review), #16 (RTA licence). Tasks #17–#20.
 

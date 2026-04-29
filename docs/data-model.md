@@ -1,8 +1,11 @@
 # Data Model
 
-> Chinese Car Leasing Platform — Dubai, UAE
+> Chinese EV Rental Platform — Dubai/Abu Dhabi, UAE
+> Operating entity in V1: Shanghai Car Rental LLC. Service: **rental only**.
 
-This document defines all core entities, their fields, relationships, and business rules.
+This document is a **conceptual reference**. The single source of truth is
+`apps/backend/prisma/schema.prisma` (24 enums, 17 models). When this doc and the schema
+diverge, the schema wins and this doc should be updated to match.
 
 ---
 
@@ -43,7 +46,7 @@ Represents a physical car in the fleet.
 | `id` | UUID | Primary key |
 | `vin` | String | Vehicle Identification Number (unique) |
 | `plate_number` | String | UAE plate number |
-| `brand` | Enum | `BYD`, `HAVAL`, `GWM`, `CHERY`, `OMODA`, `GEELY`, `JAECOO` |
+| `brand` | Enum | 16 Chinese brands — `BYD`, `HAVAL`, `GWM`, `CHERY`, `OMODA`, `GEELY`, `JAECOO`, `NIO`, `VOYAH`, `ZEEKR`, `DONGFENG`, `BESTUNE`, `HONGQI`, `FORTING`, `WEY`, `GREAT_WALL`. Truth: `enum Brand` in `schema.prisma`. |
 | `model` | String | e.g. "BYD Atto 3", "HAVAL Jolion" |
 | `year` | Integer | Manufacturing year |
 | `category_id` | UUID | FK → VehicleCategory |

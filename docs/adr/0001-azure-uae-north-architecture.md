@@ -1,7 +1,7 @@
 # ADR-0001: Migrate backend infrastructure to Azure UAE North
 
-**Status:** Proposed
-**Date:** 2026-04-26
+**Status:** Accepted — executed 2026-04-26 → 2026-04-29. All five phases complete. See `docs/STATUS.md` for live state.
+**Date:** 2026-04-26 (proposed) · 2026-04-29 (executed)
 **Deciders:** Amr (Engineering), Bella Ma (GM, MENA Region)
 **Related:** issues #21 (UAE migration), #49 (Bahrain → UAE), #50 (UAE provider eval)
 

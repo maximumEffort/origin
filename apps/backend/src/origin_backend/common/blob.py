@@ -4,7 +4,7 @@ Azure Blob Storage upload helper for KYC documents.
 Supports two modes:
 - Azure Blob (production on Azure): when AZURE_STORAGE_BLOB_ENDPOINT is configured
   AND the azure-storage-blob + azure-identity packages are installed.
-- Local filesystem (Railway / dev): saves to KYC_UPLOAD_DIR and serves via /uploads/.
+- Local filesystem (dev only): saves to KYC_UPLOAD_DIR and serves via /uploads/.
 
 All Azure imports are lazy and wrapped in try/except so this module is
 import-safe even when the azure-* optional dependencies aren't installed.

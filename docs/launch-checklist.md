@@ -1,16 +1,22 @@
-# Launch Checklist — Origin Car Leasing Platform
+# Launch Checklist — Origin Car Rental Platform
 
-**Platform:** Website (Next.js), Backend API (NestJS), Mobile App (Flutter), Admin Dashboard (React), n8n Automations  
-**Target Launch Date:** TBD  
-**Infrastructure Target:** Azure UAE North (Dubai)  
-**Locales:** English (en), Arabic (ar — RTL), Simplified Chinese (zh-CN)  
+> ⚠ **This checklist (dated 2026-03-31) is a generic V0 reference template.** Many items
+> below are now done; some describe a stack that no longer matches reality (NestJS,
+> Flutter, n8n). For **current launch readiness**, see `docs/STATUS.md`. This file is
+> kept for completeness and as a reminder of items that are still open (RTA licence,
+> VAT TRN, real Stripe/Twilio keys, vehicle photos, legal review, pen test).
+
+**Platform:** Customer site (Next.js 15), Admin dashboard (Next.js 15), Backend API (FastAPI on Azure Container Apps). Mobile app and n8n automation engine are deferred.
+**Target Launch Date:** Pending RTA Fleet Operator Licence (issue #16).
+**Infrastructure Target:** Azure UAE North (Dubai) — **live**.
+**Locales:** English (en), Arabic (ar — RTL), Simplified Chinese (zh-CN).
 
 ---
 
 ## 1. DNS & Domain
 
 - [ ] Domain `[your-domain.ae]` registered (UAE registrar preferred)
-- [ ] Nameservers configured to point to Vercel (website) and Azure/Railway (API backend)
+- [ ] Nameservers configured to point to Vercel (frontends) and Azure UAE North (API backend at `api.origin-auto.ae`)
 - [ ] SSL/TLS certificate provisioned (auto via Vercel + Azure)
 - [ ] MX records configured for transactional email (SendGrid or SMTP provider)
 - [ ] SPF, DKIM, DMARC records configured for email deliverability

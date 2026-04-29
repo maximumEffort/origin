@@ -1,95 +1,112 @@
 # Technical Architecture
 
-> Chinese Car Leasing Platform — Dubai, UAE
+> Chinese EV Rental Platform — Dubai/Abu Dhabi, UAE
+> Operating entity: Shanghai Car Rental LLC. Service in V1: **rental only**.
+
+> **Note on this document.** This is the high-level architecture. **Operational reality
+> lives in `docs/STATUS.md`.** Some sections of this file describe the original V0 plan
+> (Node.js backend, Sanity CMS, Flutter mobile app, n8n automation engine, etc.).
+> Sections that are **live** are marked _[live]_; sections that are **deferred / never
+> built / superseded** are marked _[deferred]_ or _[superseded]_. When in doubt, trust
+> the running code and `STATUS.md`.
 
 ---
 
-## System Overview
+## System Overview _[live]_
 
 ```
-┌────────────────────────────────────────────────┐
-│                  CLIENTS                          │
-│  Website (Next.js)   Mobile App (Flutter)          │
-│  Admin Dashboard     n8n Automation Engine         │
-└──────────────────────────┬─────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                       CLIENTS                            │
+│  Customer site (Next.js 15)        origin-auto.ae         │
+│  Admin dashboard (Next.js 15)      admin.origin-auto.ae   │
+└──────────────────────────┬─────────────────────────────┘
                          │ HTTPS / REST API
-┌──────────────────────────┴─────────────────────┐
-│              BACKEND API                           │
-│  Node.js / Express (or NestJS)                     │
-│  REST endpoints • Auth • Business Logic             │
-│  Webhook emitter (for n8n triggers)                │
-└──────────────────────────┬─────────────────────┘
+┌──────────────────────────┴─────────────────────────────┐
+│                    BACKEND API                            │
+│  FastAPI + Prisma Python 3.12                             │
+│  on Azure Container Apps (UAE North)                      │
+│  api.origin-auto.ae                                       │
+└──────────────────────────┬─────────────────────────────┘
                          │
-          ┌────────────┴────────────┐
-          │                         │
-┌─────────┴──────┐ ┌─────────┴──────┐
-│  PostgreSQL DB  │ │  File Storage   │
-│  (UAE region)  │ │  (UAE region)  │
-└───────────────┘ └───────────────┘
-  Vehicles, Customers      KYC docs, agreements,
-  Leases, Payments         vehicle images
+          ┌──────────────┼──────────────┐
+          │              │              │
+┌─────────┴──────┐ ┌─────┴──────┐ ┌─────┴──────────┐
+│ Postgres Flex   │ │ Blob       │ │ Document       │
+│ pg-origin-prod  │ │ Storage    │ │ Intelligence   │
+│ (UAE North)    │ │ (UAE North)│ │ S0 (UAE North) │
+└────────────────┘ └────────────┘ └────────────────┘
+  Vehicles, Customers   KYC private,    KYC OCR (ADR-0002,
+  Leases, Payments,     vehicle public, gated by feature
+  AuditLog, ErrorLog    kyc-ocr-raw     flag — phase A+B
+                        private         merged)
 ```
+
+Deferred / aspirational, kept here for reference but **not yet in this repo**:
+- Mobile app (Flutter) — _[deferred]_
+- n8n self-hosted automation engine — _[deferred]_
+- Sanity CMS — _[deferred]_; copy lives in `next-intl` JSON locale files
+- Front Door / WAF — _[deferred per ADR-0001]_
 
 ---
 
 ## Stack Decisions
 
-### Frontend — Website
+### Frontend — Customer site _[live]_
 
 | Concern | Choice | Reason |
 |---|---|---|
-| Framework | **Next.js 14** (App Router) | SSR for SEO, built-in i18n routing, large ecosystem |
-| Styling | **Tailwind CSS** + `tailwindcss-rtl` | Utility-first, RTL plugin for Arabic support |
-| State | **Zustand** (lightweight) or React Query | Simple global state + server state caching |
-| CMS | **Sanity** | Real-time, flexible schema, multilingual content support |
+| Framework | **Next.js 15** (App Router) | SSR for SEO, built-in i18n routing, large ecosystem |
+| Styling | **Tailwind CSS** with **native RTL utilities** (`ms-/me-/start-/end-`) | No `tailwindcss-rtl` plugin — native is sufficient and simpler |
+| i18n | **next-intl 3.14** | Three locales day-one: `en`, `ar`, `zh-CN` |
 | Forms | **React Hook Form** + Zod | Type-safe validation |
-| Maps | **Google Maps JS API** | Pickup/dropoff selection |
-| Payments | **Checkout.com JS SDK** | Drop-in UI, AED support |
+| Payments | **Stripe** (PaymentIntents, server-derived amount) | AED support, deposit-only checkout (PR #141) |
+| Errors | **Sentry** | Optional, off by default in dev |
 
-### Frontend — Mobile App
-
-| Concern | Choice | Reason |
-|---|---|---|
-| Framework | **Flutter 3** | Single codebase iOS + Android, Arabic RTL built-in |
-| State | **Riverpod** | Flutter-native, testable, scales well |
-| HTTP | **Dio** | Interceptors for auth headers, retry logic |
-| Storage | **Hive** | Local caching, fast, no native dependencies |
-| Maps | **Google Maps Flutter plugin** | |
-| Push | **Firebase Cloud Messaging** | iOS + Android push notifications |
-
-### Backend API
+### Frontend — Admin dashboard _[live]_
 
 | Concern | Choice | Reason |
 |---|---|---|
-| Runtime | **Node.js** | Same language as frontend, large talent pool |
-| Framework | **NestJS** | Structured, TypeScript-first, decorators, DI |
-| ORM | **Prisma** | Type-safe, great DX, migration tooling |
-| Database | **PostgreSQL** | Relational, JSONB support, battle-tested |
-| Auth | **JWT** + OTP via Twilio | Stateless, phone-first login |
-| Validation | **class-validator** (built into NestJS) | |
-| Docs | **Swagger / OpenAPI** (auto-generated) | |
-| Queue | **BullMQ** (Redis-backed) | Async jobs: PDF generation, notifications |
+| Framework | **Next.js 15** (App Router) | Shared toolchain with customer site |
+| Auth | **httpOnly-cookie proxy** (`jose` for JWT) | Backend JWT never reaches client JS |
+| Icons | **lucide-react** | |
 
-### Infrastructure
+### Frontend — Mobile App _[deferred — not in repo]_
 
-| Concern | Choice | Reason |
-|---|---|---|
-| Cloud | **Azure UAE North** (primary) | Dubai data residency, lowest latency |
-| App hosting | **Azure App Service** or Docker + AKS | Containerised for portability |
-| Database | **Azure Database for PostgreSQL** | Managed, automated backups |
-| File storage | **Azure Blob Storage** (private container) | KYC docs, agreements, images |
-| CDN | **Azure CDN** or Cloudflare | Fast image/asset delivery across UAE |
-| CI/CD | **GitHub Actions** | Automate test, build, deploy on push |
-| Secrets | **Azure Key Vault** | API keys, tokens, DB credentials |
-| Monitoring | **Azure Monitor** + Sentry | Errors, performance, uptime |
+Flutter + Riverpod was the original V0 plan. Not yet implemented; web-only at V1.
 
-### Automation
+### Backend API _[live]_
 
 | Concern | Choice | Reason |
 |---|---|---|
-| Engine | **n8n** (self-hosted) | UAE data residency, cost-effective, visual workflows |
-| Hosting | Same Azure UAE North server | Keeps all data in-region |
-| Trigger | Webhooks from Backend API | Decoupled, reliable |
+| Runtime | **Python 3.12** (uv toolchain) | |
+| Framework | **FastAPI ≥0.115** | Async, Pydantic-native, OpenAPI auto-generated |
+| ORM | **Prisma Python ≥0.15** | Same schema definition shared conceptually with frontend |
+| Database | **PostgreSQL** (Azure Flex Server) | Relational, JSONB, in UAE region |
+| Auth | **JWT** (`python-jose`) + OTP via **Twilio Verify** | Stateless, phone-first login |
+| Validation | **Pydantic 2** | |
+| Docs | **OpenAPI** auto-generated by FastAPI at `/docs` | |
+| Rate limiting | **In-process per-IP** (PR #142, issue #113) | Auth endpoints only |
+| Logging | **structlog** + ErrorLog DB persistence + X-Request-ID | PR #142, issues #112 |
+
+### Infrastructure _[live]_
+
+| Concern | Choice | Reason |
+|---|---|---|
+| Cloud | **Azure UAE North** | Dubai data residency, lowest latency, Founders Hub credits |
+| App hosting | **Azure Container Apps** (`ca-origin-backend-prod`) | Managed serverless containers; replaces the original "App Service or AKS" plan |
+| Database | **Azure Database for PostgreSQL Flexible Server** (B1ms) | Managed, automated backups |
+| File storage | **Azure Blob Storage** — private `kyc-documents`, public `vehicle-imagery`, private `kyc-ocr-raw` | KYC + agreements + images + OCR raw |
+| KYC OCR | **Azure Document Intelligence S0** (ADR-0002) | Read API + prebuilt-idDocument |
+| CI/CD | **GitHub Actions** + ACR | Auto-deploy backend on push to `main`; infra deploy is manual-dispatch only (PR #145) |
+| Secrets | **Azure Key Vault** (RBAC mode) | Container App MI references secrets directly |
+| Monitoring | **Azure Monitor** + Application Insights + Sentry (frontend) | |
+| CDN | _[deferred]_ Azure CDN / Cloudflare not yet in front of the Container App |
+
+### Automation — n8n _[deferred — not yet deployed]_
+
+The original plan included a self-hosted n8n instance for WhatsApp/email/SMS automation
+flows. Not yet provisioned. Notification fan-out happens directly from the FastAPI
+backend (Twilio + SendGrid), with audit captured in the `NotificationLog` model.
 
 ---
 
@@ -232,15 +249,25 @@ All backend API calls from the admin dashboard go through `/api/backend/...` pro
 
 ---
 
-## CI/CD Pipeline (GitHub Actions)
+## CI/CD Pipeline (GitHub Actions) _[live]_
+
+Three workflows:
 
 ```
-On push to main:
-  1. Lint + type-check
-  2. Run unit tests
-  3. Build Docker image
-  4. Push to Azure Container Registry
-  5. Deploy to Azure App Service (staging)
-  6. Run smoke tests
-  7. Manual approval gate → deploy to production
+.github/workflows/ci.yml
+  paths-filter splits into 3 jobs (customer / admin / backend); skips unchanged apps.
+  Customer job runs the #133 forbidden-words guard ("buy"/"lease/-to-own"/etc.).
+  Lint + type-check + tests for the relevant workspace(s).
+
+.github/workflows/deploy-azure-backend.yml
+  Trigger: push to main on apps/backend/**
+  Build Docker image → push to acroriginprod.azurecr.io → update Container App revision.
+
+.github/workflows/deploy-azure-infra.yml
+  Trigger: workflow_dispatch ONLY (auto-trigger removed in PR #145).
+  Runs `az deployment sub create` on the Bicep template.
+  Manual until Bicep ↔ Azure drift is reconciled. See infra/README.md.
 ```
+
+Frontends (customer + admin) auto-deploy from `main` via Vercel. There is no separate
+"staging" environment in the live setup; preview deploys come from Vercel PR previews.

@@ -1,6 +1,16 @@
-# n8n Setup Guide — Origin Car Leasing Platform
+# n8n Setup Guide — Origin Car Rental Platform
 
-This guide covers the deployment, configuration, and ongoing management of n8n for the Origin car leasing platform in Dubai. All automations run on a self-hosted n8n instance in a UAE-region server to comply with data residency requirements.
+> ## ⚠ DEFERRED — n8n is not yet deployed
+>
+> **Status (2026-04-29):** This document is the original V0 plan. n8n is **not** part
+> of the V1 launch stack. Notification fan-out (WhatsApp / SMS / email) currently
+> happens directly from the FastAPI backend via Twilio + SendGrid, with audit captured
+> in the `NotificationLog` model. This guide is preserved for the future when an
+> automation engine is needed for more complex multi-step flows. When that time comes,
+> revisit this doc against current Azure infrastructure (Container Apps, not raw VMs)
+> and update the domain references — the canonical Origin domain is **`origin-auto.ae`**.
+
+This guide covers the deployment, configuration, and ongoing management of n8n for the Origin car rental platform in Dubai. All automations run on a self-hosted n8n instance in a UAE-region server to comply with data residency requirements.
 
 ---
 
@@ -17,7 +27,7 @@ Before starting the n8n setup, ensure you have:
   - Install: `curl -fsSL https://get.docker.com | sh && sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose`
 
 ### Domain & SSL
-- **Domain:** `n8n.[domain].ae` (e.g., `n8n.origin.ae`)
+- **Domain:** `n8n.[domain].ae` (e.g., `n8n.origin-auto.ae`)
 - **DNS A record:** Point to your server's public IP
 - **SSL certificate:** Valid certificate for the domain
   - Option A (Recommended): Let's Encrypt (free, auto-renewing via Certbot)
@@ -80,13 +90,13 @@ Create `/opt/n8n/.env` with all required variables:
 
 ```env
 # n8n Core
-N8N_HOST=n8n.origin.ae
+N8N_HOST=n8n.origin-auto.ae
 N8N_PORT=5678
 N8N_PROTOCOL=https
 N8N_PATH=/
 N8N_EXPOSE_API=true
 NODE_ENV=production
-WEBHOOK_TUNNEL_URL=https://n8n.origin.ae/
+WEBHOOK_TUNNEL_URL=https://n8n.origin-auto.ae/
 
 # Database (PostgreSQL)
 DB_TYPE=postgresdb
@@ -101,7 +111,7 @@ DB_POSTGRESDB_SSL=true
 ENCRYPTION_KEY=[generate-32-char-hex-string]
 
 # Backend API Integration
-BACKEND_API_URL=https://api.origin.ae/v1
+BACKEND_API_URL=https://api.origin-auto.ae/v1
 BACKEND_API_KEY=[generate-jwt-or-api-key]
 BACKEND_REQUEST_TIMEOUT=30000
 
@@ -117,7 +127,7 @@ TWILIO_FROM_NUMBER=+971XXXXXXXXX
 
 # SendGrid
 SENDGRID_API_KEY=[from-sendgrid]
-SENDGRID_FROM_EMAIL=noreply@origin.ae
+SENDGRID_FROM_EMAIL=noreply@origin-auto.ae
 SENDGRID_FROM_NAME=Origin Car Leasing
 
 # Firebase
@@ -126,17 +136,17 @@ FIREBASE_SERVICE_ACCOUNT_JSON={"type": "service_account", ...}
 
 # Admin & Team Contacts
 ADMIN_WHATSAPP_NUMBER=+971XXXXXXXXX
-ADMIN_EMAIL=admin@origin.ae
+ADMIN_EMAIL=admin@origin-auto.ae
 FLEET_MANAGER_WHATSAPP=+971XXXXXXXXX
-FLEET_MANAGER_EMAIL=fleet@origin.ae
+FLEET_MANAGER_EMAIL=fleet@origin-auto.ae
 SALES_TEAM_PHONES=+971XXXXXXXXX,+971YYYYYYYYY
 SALES_MANAGER_PHONE=+971XXXXXXXXX
 COMPANY_NAME=Origin
 
 # Frontend URLs
-FRONTEND_URL=https://origin.ae
-CUSTOMER_PORTAL_URL=https://portal.origin.ae
-ADMIN_PORTAL_URL=https://admin.origin.ae
+FRONTEND_URL=https://origin-auto.ae
+CUSTOMER_PORTAL_URL=https://portal.origin-auto.ae
+ADMIN_PORTAL_URL=https://admin.origin-auto.ae
 
 # Logging & Monitoring
 LOG_LEVEL=info
@@ -279,7 +289,7 @@ services:
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=admin@origin.ae"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@origin-auto.ae"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
     ports:
       - "80:80"
@@ -310,7 +320,7 @@ Create `/opt/n8n/traefik/config.yml` for n8n routing:
 http:
   routers:
     n8n:
-      rule: "Host(`n8n.origin.ae`)"
+      rule: "Host(`n8n.origin-auto.ae`)"
       service: n8n
       entryPoints:
         - websecure
@@ -367,10 +377,10 @@ def789         traefik:v2.10          Up 2 minutes
 
 ```bash
 # Test n8n API endpoint
-curl -k -H "Authorization: Bearer [your-jwt-token]" https://n8n.origin.ae/api/v1/workflows
+curl -k -H "Authorization: Bearer [your-jwt-token]" https://n8n.origin-auto.ae/api/v1/workflows
 
 # Check SSL certificate
-openssl s_client -connect n8n.origin.ae:443 -servername n8n.origin.ae
+openssl s_client -connect n8n.origin-auto.ae:443 -servername n8n.origin-auto.ae
 
 # Verify database connection
 docker-compose exec postgres psql -U n8n -d n8n -c "SELECT version();"
@@ -401,9 +411,9 @@ For initial evaluation or if self-hosting is not immediately feasible, n8n Cloud
 
 ### Step 1: Initial Admin Setup
 
-1. Navigate to `https://n8n.origin.ae` in browser
+1. Navigate to `https://n8n.origin-auto.ae` in browser
 2. On first load, you'll see **Setup Wizard**:
-   - Email: `admin@origin.ae`
+   - Email: `admin@origin-auto.ae`
    - Password: Create strong password (16+ chars, mixed case, numbers, symbols)
    - Save to password manager
 3. Click **Finish Setup**
@@ -479,7 +489,7 @@ Use Postman or curl to send test payloads:
 
 ```bash
 # Test booking-confirmation webhook
-curl -X POST https://n8n.origin.ae/webhook/booking-confirmation \
+curl -X POST https://n8n.origin-auto.ae/webhook/booking-confirmation \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $WEBHOOK_SECRET" \
   -d '{
@@ -493,7 +503,7 @@ curl -X POST https://n8n.origin.ae/webhook/booking-confirmation \
     "monthlyRate": 1200,
     "depositAmount": 2500,
     "startDate": "2026-04-15",
-    "paymentUrl": "https://checkout.origin.ae/invoice/TEST-001"
+    "paymentUrl": "https://checkout.origin-auto.ae/invoice/TEST-001"
   }'
 ```
 
@@ -928,7 +938,7 @@ docker-compose restart postgres
 
 | Variable | Example | Purpose |
 |---|---|---|
-| `N8N_HOST` | `n8n.origin.ae` | Public domain for n8n |
+| `N8N_HOST` | `n8n.origin-auto.ae` | Public domain for n8n |
 | `N8N_PROTOCOL` | `https` | Use SSL |
 | `DB_POSTGRESDB_HOST` | `postgres` | PostgreSQL container name |
 | `ENCRYPTION_KEY` | `abc123...` | Encrypt sensitive data |
@@ -937,8 +947,8 @@ docker-compose restart postgres
 | `TWILIO_ACCOUNT_SID` | From Twilio | Twilio account identifier |
 | `SENDGRID_API_KEY` | From SendGrid | Email API key |
 | `FIREBASE_PROJECT_ID` | From Firebase | Push notification service |
-| `BACKEND_API_URL` | `https://api.origin.ae/v1` | NestJS backend endpoint |
-| `ADMIN_EMAIL` | `admin@origin.ae` | Alert recipient |
+| `BACKEND_API_URL` | `https://api.origin-auto.ae/v1` | NestJS backend endpoint |
+| `ADMIN_EMAIL` | `admin@origin-auto.ae` | Alert recipient |
 
 ---
 

@@ -1,8 +1,9 @@
 /**
- * API client for the Origin Car Leasing backend.
+ * API client for the Origin backend (Shanghai Car Rental LLC — rental V1).
  *
- * Uses NEXT_PUBLIC_API_URL env var (already set in Vercel).
- * Falls back to the Railway production URL until custom domain is configured.
+ * Uses NEXT_PUBLIC_API_URL env var (set in Vercel for prod/preview, .env.local for dev).
+ * Code-side fallback is the Azure Container App FQDN, so the app still works if the
+ * env var is somehow unset; production env should be `https://api.origin-auto.ae/v1`.
  */
 
 const API_BASE =

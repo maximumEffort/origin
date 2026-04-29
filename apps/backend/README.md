@@ -131,9 +131,11 @@ provisioned by `infra/main.bicep` and deployed via
 that touches `apps/backend/**`. See `docs/adr/0001-azure-uae-north-architecture.md`
 and `docs/STATUS.md` for the broader picture.
 
-Production target:
+Production target (canonical):
+`https://api.origin-auto.ae`
+
+Container App FQDN (fallback):
 `https://ca-origin-backend-prod.proudriver-25bede2a.uaenorth.azurecontainerapps.io`
-(custom domain `api.origin-auto.ae` pending DNS — task #27).
 
 ### Runtime configuration
 
@@ -178,7 +180,7 @@ KYC_OCR_ENABLED=false          # ADR-0002 feature flag
 
 ### Webhooks
 
-Once `api.origin-auto.ae` is live, register webhooks at the canonical URL:
+Register webhooks at the canonical URL:
 
 - Checkout.com Dashboard → Webhooks → `POST https://api.origin-auto.ae/v1/webhooks/checkout`
-- Stripe (when wired): same URL pattern.
+- Stripe (when live keys are wired): same URL pattern.
