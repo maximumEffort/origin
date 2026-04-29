@@ -290,7 +290,7 @@ export default function DashboardContent({ locale }: { locale: string }) {
                           </div>
                           <div>
                             <span className="text-neutral-500 text-xs">{t('period')}</span>
-                            <p className="font-medium text-neutral-900">{b.durationDays} {t('period')}</p>
+                            <p className="font-medium text-neutral-900">{b.durationDays} {t('days')}</p>
                           </div>
                           <div>
                             <span className="text-neutral-500 text-xs">{t('totalDue')}</span>
