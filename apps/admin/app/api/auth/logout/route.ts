@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
+import {
+  SESSION_COOKIE,
+  API_ACCESS_COOKIE,
+  API_REFRESH_COOKIE,
+} from '@/lib/auth-cookies';
 
 export async function POST() {
   const response = NextResponse.json({ ok: true });
-  const cookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict' as const,
-    maxAge: 0,
-    path: '/',
-  };
-  response.cookies.set('admin_session', '', cookieOptions);
-  response.cookies.set('admin_api_token', '', cookieOptions);
+  response.cookies.delete(SESSION_COOKIE);
+  response.cookies.delete(API_ACCESS_COOKIE);
+  response.cookies.delete(API_REFRESH_COOKIE);
   return response;
 }
