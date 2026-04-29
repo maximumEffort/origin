@@ -204,24 +204,26 @@ async def renew(
 
 async def _free_vehicle_if_unleased(db: Prisma, vehicle_id: str) -> bool:
     """
-    Set `vehicle.status` to AVAILABLE if no ACTIVE lease references it.
+    Set `vehicle.status` to AVAILABLE iff no ACTIVE lease references it.
 
-    Returns True if the vehicle was freed, False otherwise. The "no other
-    active lease" guard is defensive — today the schema doesn't allow
-    parallel ACTIVE leases on the same vehicle, but if it ever does (or if
-    this is called mid-transition before the new lease is committed) we
-    won't accidentally make a leased car bookable.
+    Implemented as a single conditional UPDATE so the check and the write
+    are one statement at the database layer — eliminates the read/write
+    race that would otherwise let a concurrently-created ACTIVE lease slip
+    in between the check and the update.
+
+    Returns True if the vehicle was actually flipped to AVAILABLE, False
+    if a concurrent (or pre-existing) ACTIVE lease holds it.
     """
-    other_active = await db.lease.find_first(
-        where={"vehicleId": vehicle_id, "status": "ACTIVE"},
+    rows = await db.execute_raw(
+        'UPDATE "vehicles" SET "status" = \'AVAILABLE\' '
+        'WHERE "id" = $1 '
+        "AND NOT EXISTS ("
+        '  SELECT 1 FROM "leases" '
+        '  WHERE "vehicleId" = $1 AND "status" = \'ACTIVE\''
+        ")",
+        vehicle_id,
     )
-    if other_active is not None:
-        return False
-    await db.vehicle.update(
-        where={"id": vehicle_id},
-        data={"status": "AVAILABLE"},
-    )
-    return True
+    return rows == 1
 
 
 async def complete(
@@ -236,6 +238,11 @@ async def complete(
     Idempotent — calling on an already-COMPLETED lease returns the current
     state without further side effects. Refuses to act on RENEWED leases
     (their vehicle is held by the renewal) or on a lease that doesn't exist.
+
+    The lease transition uses a conditional `update_many` keyed on
+    `(id, status='ACTIVE')` so a concurrent renew flipping the lease to
+    RENEWED between the read and write cannot be silently overwritten —
+    we re-check the row's state and surface a 409 Conflict if it moved.
 
     Until #121 ships its admin lease-termination workflow, this is the only
     way the system transitions a vehicle out of LEASED, so without it fleet
@@ -255,10 +262,24 @@ async def complete(
             detail=f"Cannot complete lease in status {current_status}",
         )
 
-    updated = await db.lease.update(
-        where={"id": lease_id},
+    # Conditional update: only flip if the row is still ACTIVE. Returns the
+    # number of rows updated (0 = something else won the race).
+    update_result = await db.lease.update_many(
+        where={"id": lease_id, "status": "ACTIVE"},
         data={"status": "COMPLETED"},
     )
+    if update_result == 0:
+        # Status moved between our read and write. Re-fetch and decide.
+        latest = await db.lease.find_unique(where={"id": lease_id})
+        latest_status = _enum_value(latest.status) if latest else None
+        if latest_status == "COMPLETED":
+            # Idempotent — someone else completed it concurrently.
+            assert latest is not None
+            return _serialise_lease(latest)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(f"Lease was concurrently modified to {latest_status}; refusing to overwrite."),
+        )
 
     freed = await _free_vehicle_if_unleased(db, lease.vehicleId)
 
@@ -272,4 +293,7 @@ async def complete(
         new_value={"status": "COMPLETED", "vehicleFreed": freed},
     )
 
+    # Re-fetch so the response reflects post-update fields (updatedAt, etc.).
+    updated = await db.lease.find_unique(where={"id": lease_id})
+    assert updated is not None
     return _serialise_lease(updated)
