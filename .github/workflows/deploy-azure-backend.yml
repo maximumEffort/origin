@@ -1,7 +1,7 @@
 name: Deploy backend (Azure)
 
-# Builds the FastAPI image into ACR and rolls a new Container App revision
-# whenever apps/backend/** changes on main. Authenticates to Azure via OIDC
+# Builds the FastAPI image into ACR, runs migrations as a Container App Job,
+# then rolls a new Container App revision. Authenticates to Azure via OIDC
 # federated credential — no long-lived secret stored anywhere.
 
 on:
@@ -26,13 +26,14 @@ env:
   AZURE_RG: rg-origin-prod-uaenorth
   ACR_NAME: acroriginprod
   CONTAINER_APP: ca-origin-backend-prod
+  MIGRATIONS_JOB: caj-origin-migrations
   IMAGE: origin-backend
 
 jobs:
   deploy:
-    name: Build + push + roll
+    name: Build + migrate + roll
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -52,28 +53,71 @@ jobs:
             --file apps/backend/Dockerfile \
             apps/backend
 
+      - name: Update migrations Job image
+        # Point the migration Job at the freshly-built image so the next
+        # job execution applies any schema changes from this commit.
+        run: |
+          az containerapp job update \
+            --name $MIGRATIONS_JOB \
+            --resource-group $AZURE_RG \
+            --image $ACR_NAME.azurecr.io/$IMAGE:${{ github.sha }}
+
+      - name: Run Prisma migrations (Container App Job)
+        # Single source of truth for schema migrations. The Container App
+        # itself does NOT run migrations at startup — they happen here in
+        # a one-shot Job. If migrations fail, this step fails and we never
+        # roll the new image to the live Container App.
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Starting migration job..."
+          execution=$(az containerapp job start \
+            --name "$MIGRATIONS_JOB" \
+            --resource-group "$AZURE_RG" \
+            --query name -o tsv)
+          echo "Started execution: $execution"
+
+          # Poll for completion (max 8 minutes).
+          for i in $(seq 1 48); do
+            status=$(az containerapp job execution show \
+              --name "$MIGRATIONS_JOB" \
+              --resource-group "$AZURE_RG" \
+              --job-execution-name "$execution" \
+              --query properties.status -o tsv 2>/dev/null || echo "Unknown")
+
+            echo "Attempt $i — status: $status"
+
+            case "$status" in
+              Succeeded)
+                echo "✅ Migrations completed successfully"
+                exit 0
+                ;;
+              Failed|Degraded|Stopped)
+                echo "❌ Migration job ended with status: $status"
+                # Surface the migration container logs to the workflow log.
+                az containerapp job execution show \
+                  --name "$MIGRATIONS_JOB" \
+                  --resource-group "$AZURE_RG" \
+                  --job-execution-name "$execution"
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+
+          echo "⏱ Migration job did not finish within 8 minutes"
+          exit 1
+
       - name: Update Container App
+        # Only reached if migrations succeeded above. The new revision
+        # therefore always points at a schema that already exists.
         run: |
           az containerapp update \
             --name $CONTAINER_APP \
             --resource-group $AZURE_RG \
             --image $ACR_NAME.azurecr.io/$IMAGE:${{ github.sha }} \
             --revision-suffix sha-$(echo ${{ github.sha }} | cut -c1-8)
-
-      - name: Run Prisma migrations
-        # Single source of truth for schema migrations — the Dockerfile no
-        # longer runs them at container start (see #138 §6). If this step
-        # fails, the deploy fails and someone has to investigate; that is
-        # the intended behaviour. Do NOT add `|| true` / `|| echo`.
-        # `set -euo pipefail` ensures shell-level failures (e.g. exec not
-        # available) also fail the step instead of silently moving on.
-        shell: bash
-        run: |
-          set -euo pipefail
-          az containerapp exec \
-            --name "$CONTAINER_APP" \
-            --resource-group "$AZURE_RG" \
-            --command "prisma migrate deploy --schema /app/prisma/schema.prisma"
 
       - name: Health check
         run: |
