@@ -5,6 +5,9 @@ Mirrors apps/backend/src/leases/leases.service.ts. Customers can list
 their leases, fetch one (with payments + booking stub), or renew an
 ACTIVE lease — which marks the original as RENEWED and creates a new
 ACTIVE lease starting at the old end date.
+
+Admin-callable transitions:
+- complete(): mark an ACTIVE lease COMPLETED and free its vehicle.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
+from origin_backend.common.audit import log_action
 from prisma import Prisma
 
 
@@ -196,3 +200,100 @@ async def renew(
         }
     )
     return _serialise_lease(new_lease)
+
+
+async def _free_vehicle_if_unleased(db: Prisma, vehicle_id: str) -> bool:
+    """
+    Set `vehicle.status` to AVAILABLE iff no ACTIVE lease references it.
+
+    Implemented as a single conditional UPDATE so the check and the write
+    are one statement at the database layer — eliminates the read/write
+    race that would otherwise let a concurrently-created ACTIVE lease slip
+    in between the check and the update.
+
+    Returns True if the vehicle was actually flipped to AVAILABLE, False
+    if a concurrent (or pre-existing) ACTIVE lease holds it.
+    """
+    rows = await db.execute_raw(
+        'UPDATE "vehicles" SET "status" = \'AVAILABLE\' '
+        'WHERE "id" = $1 '
+        "AND NOT EXISTS ("
+        '  SELECT 1 FROM "leases" '
+        '  WHERE "vehicleId" = $1 AND "status" = \'ACTIVE\''
+        ")",
+        vehicle_id,
+    )
+    return rows == 1
+
+
+async def complete(
+    db: Prisma,
+    lease_id: str,
+    *,
+    admin_id: str,
+) -> dict[str, Any]:
+    """
+    Admin-callable: mark an ACTIVE lease COMPLETED and free its vehicle.
+
+    Idempotent — calling on an already-COMPLETED lease returns the current
+    state without further side effects. Refuses to act on RENEWED leases
+    (their vehicle is held by the renewal) or on a lease that doesn't exist.
+
+    The lease transition uses a conditional `update_many` keyed on
+    `(id, status='ACTIVE')` so a concurrent renew flipping the lease to
+    RENEWED between the read and write cannot be silently overwritten —
+    we re-check the row's state and surface a 409 Conflict if it moved.
+
+    Until #121 ships its admin lease-termination workflow, this is the only
+    way the system transitions a vehicle out of LEASED, so without it fleet
+    utilisation reports lie permanently.
+    """
+    lease = await db.lease.find_unique(where={"id": lease_id})
+    if lease is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
+
+    current_status = _enum_value(lease.status)
+    if current_status == "COMPLETED":
+        return _serialise_lease(lease)
+
+    if current_status != "ACTIVE":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot complete lease in status {current_status}",
+        )
+
+    # Conditional update: only flip if the row is still ACTIVE. Returns the
+    # number of rows updated (0 = something else won the race).
+    update_result = await db.lease.update_many(
+        where={"id": lease_id, "status": "ACTIVE"},
+        data={"status": "COMPLETED"},
+    )
+    if update_result == 0:
+        # Status moved between our read and write. Re-fetch and decide.
+        latest = await db.lease.find_unique(where={"id": lease_id})
+        latest_status = _enum_value(latest.status) if latest else None
+        if latest_status == "COMPLETED":
+            # Idempotent — someone else completed it concurrently.
+            assert latest is not None
+            return _serialise_lease(latest)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(f"Lease was concurrently modified to {latest_status}; refusing to overwrite."),
+        )
+
+    freed = await _free_vehicle_if_unleased(db, lease.vehicleId)
+
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="COMPLETE",
+        entity_type="LEASE",
+        entity_id=lease_id,
+        old_value={"status": current_status},
+        new_value={"status": "COMPLETED", "vehicleFreed": freed},
+    )
+
+    # Re-fetch so the response reflects post-update fields (updatedAt, etc.).
+    updated = await db.lease.find_unique(where={"id": lease_id})
+    assert updated is not None
+    return _serialise_lease(updated)
