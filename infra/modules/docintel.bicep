@@ -45,10 +45,11 @@ resource docIntel 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   properties: {
     customSubDomainName: accountName        // Required for managed-identity auth
     publicNetworkAccess: 'Enabled'
-    networkAcls: {
-      defaultAction: 'Allow'
-      bypass: 'AzureServices'
-    }
+    // The 'FormRecognizer' Kind doesn't support Trusted Services bypass —
+    // Azure rejects the deployment with `NetworkAclsBypassNotSupported` if
+    // we set bypass='AzureServices' here. Since defaultAction is 'Allow'
+    // anyway (no IP allow-list), the bypass key is effectively a no-op,
+    // so we omit the networkAcls block entirely.
     // disableLocalAuth=false keeps key-based auth available as a dev fallback;
     // production code path uses managed identity by default.
     disableLocalAuth: false
