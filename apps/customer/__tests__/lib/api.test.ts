@@ -86,15 +86,15 @@ describe('fetchVehicle', () => {
 // ── fetchQuote ──────────────────────────────────────────────────────────────
 
 describe('fetchQuote', () => {
-  it('sends a POST with quote body', async () => {
+  it('sends a POST with camelCase quote body', async () => {
     const body: QuoteRequest = {
-      vehicle_id: 'nio-es6',
-      start_date: '2026-05-01',
-      end_date: '2026-08-01',
-      mileage_package: 3000,
-      add_ons: [],
+      vehicleId: 'nio-es6',
+      startDate: '2026-05-01',
+      endDate: '2026-08-01',
+      mileagePackage: 3000,
+      addOns: { cdw_waiver: true },
     };
-    const quote = { total_aed: 25000 };
+    const quote = { totalAed: 25000 };
     mockFetch.mockReturnValue(okJson(quote));
 
     const result = await fetchQuote(body);
