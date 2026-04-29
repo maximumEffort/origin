@@ -236,6 +236,7 @@ model Vehicle {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
+  @@index([status, createdAt(sort: Desc)])
   @@map("vehicles")
 }
 
@@ -272,6 +273,7 @@ model Customer {
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
+  @@index([kycStatus, createdAt(sort: Desc)])
   @@map("customers")
 }
 
@@ -336,6 +338,7 @@ model Booking {
 
   @@index([customerId])
   @@index([vehicleId])
+  @@index([status, createdAt(sort: Desc)])
   @@map("bookings")
 }
 
@@ -368,6 +371,7 @@ model Lease {
 
   @@index([customerId])
   @@index([vehicleId])
+  @@index([status, createdAt(sort: Desc)])
   @@map("leases")
 }
 
@@ -393,6 +397,8 @@ model Payment {
 
   @@index([leaseId])
   @@index([customerId])
+  @@index([leaseId, dueDate])
+  @@index([status, dueDate])
   @@map("payments")
 }
 
