@@ -73,6 +73,17 @@ async def get_quote(
             detail="Vehicle not found",
         )
 
+    # Don't quote (and therefore don't book) on a vehicle that's leased,
+    # in maintenance, or retired. See #132.
+    vehicle_status = (
+        vehicle.status.value if hasattr(vehicle.status, "value") else str(vehicle.status)
+    )
+    if vehicle_status != "AVAILABLE":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Vehicle is not available for the selected dates",
+        )
+
     start = _parse_iso_date(start_date, "start_date")
     end = _parse_iso_date(end_date, "end_date")
     if end <= start:

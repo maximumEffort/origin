@@ -101,13 +101,32 @@ app.include_router(images_router, prefix="/v1")  # /v1/admin/vehicles/:id/images
 app.include_router(kyc_admin_router, prefix="/v1")
 app.include_router(checkout_webhook_router, prefix="/v1")
 
-# ── Serve locally-uploaded KYC files ─────────────────────────────
+
+def validate_startup_settings(s: object) -> None:
+    """
+    Refuse to start the app on misconfigurations that would otherwise fail
+    silently in dangerous ways. Called at module import time below; also
+    importable for direct unit testing.
+    """
+    if not s.jwt_secret or len(s.jwt_secret) < 16:
+        raise RuntimeError(
+            "JWT_SECRET environment variable must be set and at least 16 characters."
+        )
+    # In production, we must use Azure Blob for KYC docs. Falling back to the
+    # local StaticFiles mount would expose Emirates ID, passport, and driving
+    # licence files publicly — UAE PDPL violation. See issue #130.
+    if s.is_production and not s.azure_storage_blob_endpoint:
+        raise RuntimeError(
+            "AZURE_STORAGE_BLOB_ENDPOINT is required in production — refusing to start. "
+            "Set the env var or downgrade APP_ENV; never serve KYC documents from local disk in prod."
+        )
+
+
+validate_startup_settings(settings)
+
+# ── Serve locally-uploaded KYC files (dev / staging only) ────────
 _uploads = Path(settings.kyc_upload_dir)
 _uploads.mkdir(parents=True, exist_ok=True)
 
 if not settings.azure_storage_blob_endpoint:
     app.mount("/uploads", StaticFiles(directory=str(_uploads)), name="uploads")
-
-# ── Startup validation ────────────────────────────────────────────
-if not settings.jwt_secret or len(settings.jwt_secret) < 16:
-    raise RuntimeError("JWT_SECRET environment variable must be set and at least 16 characters.")

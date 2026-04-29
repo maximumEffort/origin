@@ -23,9 +23,11 @@ def _error_payload(status: int, message: str, code: str | None = None) -> dict[s
 
 async def http_exception_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:
     code = exc.detail if isinstance(exc.detail, str) else None
+    headers = getattr(exc, "headers", None)
     return JSONResponse(
         status_code=exc.status_code,
         content=_error_payload(exc.status_code, str(exc.detail), code=code),
+        headers=headers,
     )
 
 

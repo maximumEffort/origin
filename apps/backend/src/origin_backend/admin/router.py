@@ -88,9 +88,15 @@ async def approve_booking_endpoint(
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Approve a SUBMITTED booking."""
-    return _encode(await service.approve_booking(
-        db, booking_id, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
-    ))
+    return _encode(
+        await service.approve_booking(
+            db,
+            booking_id,
+            admin_id=user.id,
+            ip_address=req_info.ip_address,
+            user_agent=req_info.user_agent,
+        )
+    )
 
 
 @router.post("/bookings/{booking_id}/reject", status_code=status.HTTP_200_OK)
@@ -102,9 +108,16 @@ async def reject_booking_endpoint(
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Reject a SUBMITTED booking with optional reason."""
-    return _encode(await service.reject_booking(
-        db, booking_id, body.reason, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
-    ))
+    return _encode(
+        await service.reject_booking(
+            db,
+            booking_id,
+            body.reason,
+            admin_id=user.id,
+            ip_address=req_info.ip_address,
+            user_agent=req_info.user_agent,
+        )
+    )
 
 
 @router.post("/bookings/{booking_id}/create-lease", status_code=status.HTTP_201_CREATED)
@@ -115,9 +128,15 @@ async def create_lease_endpoint(
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Convert an APPROVED booking into an active lease + payment schedule."""
-    return _encode(await service.create_lease_from_booking(
-        db, booking_id, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
-    ))
+    return _encode(
+        await service.create_lease_from_booking(
+            db,
+            booking_id,
+            admin_id=user.id,
+            ip_address=req_info.ip_address,
+            user_agent=req_info.user_agent,
+        )
+    )
 
 
 # ── Customers & KYC ───────────────────────────────────────────────────────
@@ -151,9 +170,15 @@ async def approve_kyc_endpoint(
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Approve a SUBMITTED KYC application."""
-    return _encode(await service.approve_kyc(
-        db, customer_id, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
-    ))
+    return _encode(
+        await service.approve_kyc(
+            db,
+            customer_id,
+            admin_id=user.id,
+            ip_address=req_info.ip_address,
+            user_agent=req_info.user_agent,
+        )
+    )
 
 
 @router.post("/customers/{customer_id}/kyc/reject", status_code=status.HTTP_200_OK)
@@ -165,9 +190,16 @@ async def reject_kyc_endpoint(
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Reject a customer's KYC submission with optional reason."""
-    return _encode(await service.reject_kyc(
-        db, customer_id, body.reason, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
-    ))
+    return _encode(
+        await service.reject_kyc(
+            db,
+            customer_id,
+            body.reason,
+            admin_id=user.id,
+            ip_address=req_info.ip_address,
+            user_agent=req_info.user_agent,
+        )
+    )
 
 
 # ── Leases ────────────────────────────────────────────────────────────────
@@ -204,9 +236,15 @@ async def create_vehicle_endpoint(
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Add a new vehicle to the fleet (auto-VIN, auto-category if missing)."""
-    return _encode(await service.create_vehicle(
-        db, body, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
-    ))
+    return _encode(
+        await service.create_vehicle(
+            db,
+            body,
+            admin_id=user.id,
+            ip_address=req_info.ip_address,
+            user_agent=req_info.user_agent,
+        )
+    )
 
 
 @router.patch("/vehicles/{vehicle_id}")
@@ -218,9 +256,16 @@ async def update_vehicle_endpoint(
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Partial update of a vehicle."""
-    return _encode(await service.update_vehicle(
-        db, vehicle_id, body, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
-    ))
+    return _encode(
+        await service.update_vehicle(
+            db,
+            vehicle_id,
+            body,
+            admin_id=user.id,
+            ip_address=req_info.ip_address,
+            user_agent=req_info.user_agent,
+        )
+    )
 
 
 @router.post("/vehicles/{vehicle_id}/status", status_code=status.HTTP_200_OK)
@@ -232,6 +277,13 @@ async def set_vehicle_status_endpoint(
     req_info: RequestInfo = Depends(get_request_info),
 ) -> object:
     """Set vehicle status (AVAILABLE / LEASED / MAINTENANCE / RETIRED)."""
-    return _encode(await service.set_vehicle_status(
-        db, vehicle_id, body.status, admin_id=user.id, ip_address=req_info.ip_address, user_agent=req_info.user_agent,
-    ))
+    return _encode(
+        await service.set_vehicle_status(
+            db,
+            vehicle_id,
+            body.status,
+            admin_id=user.id,
+            ip_address=req_info.ip_address,
+            user_agent=req_info.user_agent,
+        )
+    )

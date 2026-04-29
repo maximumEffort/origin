@@ -80,7 +80,7 @@ interface Document {
   rejectionReason: string | null;
 }
 
-type Tab = 'bookings' | 'leases' | 'documents';
+type Tab = 'bookings' | 'rentals' | 'documents';
 
 // ── Status badge helper ──────────────────────────────────────────────────────
 
@@ -187,7 +187,7 @@ export default function DashboardContent({ locale }: { locale: string }) {
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: 'bookings', label: t('tabBookings'), count: bookings.length },
-    { key: 'leases', label: t('tabLeases'), count: leases.length },
+    { key: 'rentals', label: t('tabRentals'), count: leases.length },
     { key: 'documents', label: t('tabDocuments'), count: documents.length },
   ];
 
@@ -312,13 +312,13 @@ export default function DashboardContent({ locale }: { locale: string }) {
                 </div>
               )}
 
-              {/* ── Leases ── */}
-              {tab === 'leases' && (
+              {/* ── Rentals (active lease records, surfaced as "Rentals" per V1 RTA-only copy) ── */}
+              {tab === 'rentals' && (
                 <div className="space-y-4">
                   {leases.length === 0 ? (
                     <EmptyState
                       icon={<FileText className="text-neutral-300" size={40} />}
-                      message={t('noLeases')}
+                      message={t('noRentals')}
                       actionLabel={t('bookNow')}
                       actionHref={`/${locale}/booking`}
                     />

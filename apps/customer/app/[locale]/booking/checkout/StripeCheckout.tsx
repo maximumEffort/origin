@@ -100,12 +100,11 @@ function PaymentForm({ amountAed, locale }: { amountAed: number; locale: string 
 
 interface Props {
   amountAed: number;
-  bookingRef?: string;
-  vehicleName: string;
+  bookingId: string;
   locale: string;
 }
 
-export default function StripeCheckout({ amountAed, bookingRef, vehicleName, locale }: Props) {
+export default function StripeCheckout({ amountAed, bookingId, locale }: Props) {
   const t = useTranslations('checkout');
   const [clientSecret, setClientSecret] = useState('');
   const [loading, setLoading] = useState(true);
@@ -118,20 +117,18 @@ export default function StripeCheckout({ amountAed, bookingRef, vehicleName, loc
       return;
     }
 
-    if (!amountAed || amountAed <= 0) {
+    if (!bookingId) {
       setLoading(false);
       setError(t('integrationPending'));
       return;
     }
 
+    // The chargeable amount is derived from the booking row server-side (#128).
+    // The client only identifies the booking; it cannot influence what is charged.
     fetch('/api/backend/payments/create-intent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        amountAed,
-        bookingRef: bookingRef ?? '',
-        vehicleName,
-      }),
+      body: JSON.stringify({ bookingId }),
     })
       .then((res) => {
         if (!res.ok) throw new Error(t('integrationPending'));
@@ -144,7 +141,7 @@ export default function StripeCheckout({ amountAed, bookingRef, vehicleName, loc
         setError(err.message);
       })
       .finally(() => setLoading(false));
-  }, [amountAed, bookingRef, vehicleName, t]);
+  }, [bookingId, t]);
 
   if (loading) {
     return (

@@ -176,7 +176,7 @@ export default function CarsGrid({ locale }: { locale: string }) {
                     {!car.available && (
                       <div className="absolute inset-0 bg-neutral-900/50 flex items-center justify-center">
                         <span className="text-white text-sm font-semibold px-3 py-1 bg-neutral-800/80 rounded-full">
-                          {t('fleet.leased')}
+                          {t('fleet.rented')}
                         </span>
                       </div>
                     )}

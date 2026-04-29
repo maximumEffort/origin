@@ -14,9 +14,9 @@ const SITE_URL =
 
 const metaByLocale: Record<string, { title: string; description: string; ogLocale: string }> = {
   en: {
-    title: 'Origin — Chinese Car Leasing Dubai',
+    title: 'Origin — Chinese Car Rental Dubai',
     description:
-      'Premium NIO, Voyah, Zeekr and BYD electric vehicle leasing in Dubai, UAE. Flexible terms, comprehensive insurance, RTA compliant.',
+      'Premium NIO, Voyah, Zeekr and BYD electric vehicle rental in Dubai, UAE. Flexible terms, comprehensive insurance, RTA compliant.',
     ogLocale: 'en_AE',
   },
   ar: {
@@ -83,7 +83,7 @@ const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'CarDealer',
   name: 'Origin',
-  description: 'Premium Chinese electric car leasing in Dubai, UAE \u2014 NIO, Voyah, Zeekr, BYD.',
+  description: 'Premium Chinese electric car rental in Dubai, UAE \u2014 NIO, Voyah, Zeekr, BYD.',
   url: SITE_URL,
   telephone: '+971521439746',
   address: {

@@ -38,7 +38,7 @@ export default function NotFoundPage() {
 
         {/* Origin branding */}
         <p className="mt-12 text-xs text-neutral-600">
-          Origin — Premium Chinese Car Leasing in Dubai
+          Origin — Premium Chinese Car Rental in Dubai
         </p>
       </div>
     </div>

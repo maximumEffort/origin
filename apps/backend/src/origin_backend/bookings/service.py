@@ -22,11 +22,58 @@ from prisma import Prisma
 
 logger = logging.getLogger(__name__)
 
+# Statuses that block another booking on the same vehicle for overlapping
+# dates. DRAFT is excluded so a customer can hold an unpaid quote — and so
+# their own draft doesn't block their own submit.
+_BLOCKING_STATUSES = ["SUBMITTED", "APPROVED", "CONVERTED"]
+
 
 def _enum_value(v: Any) -> str | None:
     if v is None:
         return None
     return v.value if hasattr(v, "value") else str(v)
+
+
+async def _assert_customer_kyc_approved(db: Prisma, customer_id: str) -> None:
+    """Reject the booking if the customer's KYC isn't approved (#132)."""
+    customer = await db.customer.find_unique(where={"id": customer_id})
+    if customer is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    kyc_status = _enum_value(customer.kycStatus)
+    if kyc_status != "APPROVED":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="KYC must be approved before submitting a booking",
+            headers={"X-KYC-Status": kyc_status or "UNKNOWN"},
+        )
+
+
+async def _assert_no_overlap(
+    db: Prisma,
+    *,
+    vehicle_id: str,
+    start: datetime,
+    end: datetime,
+    exclude_booking_id: str | None = None,
+) -> None:
+    """Reject if another live booking already covers any of [start, end] (#132)."""
+    where: dict[str, Any] = {
+        "vehicleId": vehicle_id,
+        "status": {"in": _BLOCKING_STATUSES},
+        # Standard half-open overlap: existing.start < requested.end AND existing.end > requested.start
+        "AND": [
+            {"startDate": {"lt": end}},
+            {"endDate": {"gt": start}},
+        ],
+    }
+    if exclude_booking_id is not None:
+        where["NOT"] = {"id": exclude_booking_id}
+    overlap = await db.booking.find_first(where=where)
+    if overlap is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Vehicle is already booked for those dates",
+        )
 
 
 def _generate_reference() -> str:
@@ -86,6 +133,9 @@ async def create(
     notes: str | None,
 ) -> dict[str, Any]:
     """Create a DRAFT booking after pricing it via the calculator."""
+    # Order matters: calculator enforces vehicle availability (404 / 409) first
+    # so we don't even price a booking we'd refuse. KYC gate is per-customer.
+    await _assert_customer_kyc_approved(db, customer_id)
     quote = await calculator_service.get_quote(
         db,
         vehicle_id=vehicle_id,
@@ -94,6 +144,9 @@ async def create(
         mileage_package=mileage_package,
         add_ons=add_ons,
     )
+    start_dt = datetime.fromisoformat(start_date)
+    end_dt = datetime.fromisoformat(end_date)
+    await _assert_no_overlap(db, vehicle_id=vehicle_id, start=start_dt, end=end_dt)
 
     duration_days: int = quote["duration_days"]
     lease_type = "SHORT_TERM" if duration_days < 30 else "LONG_TERM"
@@ -143,7 +196,10 @@ async def create(
 
 async def submit(db: Prisma, customer_id: str, booking_id: str) -> dict[str, Any]:
     """Move a DRAFT booking to SUBMITTED for back-office review."""
-    booking = await db.booking.find_unique(where={"id": booking_id})
+    booking = await db.booking.find_unique(
+        where={"id": booking_id},
+        include={"vehicle": True},
+    )
     if booking is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
     if booking.customerId != customer_id:
@@ -153,6 +209,23 @@ async def submit(db: Prisma, customer_id: str, booking_id: str) -> dict[str, Any
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only draft bookings can be submitted",
         )
+
+    # Re-validate at submit time: vehicle could have been retired and KYC could
+    # have been rejected since the draft was created (#132).
+    vehicle = getattr(booking, "vehicle", None)
+    if vehicle is None or _enum_value(vehicle.status) != "AVAILABLE":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Vehicle is not available for the selected dates",
+        )
+    await _assert_customer_kyc_approved(db, customer_id)
+    await _assert_no_overlap(
+        db,
+        vehicle_id=booking.vehicleId,
+        start=booking.startDate,
+        end=booking.endDate,
+        exclude_booking_id=booking.id,
+    )
 
     updated = await db.booking.update(
         where={"id": booking_id},

@@ -72,7 +72,7 @@ export default async function CheckoutPage({
                 <span className="font-medium text-neutral-900">{car}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-500">{t('leasePeriod')}</span>
+                <span className="text-neutral-500">{t('rentalPeriod')}</span>
                 <span className="font-medium text-neutral-900">{duration}</span>
               </div>
               {startDate !== '—' && (
@@ -98,11 +98,12 @@ export default async function CheckoutPage({
             </div>
           </div>
 
-          {/* Stripe payment form */}
+          {/* Stripe payment form. The amount actually charged is derived
+              server-side from the booking row (#128); paymentAmount here is
+              for the button label only. */}
           <StripeCheckout
             amountAed={paymentAmount}
-            bookingRef={sp.ref}
-            vehicleName={car}
+            bookingId={sp.bookingId ?? ''}
             locale={locale}
           />
 

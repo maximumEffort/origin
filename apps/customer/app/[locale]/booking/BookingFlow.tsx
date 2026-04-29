@@ -179,7 +179,13 @@ export default function BookingFlow({ locale }: { locale: string }) {
         throw new Error(err.message ?? 'Failed to submit booking');
       }
 
-      // Step 3: Redirect to checkout with booking details
+      // Step 3: Redirect to checkout with booking details. The chargeable
+      // amount at checkout is the deposit (1 month) plus 5% VAT — NOT the
+      // full lease total. See #129. Backend re-derives the Stripe charge
+      // from the booking row independently of these display values (#128).
+      const depositValue = Number(booking.depositAmountAed ?? deposit);
+      const depositVat = parseFloat((depositValue * 0.05).toFixed(2));
+      const depositTotal = parseFloat((depositValue + depositVat).toFixed(2));
       const params = new URLSearchParams({
         bookingId: booking.id,
         ref: booking.reference,
@@ -188,9 +194,9 @@ export default function BookingFlow({ locale }: { locale: string }) {
         startDate,
         service: 'rent',
         monthlyRate: String(booking.quotedTotalAed ? Math.round(booking.quotedTotalAed / duration) : monthlyRate),
-        deposit: String(booking.depositAmountAed ?? deposit),
-        vat: String(booking.vatAmountAed ?? vat),
-        total: String(booking.grandTotalAed ?? totalDue),
+        deposit: String(depositValue),
+        vat: String(depositVat),
+        total: String(depositTotal),
       });
       router.push(`/${locale}/booking/checkout?${params.toString()}`);
     } catch (err) {
@@ -522,7 +528,7 @@ export default function BookingFlow({ locale }: { locale: string }) {
                   <span className="font-medium text-neutral-900">{selectedCar.brand} {selectedCar.model}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-neutral-500">{t('leasePeriod')}</span>
+                  <span className="text-neutral-500">{t('rentalPeriod')}</span>
                   <span className="font-medium text-neutral-900">{duration} {t('months')}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -566,6 +572,29 @@ export default function BookingFlow({ locale }: { locale: string }) {
                 </div>
               )}
 
+              {/* KYC gate (#132): Pay Now is disabled until admin approves the
+                  uploaded documents — bookings on PENDING/REJECTED customers
+                  are rejected by the backend, so we surface the reason here
+                  rather than letting the user hit a 403 on submit. */}
+              {customer && customer.kycStatus !== 'APPROVED' && (
+                <div className={`rounded-xl p-5 mb-6 border ${
+                  customer.kycStatus === 'REJECTED'
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-amber-50 border-amber-200'
+                }`}>
+                  <p className={`text-sm font-semibold mb-1 ${
+                    customer.kycStatus === 'REJECTED' ? 'text-red-800' : 'text-amber-800'
+                  }`}>
+                    {customer.kycStatus === 'REJECTED' ? t('kycRejectedTitle') : t('kycPendingTitle')}
+                  </p>
+                  <p className={`text-sm ${
+                    customer.kycStatus === 'REJECTED' ? 'text-red-700' : 'text-amber-700'
+                  }`}>
+                    {customer.kycStatus === 'REJECTED' ? t('kycRejectedDesc') : t('kycPendingDesc')}
+                  </p>
+                </div>
+              )}
+
               {bookingError && (
                 <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 mb-4">
                   {bookingError}
@@ -579,7 +608,7 @@ export default function BookingFlow({ locale }: { locale: string }) {
                 </button>
                 <button
                   onClick={handlePayNow}
-                  disabled={processing || !customer}
+                  disabled={processing || !customer || customer.kycStatus !== 'APPROVED'}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-brand text-white font-semibold rounded-lg hover:bg-brand-dark transition-colors disabled:opacity-60"
                 >
                   {processing ? t('processing') : t('confirmPay')}

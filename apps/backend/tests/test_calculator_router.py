@@ -13,11 +13,16 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 
-def _vehicle(monthly: str = "1000.00", mileage_limit: int = 3000) -> SimpleNamespace:
+def _vehicle(
+    monthly: str = "1000.00",
+    mileage_limit: int = 3000,
+    vstatus: str = "AVAILABLE",
+) -> SimpleNamespace:
     return SimpleNamespace(
         id="veh-1",
         monthlyRateAed=Decimal(monthly),
         mileageLimitMonthly=mileage_limit,
+        status=SimpleNamespace(value=vstatus),
     )
 
 

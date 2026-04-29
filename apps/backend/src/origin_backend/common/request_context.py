@@ -24,7 +24,11 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # Prefer X-Forwarded-For (set by reverse proxies like Railway/ALB).
         forwarded = request.headers.get("x-forwarded-for")
-        ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else None)
+        ip = (
+            forwarded.split(",")[0].strip()
+            if forwarded
+            else (request.client.host if request.client else None)
+        )
         ua = request.headers.get("user-agent")
         request.state.request_info = RequestInfo(ip_address=ip, user_agent=ua)
         return await call_next(request)

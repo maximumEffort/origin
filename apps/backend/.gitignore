@@ -19,6 +19,9 @@ src/origin_backend/generated/
 .env
 .env.local
 
+# Local KYC uploads (dev fallback only — never commit customer PII)
+uploads/
+
 # Distribution
 build/
 dist/

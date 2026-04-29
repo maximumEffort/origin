@@ -154,7 +154,7 @@ export default function CorporateForm({ locale }: { locale: string }) {
   };
 
   const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    `Hi, I'm from ${companyName || 'our company'} and interested in corporate fleet leasing.`,
+    `Hi, I'm from ${companyName || 'our company'} and interested in corporate fleet rental.`,
   )}`;
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [

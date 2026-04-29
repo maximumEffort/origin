@@ -1,7 +1,11 @@
 """
 Pydantic schemas for the payments API.
 
-Mirrors apps/backend/src/payments/dto/create-payment-intent.dto.ts.
+The request shape was tightened in #128: the customer no longer sends an
+amount or a free-text booking reference — they identify the booking by
+its UUID and the server derives the chargeable amount from the booking
+row. This closes a direct financial-loss vector where the client could
+have paid 1 AED on a 100,000 AED booking.
 """
 
 from __future__ import annotations
@@ -10,10 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class CreatePaymentIntentRequest(BaseModel):
-    amount_aed: float = Field(..., alias="amountAed", ge=1, le=500_000)
-    booking_ref: str | None = Field(default=None, alias="bookingRef", max_length=100)
-    service_type: str | None = Field(default=None, alias="serviceType", max_length=50)
-    vehicle_name: str | None = Field(default=None, alias="vehicleName", max_length=100)
+    booking_id: str = Field(..., alias="bookingId", min_length=1, max_length=64)
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
