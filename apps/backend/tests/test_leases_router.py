@@ -110,6 +110,8 @@ def test_list_leases_returns_customer_only(client: TestClient, mock_prisma: Magi
     kwargs = mock_prisma.lease.find_many.call_args.kwargs
     assert kwargs["where"] == {"customerId": CUSTOMER_ID}
     assert kwargs["order"] == {"createdAt": "desc"}
+    # #137 §3 — defensive cap so 1k+ lease customers don't ship 5-10 MB.
+    assert kwargs["take"] == 50
     assert kwargs["include"]["vehicle"]["select"] == {
         "brand": True,
         "model": True,

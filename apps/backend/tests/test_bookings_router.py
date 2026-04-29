@@ -335,6 +335,8 @@ def test_list_bookings_returns_customer_only(client: TestClient, mock_prisma: Ma
     kwargs = mock_prisma.booking.find_many.call_args.kwargs
     assert kwargs["where"] == {"customerId": CUSTOMER_ID}
     assert kwargs["order"] == {"createdAt": "desc"}
+    # #137 §3 — must cap rows so power users don't ship 5-10 MB JSON.
+    assert kwargs["take"] == 50
     assert kwargs["include"]["vehicle"]["select"] == {
         "brand": True,
         "model": True,
