@@ -94,8 +94,19 @@ def _generate_reference() -> str:
     return f"LS-{year}-{seq}"
 
 
-async def find_by_customer(db: Prisma, customer_id: str) -> list[dict[str, Any]]:
-    """List the customer's leases (newest first), with vehicle stub + payments."""
+async def find_by_customer(
+    db: Prisma,
+    customer_id: str,
+    *,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """
+    List a customer's leases, newest first, capped at `limit` (default 50).
+
+    Same defensive cap as bookings.find_by_customer — at 1k+ leases per
+    customer the unbounded query (with full payment schedules included)
+    would ship 5-10 MB of JSON on every dashboard load. Audit ref: #137 §3.
+    """
     leases = await db.lease.find_many(
         where={"customerId": customer_id},
         include={
@@ -110,6 +121,7 @@ async def find_by_customer(db: Prisma, customer_id: str) -> list[dict[str, Any]]
             "payments": {"order_by": {"dueDate": "asc"}},
         },
         order={"createdAt": "desc"},
+        take=limit,
     )
     return [_serialise_lease(lease) for lease in leases]
 

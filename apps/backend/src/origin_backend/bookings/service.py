@@ -234,12 +234,26 @@ async def submit(db: Prisma, customer_id: str, booking_id: str) -> dict[str, Any
     return _serialise_booking(updated)
 
 
-async def find_by_customer(db: Prisma, customer_id: str) -> list[dict[str, Any]]:
-    """List all bookings for a customer, newest first, with vehicle stub."""
+async def find_by_customer(
+    db: Prisma,
+    customer_id: str,
+    *,
+    limit: int = 50,
+) -> list[dict[str, Any]]:
+    """
+    List a customer's bookings, newest first, capped at `limit` (default 50).
+
+    Capping prevents the response payload from growing unbounded for power
+    users — at 1k+ bookings the unbounded query would ship 5-10 MB of JSON
+    on every dashboard load. Today realistic customers have <10 bookings
+    each, so this is a defensive ceiling, not a behavioural change. Audit
+    ref: #137 §3. Cursor-based pagination is a follow-up.
+    """
     bookings = await db.booking.find_many(
         where={"customerId": customer_id},
         include={"vehicle": {"select": {"brand": True, "model": True, "year": True}}},
         order={"createdAt": "desc"},
+        take=limit,
     )
     return [_serialise_booking(b) for b in bookings]
 
