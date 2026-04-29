@@ -132,11 +132,11 @@ export default async function Footer() {
         {/* Bottom bar */}
         <div className="mt-12 pt-6 border-t border-white/[0.07] flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-neutral-600">
           <p>{t('copyright')}</p>
-          <p className="flex gap-3">
+          <p className="flex flex-wrap gap-x-3 gap-y-1 justify-center sm:justify-end">
             <span>{t('vatNote')}</span>
-            <span>·</span>
-            <span>{t('rta')}</span>
-            <span>·</span>
+            <span aria-hidden="true">·</span>
+            <span>{t('trn')}</span>
+            <span aria-hidden="true">·</span>
             <span>{t('licence')}</span>
           </p>
         </div>

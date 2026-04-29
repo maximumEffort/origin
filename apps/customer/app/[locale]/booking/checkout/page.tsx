@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { ArrowLeft } from 'lucide-react';
 import StripeCheckout from './StripeCheckout';
+import { fmtDate, fmtAed } from '@/lib/format';
 
 export function generateStaticParams() {
   return ['en', 'ar', 'zh-CN'].map((locale) => ({ locale }));
@@ -34,18 +35,24 @@ export default async function CheckoutPage({
   const { locale } = await params;
   const sp = await searchParams;
   setRequestLocale(locale);
-  const t = await getTranslations('checkout');
+  const [t, tCommon] = await Promise.all([
+    getTranslations('checkout'),
+    getTranslations('common'),
+  ]);
+  const aedLabel = tCommon('aed');
 
   const car = sp.car ?? '—';
   const duration = sp.duration ? `${sp.duration} ${t('months')}` : '—';
-  const startDate = sp.startDate ?? '—';
+  // #139 §2 — incoming `startDate` is YYYY-MM-DD; UAE renders as DD/MM/YYYY.
+  const startDate = sp.startDate ? fmtDate(sp.startDate) : '—';
   // V1: rental only. Buy's AED 1,000 reservation fee flow returns in V2.
   const depositNum = Number(sp.deposit ?? 0);
   const vatNum = Number(sp.vat ?? 0);
   const totalNum = Number(sp.total ?? 0);
-  const deposit = depositNum ? `AED ${depositNum.toLocaleString()}` : '—';
-  const vat = vatNum ? `AED ${vatNum.toFixed(2)}` : '—';
-  const total = totalNum ? `AED ${totalNum.toLocaleString()}` : '—';
+  // #139 §11 — currency label goes through i18n so Arabic renders `د.إ`.
+  const deposit = depositNum ? fmtAed(depositNum, aedLabel) : '—';
+  const vat = vatNum ? `${aedLabel} ${vatNum.toFixed(2)}` : '—';
+  const total = totalNum ? fmtAed(totalNum, aedLabel) : '—';
   const paymentAmount = totalNum;
 
   return (

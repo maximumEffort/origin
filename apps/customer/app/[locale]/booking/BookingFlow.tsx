@@ -342,8 +342,8 @@ export default function BookingFlow({ locale }: { locale: string }) {
                       )}
                     </div>
                     <div className="mt-3 text-sm font-bold text-neutral-900">
-                      {tCommon('aed')} {car.monthlyAed.toLocaleString()}
-                      <span className="font-normal text-neutral-500 ms-1">{t('months')}</span>
+                      {tCommon('aed')} {car.monthlyAed.toLocaleString(locale)}
+                      <span className="font-normal text-neutral-500 ms-1">{t('priceSuffix')}</span>
                     </div>
                   </button>
                 ))}

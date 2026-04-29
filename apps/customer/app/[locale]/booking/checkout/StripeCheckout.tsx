@@ -13,6 +13,7 @@ const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null;
 
 function PaymentForm({ amountAed, locale }: { amountAed: number; locale: string }) {
   const t = useTranslations('checkout');
+  const tCommon = useTranslations('common');
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -85,7 +86,8 @@ function PaymentForm({ amountAed, locale }: { amountAed: number; locale: string 
           {processing ? (
             <><Loader2 size={16} className="animate-spin" /> {t('processing')}</>
           ) : (
-            <><Lock size={16} /> {t('payNow')} — AED {amountAed.toLocaleString()}</>
+            // #139 §11/§12 — currency label via i18n, locale-aware number formatting
+            <><Lock size={16} /> {t('payNow')} — {tCommon('aed')} {amountAed.toLocaleString(locale)}</>
           )}
         </button>
 
@@ -170,6 +172,11 @@ export default function StripeCheckout({ amountAed, bookingId, locale }: Props) 
       stripe={stripePromise}
       options={{
         clientSecret,
+        // #139 §13 — match Stripe Elements UI to the customer's locale
+        // (otherwise it falls back to 'auto' and renders a mixed-language
+        // form for Arabic users). Stripe uses 'zh' for Chinese; map our
+        // 'zh-CN' to that.
+        locale: (locale === 'zh-CN' ? 'zh' : locale) as 'en' | 'ar' | 'zh',
         appearance: {
           theme: 'stripe',
           variables: {
