@@ -23,16 +23,26 @@
  * (Arabic-Indic digits in `ar` if the runtime supplies them).
  *
  * Returns the input unchanged on parse failure rather than throwing.
+ *
+ * Timezone correctness: a date-only string like `"2026-05-01"` is
+ * parsed by JS as UTC midnight, then `toLocaleDateString` localizes
+ * it to the runtime's timezone — which silently shifts the displayed
+ * day in negative-UTC offsets (Pacific would show 30/04/2026 for an
+ * input of 2026-05-01). Booking dates are date-only, so we detect
+ * that shape and format in UTC to keep the displayed day stable
+ * regardless of where the page is rendered.
  */
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export function fmtDate(iso: string | null | undefined, locale = 'en-GB'): string {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    // en-GB always renders DD/MM/YYYY. Use the actual locale only when the
-    // caller wants the digit script to match — most pages still want Latin
-    // numerals so callers default to en-GB.
-    return d.toLocaleDateString(locale);
+    const opts: Intl.DateTimeFormatOptions | undefined = DATE_ONLY_RE.test(iso)
+      ? { timeZone: 'UTC' }
+      : undefined;
+    return d.toLocaleDateString(locale, opts);
   } catch {
     return iso;
   }
