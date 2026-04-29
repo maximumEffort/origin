@@ -157,42 +157,45 @@ export default function VehicleImageManager({ vehicleId }: Props) {
                   <Star size={10} /> Primary
                 </span>
               )}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+              {/* #139 §7 — overlay also reveals on keyboard focus, not only
+                  hover. Buttons get aria-label so screen readers announce them
+                  even when the icon is the only visible content. */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center justify-center gap-1">
                 {!img.isPrimary && (
                   <button
                     type="button"
                     onClick={() => setPrimary(img.id)}
+                    aria-label="Set as primary"
                     className="p-1.5 bg-white rounded-md text-gray-700 hover:text-gold transition-colors"
-                    title="Set as primary"
                   >
-                    <Star size={12} />
+                    <Star size={12} aria-hidden="true" />
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => reorder(idx, -1)}
                   disabled={idx === 0}
+                  aria-label="Move image up"
                   className="p-1.5 bg-white rounded-md text-gray-700 hover:text-brand transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Move up"
                 >
-                  <ArrowUp size={12} />
+                  <ArrowUp size={12} aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={() => reorder(idx, 1)}
                   disabled={idx === images.length - 1}
+                  aria-label="Move image down"
                   className="p-1.5 bg-white rounded-md text-gray-700 hover:text-brand transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Move down"
                 >
-                  <ArrowDown size={12} />
+                  <ArrowDown size={12} aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={() => remove(img.id)}
+                  aria-label="Delete image"
                   className="p-1.5 bg-white rounded-md text-gray-700 hover:text-red-600 transition-colors"
-                  title="Delete image"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={12} aria-hidden="true" />
                 </button>
               </div>
             </div>
