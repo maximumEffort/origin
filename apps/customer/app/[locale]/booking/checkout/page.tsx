@@ -98,11 +98,12 @@ export default async function CheckoutPage({
             </div>
           </div>
 
-          {/* Stripe payment form */}
+          {/* Stripe payment form. The amount actually charged is derived
+              server-side from the booking row (#128); paymentAmount here is
+              for the button label only. */}
           <StripeCheckout
             amountAed={paymentAmount}
-            bookingRef={sp.ref}
-            vehicleName={car}
+            bookingId={sp.bookingId ?? ''}
             locale={locale}
           />
 
