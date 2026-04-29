@@ -1,8 +1,7 @@
 """
 JWT token issuance and verification.
 
-Uses python-jose with HS256 (matches the Node backend's HMAC signing).
-Two token types: access (short-lived) and refresh (long-lived).
+Uses PyJWT with HS256. Two token types: access (short-lived) and refresh (long-lived).
 """
 
 from __future__ import annotations
@@ -11,7 +10,8 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Literal, TypedDict
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import InvalidTokenError
 
 from origin_backend.config import settings
 
@@ -36,7 +36,7 @@ def _sign(payload: dict[str, object], secret: str) -> str:
 def _verify(token: str, secret: str) -> dict[str, object]:
     try:
         return jwt.decode(token, secret, algorithms=[ALGORITHM])
-    except JWTError as e:
+    except InvalidTokenError as e:
         raise ValueError(f"Invalid or expired token: {e}") from e
 
 
