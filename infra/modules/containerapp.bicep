@@ -26,12 +26,6 @@ param keyVaultName string
 param logAnalyticsName string
 param appInsightsConnectionString string
 param vatRate string
-@description('CORS origins for the Container App ingress, as a comma-separated string. Mirrors the FastAPI CORSMiddleware allow-list so Vercel preview domains are not blocked at the ingress level (#134).')
-param corsAllowedOrigins string
-@description('Document Intelligence endpoint, e.g. https://di-origin-prod-uaenorth.cognitiveservices.azure.com/. Empty leaves the env var unset.')
-param azureDocIntelEndpoint string = ''
-@description('Storage account blob endpoint, e.g. https://stororiginproduaenorth.blob.core.windows.net/. Empty leaves the env var unset (and triggers the dev /uploads fallback — never in prod).')
-param azureStorageBlobEndpoint string = ''
 param tags object
 
 @description('Initial container image. Replaced by CI on first push to ACR.')
@@ -124,7 +118,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
           }
         ]
         corsPolicy: {
-          allowedOrigins: split(corsAllowedOrigins, ',')
+          allowedOrigins: [
+            'https://origin-auto.ae'
+            'https://www.origin-auto.ae'
+            'https://admin.origin-auto.ae'
+          ]
           allowedMethods: [ 'GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS' ]
           allowedHeaders: [ '*' ]
           allowCredentials: true
@@ -174,7 +172,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
             cpu: json(cpuCores)
             memory: memorySize
           }
-          env: concat([
+          env: [
             { name: 'APP_ENV',     value: 'production' }
             { name: 'PORT',        value: string(targetPort) }
             { name: 'VAT_RATE',    value: vatRate }
@@ -192,13 +190,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-10-02-preview' = {
             { name: 'SENDGRID_FROM_NAME',          secretRef: 'sendgrid-from-name' }
             { name: 'STRIPE_SECRET_KEY',           secretRef: 'stripe-secret-key' }
             { name: 'STRIPE_WEBHOOK_SECRET',       secretRef: 'stripe-webhook-secret' }
-          ],
-          empty(azureDocIntelEndpoint) ? [] : [
-            { name: 'AZURE_DOC_INTEL_ENDPOINT', value: azureDocIntelEndpoint }
-          ],
-          empty(azureStorageBlobEndpoint) ? [] : [
-            { name: 'AZURE_STORAGE_BLOB_ENDPOINT', value: azureStorageBlobEndpoint }
-          ])
+          ]
           probes: [
             {
               type: 'Liveness'

@@ -1,8 +1,17 @@
 name: Deploy infra (Azure Bicep)
 
-# Applies the Bicep stack to Azure UAE North whenever infra/** changes on
-# main, or on manual dispatch (handy for re-running after a tenant-side
-# change like a Founders Hub credit upgrade).
+# Applies the Bicep stack to Azure UAE North on manual dispatch only.
+#
+# Auto-trigger (push: branches: [main]) was REMOVED because the Bicep
+# template was originally drafted ahead of a manual provisioning of the
+# live environment, and has since accumulated drift the template doesn't
+# capture (custom property values, role-assignment GUIDs, etc.). Until
+# someone reconciles each module against the live Azure state with
+# `az resource show`, every push to infra/** would re-trigger a 4-minute
+# what-if + apply that ends in a different `RoleAssignmentExists`
+# / `NetworkAclsBypassNotSupported` / etc. failure. Manual dispatch keeps
+# the workflow callable for the eventual reconciliation pass without the
+# noise.
 #
 # OIDC federated credential — no AZURE_CREDENTIALS JSON secret. The three
 # secrets the Bicep needs (PG_ADMIN_PWD, JWT_SECRET, JWT_REFRESH_SECRET)
@@ -10,11 +19,6 @@ name: Deploy infra (Azure Bicep)
 # readEnvironmentVariable().
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'infra/**'
-      - '.github/workflows/deploy-azure-infra.yml'
   workflow_dispatch: {}
 
 # Don't cancel an in-flight infra apply — Postgres provisioning takes 10+ min
