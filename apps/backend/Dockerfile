@@ -55,11 +55,16 @@ EXPOSE 3001
 #   httpx.ConnectError: All connection attempts failed
 #
 # The fix: invoke `prisma --version` (lightweight, doesn't touch the DB,
-# doesn't apply migrations) to trigger the same path setup. Output is
-# suppressed because we only care about the side effect, and `|| true`
-# keeps boot non-fatal if prisma's CLI itself misbehaves — uvicorn's own
-# startup will then surface a real error.
+# doesn't apply migrations) to trigger the same path setup. We deliberately
+# do NOT swallow failures: if the prisma CLI itself can't run (missing
+# binary, broken engine artefacts, exec errors), the entire warm-up was the
+# point of this PR — letting the container continue would mean serving non-
+# DB endpoints while every DB request fails. Better to exit non-zero so the
+# deploy step fails loudly and a bad revision never replaces a good one.
+# stdout is suppressed (we don't need the version table in every restart's
+# logs); stderr stays visible so a failure mode surfaces in `az containerapp
+# logs show`.
 #
 # Migrations themselves still run only in .github/workflows/deploy-azure-backend.yml
 # (per #138 §6).
-CMD ["sh", "-c", "prisma --version >/dev/null 2>&1 || true; exec uvicorn origin_backend.main:app --host 0.0.0.0 --port ${PORT:-3001}"]
+CMD ["sh", "-c", "prisma --version >/dev/null && exec uvicorn origin_backend.main:app --host 0.0.0.0 --port ${PORT:-3001}"]
