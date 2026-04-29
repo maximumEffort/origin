@@ -42,10 +42,24 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 3001
 
-# Migrations are NOT run from the container on startup. They live in
-# .github/workflows/deploy-azure-backend.yml and run as a dedicated step
-# (see #138 §6 — running them in two places with silent failure was hiding
-# real schema-drift bugs). Local dev applies them manually with
-# `uv run prisma migrate deploy`; CI runs them once per deploy and fails
-# the workflow loudly if they don't apply cleanly.
-CMD ["sh", "-c", "uvicorn origin_backend.main:app --host 0.0.0.0 --port ${PORT:-3001}"]
+# Prisma engine warm-up before uvicorn.
+#
+# PR #150 removed `prisma migrate deploy` from the CMD on the principle that
+# migrations should run once in CI, not on every container restart. That's
+# correct, but it inadvertently removed an *implicit* side-effect: invoking
+# the Prisma JS CLI at startup primes the engine binary path resolution that
+# the Python client relies on at first connect. Without the warm-up the
+# Python client's first `await db.connect()` raises:
+#
+#   prisma.engine.errors.EngineConnectionError: Could not connect to the query engine
+#   httpx.ConnectError: All connection attempts failed
+#
+# The fix: invoke `prisma --version` (lightweight, doesn't touch the DB,
+# doesn't apply migrations) to trigger the same path setup. Output is
+# suppressed because we only care about the side effect, and `|| true`
+# keeps boot non-fatal if prisma's CLI itself misbehaves — uvicorn's own
+# startup will then surface a real error.
+#
+# Migrations themselves still run only in .github/workflows/deploy-azure-backend.yml
+# (per #138 §6).
+CMD ["sh", "-c", "prisma --version >/dev/null 2>&1 || true; exec uvicorn origin_backend.main:app --host 0.0.0.0 --port ${PORT:-3001}"]
