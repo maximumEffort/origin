@@ -53,9 +53,7 @@ def test_request_id_generated_when_missing(client: TestClient) -> None:
     assert rid is not None and len(rid) >= 16
 
 
-def test_handled_http_exception_does_not_log(
-    client: TestClient, mock_prisma: MagicMock
-) -> None:
+def test_handled_http_exception_does_not_log(client: TestClient, mock_prisma: MagicMock) -> None:
     """4xx HTTPExceptions are user errors, not server errors — keep logs clean."""
     res = client.get("/v1/this-route-does-not-exist")
     assert res.status_code == 404

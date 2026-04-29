@@ -128,9 +128,7 @@ def test_admin_role_gate_allows_super_admin(client: TestClient, mock_prisma: Mag
 # ── /admin/stats ───────────────────────────────────────────────────────
 
 
-def test_stats_revenue_uses_db_sum_not_python_sum(
-    client: TestClient, mock_prisma: MagicMock
-):
+def test_stats_revenue_uses_db_sum_not_python_sum(client: TestClient, mock_prisma: MagicMock):
     """#116 — the dashboard must SUM at the DB layer, never stream every paid
     payment row into Python memory."""
     mock_prisma.adminuser.find_unique.return_value = _admin("FINANCE")

@@ -15,9 +15,7 @@ def _reset() -> None:
     reset_buckets()
 
 
-def test_admin_login_5_per_minute_per_ip(
-    client: TestClient, mock_prisma: MagicMock
-) -> None:
+def test_admin_login_5_per_minute_per_ip(client: TestClient, mock_prisma: MagicMock) -> None:
     """6th login attempt within a minute returns 429 with Retry-After."""
     mock_prisma.adminuser.find_unique.return_value = None
     payload = {"email": "x@example.com", "password": "wrong-pass"}
@@ -32,9 +30,7 @@ def test_admin_login_5_per_minute_per_ip(
     assert int(res.headers["Retry-After"]) >= 1
 
 
-def test_otp_send_3_per_minute_per_phone(
-    client: TestClient, mock_prisma: MagicMock
-) -> None:
+def test_otp_send_3_per_minute_per_phone(client: TestClient, mock_prisma: MagicMock) -> None:
     """4th OTP send for the same phone within a minute returns 429."""
     payload = {"phone": "+971501234567"}
 
@@ -58,9 +54,7 @@ def test_otp_send_separate_phones_have_separate_buckets(
     assert res.status_code != 429
 
 
-def test_otp_verify_5_per_minute_per_phone(
-    client: TestClient, mock_prisma: MagicMock
-) -> None:
+def test_otp_verify_5_per_minute_per_phone(client: TestClient, mock_prisma: MagicMock) -> None:
     payload = {"phone": "+971501234567", "otp": "000000"}
 
     for _ in range(5):

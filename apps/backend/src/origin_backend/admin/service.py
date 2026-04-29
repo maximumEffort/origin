@@ -640,8 +640,7 @@ async def get_dashboard_stats(db: Prisma) -> dict[str, Any]:
         db.lease.count(where={"status": "ACTIVE"}),
         db.vehicle.count(where={"status": "AVAILABLE"}),
         db.query_first(
-            'SELECT COALESCE(SUM("amountAed"), 0)::float AS total '
-            'FROM payments WHERE status = $1',
+            'SELECT COALESCE(SUM("amountAed"), 0)::float AS total FROM payments WHERE status = $1',
             "PAID",
         ),
     )

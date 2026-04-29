@@ -28,9 +28,7 @@ def offset(page: int, limit: int) -> int:
     return (page - 1) * limit
 
 
-def paginated_response(
-    items: list[Any], *, page: int, limit: int, total: int
-) -> dict[str, Any]:
+def paginated_response(items: list[Any], *, page: int, limit: int, total: int) -> dict[str, Any]:
     return {
         "data": items,
         "pagination": {"page": page, "limit": limit, "total": total},

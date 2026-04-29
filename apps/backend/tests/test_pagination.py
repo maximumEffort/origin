@@ -41,9 +41,7 @@ def test_vehicles_custom_pagination(client: TestClient, mock_prisma: MagicMock) 
     mock_prisma.vehicle.find_many.return_value = []
     mock_prisma.vehicle.count.return_value = 257
 
-    res = client.get(
-        "/v1/admin/vehicles?page=3&limit=20", headers=_admin_headers("FINANCE")
-    )
+    res = client.get("/v1/admin/vehicles?page=3&limit=20", headers=_admin_headers("FINANCE"))
     assert res.status_code == 200
 
     body = res.json()
@@ -65,9 +63,7 @@ def test_pagination_bounds(client: TestClient, mock_prisma: MagicMock) -> None:
     assert r.status_code == 400
 
 
-def test_bookings_paginated_with_status_filter(
-    client: TestClient, mock_prisma: MagicMock
-) -> None:
+def test_bookings_paginated_with_status_filter(client: TestClient, mock_prisma: MagicMock) -> None:
     mock_prisma.adminuser.find_unique.return_value = _admin("SALES")
     mock_prisma.booking.find_many.return_value = []
     mock_prisma.booking.count.return_value = 4
@@ -83,9 +79,7 @@ def test_bookings_paginated_with_status_filter(
     assert where == {"status": "SUBMITTED"}
 
 
-def test_customers_and_leases_paginated(
-    client: TestClient, mock_prisma: MagicMock
-) -> None:
+def test_customers_and_leases_paginated(client: TestClient, mock_prisma: MagicMock) -> None:
     mock_prisma.adminuser.find_unique.return_value = _admin("SUPER_ADMIN")
     mock_prisma.customer.find_many.return_value = []
     mock_prisma.customer.count.return_value = 0

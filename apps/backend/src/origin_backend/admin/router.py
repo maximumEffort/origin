@@ -80,9 +80,7 @@ async def list_bookings_endpoint(
 ) -> object:
     """List bookings (admin view with customer + vehicle details), paginated."""
     page, limit = pagination
-    return _encode(
-        await service.list_all_bookings(db, status_filter, page=page, limit=limit)
-    )
+    return _encode(await service.list_all_bookings(db, status_filter, page=page, limit=limit))
 
 
 @router.post("/bookings/{booking_id}/approve", status_code=status.HTTP_200_OK)
@@ -156,9 +154,7 @@ async def list_customers_endpoint(
 ) -> object:
     """List customers with KYC status + document summary, paginated."""
     page, limit = pagination
-    return _encode(
-        await service.list_all_customers(db, kyc_status, page=page, limit=limit)
-    )
+    return _encode(await service.list_all_customers(db, kyc_status, page=page, limit=limit))
 
 
 @router.get("/customers/{customer_id}")
@@ -223,9 +219,7 @@ async def list_leases_endpoint(
 ) -> object:
     """List leases with customer, vehicle, and payment details, paginated."""
     page, limit = pagination
-    return _encode(
-        await service.list_all_leases(db, status_filter, page=page, limit=limit)
-    )
+    return _encode(await service.list_all_leases(db, status_filter, page=page, limit=limit))
 
 
 # ── Fleet / Vehicles ──────────────────────────────────────────────────────
@@ -240,9 +234,7 @@ async def list_vehicles_endpoint(
 ) -> object:
     """Admin view of vehicles with primary image, paginated."""
     page, limit = pagination
-    return _encode(
-        await service.list_all_vehicles(db, status_filter, page=page, limit=limit)
-    )
+    return _encode(await service.list_all_vehicles(db, status_filter, page=page, limit=limit))
 
 
 @router.post("/vehicles", status_code=status.HTTP_201_CREATED)
