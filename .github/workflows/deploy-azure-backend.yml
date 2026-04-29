@@ -61,12 +61,19 @@ jobs:
             --revision-suffix sha-$(echo ${{ github.sha }} | cut -c1-8)
 
       - name: Run Prisma migrations
+        # Single source of truth for schema migrations — the Dockerfile no
+        # longer runs them at container start (see #138 §6). If this step
+        # fails, the deploy fails and someone has to investigate; that is
+        # the intended behaviour. Do NOT add `|| true` / `|| echo`.
+        # `set -euo pipefail` ensures shell-level failures (e.g. exec not
+        # available) also fail the step instead of silently moving on.
+        shell: bash
         run: |
+          set -euo pipefail
           az containerapp exec \
-            --name $CONTAINER_APP \
-            --resource-group $AZURE_RG \
-            --command "prisma migrate deploy --schema /app/prisma/schema.prisma" \
-          || echo "⚠️ Prisma migrate failed or exec not available — check manually"
+            --name "$CONTAINER_APP" \
+            --resource-group "$AZURE_RG" \
+            --command "prisma migrate deploy --schema /app/prisma/schema.prisma"
 
       - name: Health check
         run: |
