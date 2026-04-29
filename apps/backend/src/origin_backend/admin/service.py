@@ -399,6 +399,16 @@ async def list_all_leases(
     page: int = 1,
     limit: int = 50,
 ) -> dict[str, Any]:
+    """
+    Paginated list view of leases for the admin dashboard.
+
+    Includes ONLY the next pending-or-overdue payment per lease — not the
+    full payment history. The list UI only renders "next due" per row
+    (apps/admin/lib/data-store.tsx:mapLease); shipping all 24 months for
+    50 leases per page is ~1,200 payment rows over the wire to render
+    50 small badges. The lease detail endpoint (when added) can fetch
+    the full schedule. Audit ref: #137 §1.
+    """
     where: dict[str, Any] | None = {"status": status_filter} if status_filter else None
     total = await db.lease.count(where=where) if where else await db.lease.count()
     items = await db.lease.find_many(
@@ -406,7 +416,12 @@ async def list_all_leases(
         include={
             "customer": True,
             "vehicle": True,
-            "payments": {"order_by": {"dueDate": "asc"}},
+            "payments": {
+                # Only the earliest unpaid payment — that's all the UI uses.
+                "where": {"status": {"in": ["PENDING", "OVERDUE"]}},
+                "order_by": {"dueDate": "asc"},
+                "take": 1,
+            },
         },
         order={"createdAt": "desc"},
         skip=(page - 1) * limit,

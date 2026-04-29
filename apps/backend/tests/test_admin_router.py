@@ -381,6 +381,25 @@ def test_list_leases_finance_can_read(client: TestClient, mock_prisma: MagicMock
     assert where == {"status": "ACTIVE"}
 
 
+def test_list_leases_only_pulls_next_due_payment(client: TestClient, mock_prisma: MagicMock):
+    """#137 §1 — list view must NOT fetch full payment history per row.
+
+    Pulling all payments ships ~1200 rows for a 50-lease page (24-month
+    leases), when the UI only renders "next due". Verify the include narrows
+    to one pending-or-overdue payment ordered by dueDate.
+    """
+    mock_prisma.adminuser.find_unique.return_value = _admin("FINANCE")
+    mock_prisma.lease.find_many.return_value = []
+    r = client.get("/v1/admin/leases", headers=_admin_headers("FINANCE"))
+    assert r.status_code == 200
+
+    include = mock_prisma.lease.find_many.call_args.kwargs["include"]
+    payments = include["payments"]
+    assert payments["take"] == 1
+    assert payments["order_by"] == {"dueDate": "asc"}
+    assert payments["where"] == {"status": {"in": ["PENDING", "OVERDUE"]}}
+
+
 # ── /admin/vehicles ────────────────────────────────────────────────────
 
 
