@@ -42,5 +42,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 EXPOSE 3001
 
-# Run Prisma migrations then start uvicorn — no shell script needed
-CMD ["sh", "-c", "prisma migrate deploy 2>/dev/null || true && uvicorn origin_backend.main:app --host 0.0.0.0 --port ${PORT:-3001}"]
+# Migrations are NOT run from the container on startup. They live in
+# .github/workflows/deploy-azure-backend.yml and run as a dedicated step
+# (see #138 §6 — running them in two places with silent failure was hiding
+# real schema-drift bugs). Local dev applies them manually with
+# `uv run prisma migrate deploy`; CI runs them once per deploy and fails
+# the workflow loudly if they don't apply cleanly.
+CMD ["sh", "-c", "uvicorn origin_backend.main:app --host 0.0.0.0 --port ${PORT:-3001}"]
