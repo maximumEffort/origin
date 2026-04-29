@@ -5,6 +5,9 @@ Mirrors apps/backend/src/leases/leases.service.ts. Customers can list
 their leases, fetch one (with payments + booking stub), or renew an
 ACTIVE lease — which marks the original as RENEWED and creates a new
 ACTIVE lease starting at the old end date.
+
+Admin-callable transitions:
+- complete(): mark an ACTIVE lease COMPLETED and free its vehicle.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
+from origin_backend.common.audit import log_action
 from prisma import Prisma
 
 
@@ -196,3 +200,76 @@ async def renew(
         }
     )
     return _serialise_lease(new_lease)
+
+
+async def _free_vehicle_if_unleased(db: Prisma, vehicle_id: str) -> bool:
+    """
+    Set `vehicle.status` to AVAILABLE if no ACTIVE lease references it.
+
+    Returns True if the vehicle was freed, False otherwise. The "no other
+    active lease" guard is defensive — today the schema doesn't allow
+    parallel ACTIVE leases on the same vehicle, but if it ever does (or if
+    this is called mid-transition before the new lease is committed) we
+    won't accidentally make a leased car bookable.
+    """
+    other_active = await db.lease.find_first(
+        where={"vehicleId": vehicle_id, "status": "ACTIVE"},
+    )
+    if other_active is not None:
+        return False
+    await db.vehicle.update(
+        where={"id": vehicle_id},
+        data={"status": "AVAILABLE"},
+    )
+    return True
+
+
+async def complete(
+    db: Prisma,
+    lease_id: str,
+    *,
+    admin_id: str,
+) -> dict[str, Any]:
+    """
+    Admin-callable: mark an ACTIVE lease COMPLETED and free its vehicle.
+
+    Idempotent — calling on an already-COMPLETED lease returns the current
+    state without further side effects. Refuses to act on RENEWED leases
+    (their vehicle is held by the renewal) or on a lease that doesn't exist.
+
+    Until #121 ships its admin lease-termination workflow, this is the only
+    way the system transitions a vehicle out of LEASED, so without it fleet
+    utilisation reports lie permanently.
+    """
+    lease = await db.lease.find_unique(where={"id": lease_id})
+    if lease is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
+
+    current_status = _enum_value(lease.status)
+    if current_status == "COMPLETED":
+        return _serialise_lease(lease)
+
+    if current_status != "ACTIVE":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot complete lease in status {current_status}",
+        )
+
+    updated = await db.lease.update(
+        where={"id": lease_id},
+        data={"status": "COMPLETED"},
+    )
+
+    freed = await _free_vehicle_if_unleased(db, lease.vehicleId)
+
+    await log_action(
+        db,
+        user_id=admin_id,
+        action="COMPLETE",
+        entity_type="LEASE",
+        entity_id=lease_id,
+        old_value={"status": current_status},
+        new_value={"status": "COMPLETED", "vehicleFreed": freed},
+    )
+
+    return _serialise_lease(updated)

@@ -400,6 +400,136 @@ def test_list_leases_only_pulls_next_due_payment(client: TestClient, mock_prisma
     assert payments["where"] == {"status": {"in": ["PENDING", "OVERDUE"]}}
 
 
+# ── /admin/leases/:id/complete  (#136 §2) ──────────────────────────────
+
+
+def _active_lease(*, lid: str = "ls-1", vid: str = "veh-1") -> SimpleNamespace:
+    """Minimal Lease shape that complete() touches."""
+    return SimpleNamespace(
+        id=lid,
+        reference=f"LS-2026-{lid}",
+        bookingId="bk-1",
+        customerId=CUSTOMER_ID,
+        vehicleId=vid,
+        startDate=datetime(2026, 1, 1, tzinfo=UTC),
+        endDate=datetime(2026, 4, 1, tzinfo=UTC),
+        serviceType=SimpleNamespace(value="RENT"),
+        monthlyRateAed=Decimal("3500.00"),
+        vatRate=Decimal("0.05"),
+        mileageLimitMonthly=2500,
+        downPaymentAed=None,
+        status=SimpleNamespace(value="ACTIVE"),
+        renewalOfId=None,
+        agreementPdfUrl=None,
+        notes=None,
+        createdAt=datetime(2026, 1, 1, tzinfo=UTC),
+        updatedAt=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+
+
+def test_complete_lease_blocks_sales(client: TestClient, mock_prisma: MagicMock):
+    """SALES role cannot complete a lease — only SUPER_ADMIN + FLEET_MANAGER."""
+    mock_prisma.adminuser.find_unique.return_value = _admin("SALES")
+    r = client.post("/v1/admin/leases/ls-1/complete", headers=_admin_headers("SALES"))
+    assert r.status_code == 403
+
+
+def test_complete_lease_404_when_missing(client: TestClient, mock_prisma: MagicMock):
+    mock_prisma.adminuser.find_unique.return_value = _admin("FLEET_MANAGER")
+    mock_prisma.lease.find_unique.return_value = None
+    r = client.post(
+        "/v1/admin/leases/missing/complete",
+        headers=_admin_headers("FLEET_MANAGER"),
+    )
+    assert r.status_code == 404
+
+
+def test_complete_lease_400_when_not_active(client: TestClient, mock_prisma: MagicMock):
+    """Cannot complete a RENEWED lease — its vehicle is held by the renewal."""
+    mock_prisma.adminuser.find_unique.return_value = _admin("FLEET_MANAGER")
+    renewed = _active_lease()
+    renewed.status = SimpleNamespace(value="RENEWED")
+    mock_prisma.lease.find_unique.return_value = renewed
+    r = client.post("/v1/admin/leases/ls-1/complete", headers=_admin_headers("FLEET_MANAGER"))
+    assert r.status_code == 400
+    # Vehicle untouched on a refused complete
+    mock_prisma.vehicle.update.assert_not_called()
+
+
+def test_complete_lease_idempotent_when_already_completed(
+    client: TestClient, mock_prisma: MagicMock
+):
+    """Calling complete twice is safe — second call is a no-op."""
+    mock_prisma.adminuser.find_unique.return_value = _admin("FLEET_MANAGER")
+    done = _active_lease()
+    done.status = SimpleNamespace(value="COMPLETED")
+    mock_prisma.lease.find_unique.return_value = done
+    r = client.post("/v1/admin/leases/ls-1/complete", headers=_admin_headers("FLEET_MANAGER"))
+    assert r.status_code == 200
+    # No further mutations on the second call
+    mock_prisma.lease.update.assert_not_called()
+    mock_prisma.vehicle.update.assert_not_called()
+
+
+def test_complete_lease_happy_path_frees_vehicle(client: TestClient, mock_prisma: MagicMock):
+    """ACTIVE lease → COMPLETED + vehicle.status flipped to AVAILABLE + audit row."""
+    mock_prisma.adminuser.find_unique.return_value = _admin("FLEET_MANAGER", admin_id=FLEET_ID)
+    lease = _active_lease(lid="ls-1", vid="veh-1")
+    mock_prisma.lease.find_unique.return_value = lease
+    completed = _active_lease(lid="ls-1", vid="veh-1")
+    completed.status = SimpleNamespace(value="COMPLETED")
+    mock_prisma.lease.update.return_value = completed
+    # No other ACTIVE lease on this vehicle → vehicle should be freed
+    mock_prisma.lease.find_first.return_value = None
+
+    r = client.post("/v1/admin/leases/ls-1/complete", headers=_admin_headers("FLEET_MANAGER"))
+    assert r.status_code == 200
+    assert r.json()["status"] == "COMPLETED"
+
+    # Lease flipped to COMPLETED
+    update_kwargs = mock_prisma.lease.update.call_args.kwargs
+    assert update_kwargs["where"] == {"id": "ls-1"}
+    assert update_kwargs["data"] == {"status": "COMPLETED"}
+
+    # Vehicle freed — the actual fix
+    veh_update = mock_prisma.vehicle.update.call_args.kwargs
+    assert veh_update["where"] == {"id": "veh-1"}
+    assert veh_update["data"] == {"status": "AVAILABLE"}
+
+    # Audit log written
+    audit_data = mock_prisma.auditlog.create.call_args.kwargs["data"]
+    assert audit_data["userId"] == FLEET_ID
+    assert audit_data["action"] == "COMPLETE"
+    assert audit_data["entityType"] == "LEASE"
+    assert audit_data["entityId"] == "ls-1"
+
+
+def test_complete_lease_keeps_vehicle_leased_when_other_active_lease_exists(
+    client: TestClient, mock_prisma: MagicMock
+):
+    """Defensive: if another ACTIVE lease references the same vehicle, do NOT free it.
+
+    The schema doesn't allow this today, but the guard keeps a misconfigured
+    DB or a future feature from accidentally making a leased car bookable.
+    """
+    mock_prisma.adminuser.find_unique.return_value = _admin("SUPER_ADMIN")
+    lease = _active_lease(lid="ls-1", vid="veh-1")
+    mock_prisma.lease.find_unique.return_value = lease
+    mock_prisma.lease.update.return_value = lease
+    # Another ACTIVE lease on the same vehicle
+    mock_prisma.lease.find_first.return_value = _active_lease(lid="ls-2", vid="veh-1")
+
+    r = client.post("/v1/admin/leases/ls-1/complete", headers=_admin_headers("SUPER_ADMIN"))
+    assert r.status_code == 200
+
+    # Vehicle NOT freed
+    mock_prisma.vehicle.update.assert_not_called()
+
+    # Audit metadata reflects the no-free path
+    audit_data = mock_prisma.auditlog.create.call_args.kwargs["data"]
+    assert audit_data["newValue"]["vehicleFreed"] is False
+
+
 # ── /admin/vehicles ────────────────────────────────────────────────────
 
 

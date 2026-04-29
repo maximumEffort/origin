@@ -29,6 +29,7 @@ from origin_backend.common.auth import AuthenticatedUser, require_admin
 from origin_backend.common.pagination import parse_pagination
 from origin_backend.common.prisma import get_db
 from origin_backend.common.request_context import RequestInfo, get_request_info
+from origin_backend.leases import service as leases_service
 from prisma import Prisma
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -220,6 +221,22 @@ async def list_leases_endpoint(
     """List leases with customer, vehicle, and payment details, paginated."""
     page, limit = pagination
     return _encode(await service.list_all_leases(db, status_filter, page=page, limit=limit))
+
+
+@router.post("/leases/{lease_id}/complete", status_code=status.HTTP_200_OK)
+async def complete_lease_endpoint(
+    lease_id: str,
+    user: AuthenticatedUser = Depends(require_admin("SUPER_ADMIN", "FLEET_MANAGER")),
+    db: Prisma = Depends(get_db),
+) -> object:
+    """
+    Mark an ACTIVE lease COMPLETED and free its vehicle (LEASED → AVAILABLE).
+    Idempotent on a COMPLETED lease. Until #121 ships the broader termination
+    workflow, this is the only handler that transitions a vehicle out of LEASED.
+    """
+    return _encode(
+        await leases_service.complete(db, lease_id, admin_id=user.id),
+    )
 
 
 # ── Fleet / Vehicles ──────────────────────────────────────────────────────
