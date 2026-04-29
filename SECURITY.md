@@ -18,14 +18,14 @@ We aim to respond within 48 hours. Please include:
 This policy covers the Origin platform:
 - Customer site (origin-customer.vercel.app and attached custom domains)
 - Admin dashboard (origin-admin.vercel.app)
-- Backend API (car-leasing-business-production.up.railway.app, migrating to UAE infra)
+- Backend API (`api.origin-auto.ae`, hosted on Azure Container Apps in UAE North)
 
 ## Out of scope
 
 - Social engineering of Origin staff
 - Physical security
 - DoS/DDoS volumetric attacks (handled at the infrastructure layer)
-- Vulnerabilities in third-party services (Stripe, Twilio, SendGrid, Vercel, Railway) — report to them directly
+- Vulnerabilities in third-party services (Stripe, Twilio, SendGrid, Vercel, Microsoft Azure) — report to them directly
 
 ## Safe harbour
 

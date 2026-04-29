@@ -117,7 +117,7 @@ Supported: **English** (en), **Arabic** (ar, RTL), **Simplified Chinese** (zh-CN
 | Admin dashboard | `apps/admin/` | Next.js 14 (App Router), jose (JWT), httpOnly-cookie proxy to backend |
 | Backend API | `apps/backend/` | FastAPI, Prisma Python, PostgreSQL — **canonical** |
 
-All three apps live in this monorepo. Both frontends consume the backend via `NEXT_PUBLIC_API_URL`. The backend is currently hosted on Railway (US) — migration to UAE infrastructure (AWS Lightsail me-central-1) is tracked in issue #21.
+All three apps live in this monorepo. Both frontends consume the backend via `NEXT_PUBLIC_API_URL`. The backend runs on **Azure Container Apps in UAE North** (`api.origin-auto.ae`); see `docs/adr/0001-azure-uae-north-architecture.md` and `docs/STATUS.md`.
 
 ---
 

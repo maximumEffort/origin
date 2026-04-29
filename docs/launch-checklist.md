@@ -16,7 +16,7 @@
 ## 1. DNS & Domain
 
 - [ ] Domain `[your-domain.ae]` registered (UAE registrar preferred)
-- [ ] Nameservers configured to point to Vercel (website) and Azure/Railway (API backend)
+- [ ] Nameservers configured to point to Vercel (frontends) and Azure UAE North (API backend at `api.origin-auto.ae`)
 - [ ] SSL/TLS certificate provisioned (auto via Vercel + Azure)
 - [ ] MX records configured for transactional email (SendGrid or SMTP provider)
 - [ ] SPF, DKIM, DMARC records configured for email deliverability
