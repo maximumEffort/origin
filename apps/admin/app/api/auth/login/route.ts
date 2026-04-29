@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SignJWT } from 'jose';
+import {
+  SESSION_COOKIE,
+  API_ACCESS_COOKIE,
+  API_REFRESH_COOKIE,
+  sessionCookieOptions,
+  apiAccessCookieOptions,
+  apiRefreshCookieOptions,
+} from '@/lib/auth-cookies';
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ??
@@ -16,7 +24,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Authenticate against the backend API to get the API token
+  // Authenticate against the backend API to get the API tokens
   const backendRes = await fetch(`${API_URL}/auth/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -33,32 +41,23 @@ export async function POST(req: NextRequest) {
 
   const backendData = await backendRes.json();
 
-  // Sign an 8-hour session JWT for middleware page access
+  // Sign an 8-hour session JWT for middleware page access. This is the
+  // user-visible "logged in" lifetime and is intentionally longer than the
+  // 15-minute backend JWT — the backend tokens auto-rotate via /auth/refresh.
   const sessionToken = await new SignJWT({ email, role: 'admin' })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('8h')
     .sign(new TextEncoder().encode(secret));
 
-  const isProduction = process.env.NODE_ENV === 'production';
-  const cookieOptions = {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'strict' as const,
-    maxAge: 60 * 60 * 8,
-    path: '/',
-  };
-
   const response = NextResponse.json({
     ok: true,
     admin: backendData.admin,
   });
 
-  // Session cookie for middleware auth (page access)
-  response.cookies.set('admin_session', sessionToken, cookieOptions);
-
-  // Backend API token in httpOnly cookie (never exposed to JS)
-  response.cookies.set('admin_api_token', backendData.access_token, cookieOptions);
+  response.cookies.set(SESSION_COOKIE, sessionToken, sessionCookieOptions);
+  response.cookies.set(API_ACCESS_COOKIE, backendData.access_token, apiAccessCookieOptions);
+  response.cookies.set(API_REFRESH_COOKIE, backendData.refresh_token, apiRefreshCookieOptions);
 
   return response;
 }
