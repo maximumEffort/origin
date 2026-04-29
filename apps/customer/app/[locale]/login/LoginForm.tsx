@@ -151,10 +151,11 @@ export default function LoginForm({ locale }: { locale: string }) {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  <label htmlFor="login-phone" className="block text-sm font-medium text-neutral-700 mb-2">
                     {t('phone')}
                   </label>
                   <input
+                    id="login-phone"
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}

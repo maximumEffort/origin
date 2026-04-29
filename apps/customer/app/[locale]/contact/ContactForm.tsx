@@ -96,8 +96,9 @@ export default function ContactForm() {
                   <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="grid sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">{t('name')}</label>
+                        <label htmlFor="contact-name" className="block text-sm font-medium text-neutral-700 mb-1">{t('name')}</label>
                         <input
+                          id="contact-name"
                           type="text"
                           required
                           placeholder={t('namePlaceholder')}
@@ -107,8 +108,9 @@ export default function ContactForm() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">{t('email')}</label>
+                        <label htmlFor="contact-email" className="block text-sm font-medium text-neutral-700 mb-1">{t('email')}</label>
                         <input
+                          id="contact-email"
                           type="email"
                           required
                           placeholder={t('emailPlaceholder')}
@@ -120,8 +122,9 @@ export default function ContactForm() {
                     </div>
                     <div className="grid sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">{t('phone')}</label>
+                        <label htmlFor="contact-phone" className="block text-sm font-medium text-neutral-700 mb-1">{t('phone')}</label>
                         <input
+                          id="contact-phone"
                           type="tel"
                           placeholder={t('phonePlaceholder')}
                           value={form.phone}
@@ -130,8 +133,9 @@ export default function ContactForm() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-1">{t('subject')}</label>
+                        <label htmlFor="contact-subject" className="block text-sm font-medium text-neutral-700 mb-1">{t('subject')}</label>
                         <input
+                          id="contact-subject"
                           type="text"
                           placeholder={t('subjectPlaceholder')}
                           value={form.subject}
@@ -141,8 +145,9 @@ export default function ContactForm() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-1">{t('message')}</label>
+                      <label htmlFor="contact-message" className="block text-sm font-medium text-neutral-700 mb-1">{t('message')}</label>
                       <textarea
+                        id="contact-message"
                         rows={5}
                         required
                         placeholder={t('messagePlaceholder')}

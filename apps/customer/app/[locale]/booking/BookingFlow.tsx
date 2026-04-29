@@ -372,15 +372,17 @@ export default function BookingFlow({ locale }: { locale: string }) {
 
                 <div className="grid sm:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">{t('startDate')}</label>
-                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                    <label htmlFor="booking-start-date" className="block text-sm font-medium text-neutral-700 mb-2">{t('startDate')}</label>
+                    <input id="booking-start-date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                       className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">{t('duration')}</label>
-                    <div className="flex gap-2 flex-wrap">
+                    {/* Group label points at the duration radio-group region. The buttons
+                        below act as a single-select; aria-pressed conveys state. */}
+                    <span id="booking-duration-label" className="block text-sm font-medium text-neutral-700 mb-2">{t('duration')}</span>
+                    <div role="group" aria-labelledby="booking-duration-label" className="flex gap-2 flex-wrap">
                       {RENT_DURATIONS.map((d) => (
-                        <button key={d} onClick={() => setDuration(d)}
+                        <button key={d} onClick={() => setDuration(d)} aria-pressed={duration === d}
                           className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                             duration === d ? 'bg-brand text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
                           }`}>
@@ -391,8 +393,8 @@ export default function BookingFlow({ locale }: { locale: string }) {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">{t('pickupLabel')}</label>
-                  <input type="text" placeholder={t('pickupPlaceholder')} value={pickupAddress}
+                  <label htmlFor="booking-pickup" className="block text-sm font-medium text-neutral-700 mb-2">{t('pickupLabel')}</label>
+                  <input id="booking-pickup" type="text" placeholder={t('pickupPlaceholder')} value={pickupAddress}
                     onChange={(e) => setPickupAddress(e.target.value)}
                     className="w-full px-4 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand" />
                 </div>

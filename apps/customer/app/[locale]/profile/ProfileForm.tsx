@@ -79,11 +79,12 @@ export default function ProfileForm({ locale }: { locale: string }) {
           <div className="space-y-5">
             {/* Phone (read-only) */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label htmlFor="profile-phone" className="block text-sm font-medium text-neutral-700 mb-2">
                 <Phone size={14} className="inline me-1" />
                 {t('phone')}
               </label>
               <input
+                id="profile-phone"
                 type="tel"
                 value={customer.phone}
                 disabled
@@ -94,11 +95,12 @@ export default function ProfileForm({ locale }: { locale: string }) {
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label htmlFor="profile-name" className="block text-sm font-medium text-neutral-700 mb-2">
                 <User size={14} className="inline me-1" />
                 {t('name')}
               </label>
               <input
+                id="profile-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -109,11 +111,12 @@ export default function ProfileForm({ locale }: { locale: string }) {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <label htmlFor="profile-email" className="block text-sm font-medium text-neutral-700 mb-2">
                 <Mail size={14} className="inline me-1" />
                 {t('email')}
               </label>
               <input
+                id="profile-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
