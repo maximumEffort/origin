@@ -10,18 +10,30 @@ infra/
 ├── README.md                       (this file)
 ├── main.bicep                      Subscription-scope entry point. Creates the RG, calls modules.
 ├── modules/
-│   ├── observability.bicep         Log Analytics workspace + Application Insights
-│   ├── keyvault.bicep              Key Vault (RBAC mode, no access policies)
-│   ├── storage.bicep               Storage account + private kyc-documents + public vehicle-imagery
-│   ├── postgres.bicep              Postgres Flexible Server, B1ms, 32 GB
-│   ├── containerregistry.bicep     Basic ACR
-│   └── containerapp.bicep          Container App Environment + Container App, managed identity, KV refs
+│   ├── observability.bicep         Log Analytics workspace + Application Insights         [wired]
+│   ├── keyvault.bicep              Key Vault (RBAC mode, no access policies)              [wired]
+│   ├── storage.bicep               Storage account + KYC + vehicle imagery + kyc-ocr-raw  [wired]
+│   ├── postgres.bicep              Postgres Flexible Server, B1ms, 32 GB                  [wired]
+│   ├── containerregistry.bicep     Basic ACR                                              [wired]
+│   ├── containerapp.bicep          Container App Environment + Container App + KV refs   [wired]
+│   ├── docintel.bicep              Document Intelligence S0 (KYC OCR — ADR-0002)         [⚠ orphan]
+│   ├── docintel-roles.bicep        Cognitive Services User + Storage role assignments    [⚠ orphan]
+│   └── acr-roles.bicep             AcrPull for Container App MI                          [⚠ orphan]
 └── parameters/
-    └── prod.bicepparam             Tier 1 parameter values
+    └── prod.bicepparam             Tier 1 parameter values + CORS allow-list
 ```
 
-Document Intelligence is **not** in this skeleton; it'll land in the KYC OCR feature PR
-(separate ADR, separate module). Front Door is deferred per ADR-0001.
+> **Bicep ↔ Azure drift, post-launch tech debt.** Document Intelligence, ACR role
+> assignments, and DI role assignments **are live in Azure** (provisioned via CLI during
+> the rapid migration). The corresponding Bicep modules exist on disk but are **not
+> wired** from `main.bicep` because each one surfaced a drift error when re-applied
+> against the live state (resource-name conflicts, role-GUID stability, deployment-script
+> ordering). PR #145 deliberately removed them from `main.bicep` and disabled the
+> auto-trigger on `deploy-azure-infra.yml` so a casual `git push` to `main` will not
+> attempt to reconcile. Reconciliation work is tracked in `docs/STATUS.md` and should be
+> done after V1 launch — `az resource show` each live resource, diff against the module,
+> adjust the template, then re-wire one at a time. Front Door is still deferred per
+> ADR-0001.
 
 ## Prerequisites (one-time, on your machine)
 
@@ -90,9 +102,10 @@ az containerapp revision restart --name ca-origin-backend-prod --resource-group 
 
 ## Updating the image after CI builds it
 
-The Container App is created with a placeholder hello-world image. Once the CI workflow
-(see `.github/workflows/deploy-azure-backend.yml` — coming in a separate PR) pushes the
-real FastAPI image to ACR, redeploy with:
+The Container App was created with a placeholder hello-world image on first deploy.
+The CI workflow `.github/workflows/deploy-azure-backend.yml` now builds + pushes the
+real FastAPI image to ACR on every push to `main` that touches `apps/backend/**`. To
+deploy a specific tag manually:
 
 ```powershell
 az containerapp update `
@@ -103,18 +116,19 @@ az containerapp update `
 
 ## Known caveats / honest disclaimers
 
-- This Bicep is a **skeleton, not battle-tested**. The first `az deployment sub create`
-  will likely surface 1–2 errors — usually around resource name uniqueness (Storage
-  Account names are globally unique) or RBAC role assignment ordering. Iterate from real
-  error messages.
-- **Postgres firewall rules** are set permissively at first deploy (allow all Azure
-  services). Tighten to specific Container App outbound IPs once that's measured.
-- **No private endpoints / VNet integration** in this skeleton (deferred per ADR-0001).
-  Adequate for V1, must change before any SOC 2 audit.
-- **No Front Door / WAF** (deferred per ADR-0001). Custom domain will bind directly to
-  the Container App ingress.
-- **Container App uses placeholder image** on first deploy. The real image flows in via
-  the CI workflow once that lands.
+- **Template ↔ live drift.** Several resources (Document Intelligence, ACR role
+  assignments, Storage CORS rules) currently exist in Azure but are not represented in
+  the wired Bicep tree. See the orphan-modules note above. Reconciling is post-launch
+  tech debt.
+- **`deploy-azure-infra.yml` is manual-dispatch only.** The `push:` trigger was removed
+  in PR #145 to prevent drift errors from the orphan modules from blocking unrelated
+  pushes. Run via the GitHub Actions tab when you want to apply Bicep.
+- **Postgres firewall rules** are set permissively (allow all Azure services). Tighten
+  to specific Container App outbound IPs once that's measured.
+- **No private endpoints / VNet integration** (deferred per ADR-0001). Adequate for V1,
+  must change before any SOC 2 audit.
+- **No Front Door / WAF** (deferred per ADR-0001). Custom domain `api.origin-auto.ae`
+  binds directly to the Container App ingress.
 
 ## Cost on first deploy
 

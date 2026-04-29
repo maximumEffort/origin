@@ -1,6 +1,21 @@
 # UAE Infrastructure Setup Guide
 
-> **Status:** Planning
+> ## ⚠ SUPERSEDED — kept for historical reference only
+>
+> **Status:** Superseded by ADR-0001 (`docs/adr/0001-azure-uae-north-architecture.md`).
+>
+> This document was the March 2026 planning artefact for a self-hosted UAE VPS approach.
+> It was **not the path taken**. The team migrated to **Azure UAE North Container Apps**
+> instead, executed 2026-04-26 → 2026-04-29. For current infrastructure state see
+> `docs/STATUS.md`. This file is preserved only because some of its UAE-residency,
+> compliance, and provider-comparison notes remain useful background reading.
+>
+> **Do not follow the deploy steps in this document.** They will not produce the live
+> system.
+
+---
+
+> **Original status:** Planning
 > **Last updated:** March 2026
 > **Goal:** Migrate backend + database to UAE region for data residency compliance. Keep costs minimal.
 
