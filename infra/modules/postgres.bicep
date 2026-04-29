@@ -11,9 +11,11 @@ param postgresVersion string = '16'
 @allowed([ 'Burstable', 'GeneralPurpose', 'MemoryOptimized' ])
 param skuTier string = 'Burstable'
 param skuName string = 'Standard_B1ms'
-@minValue(32) @maxValue(16384)
+@minValue(32)
+@maxValue(16384)
 param storageSizeGB int = 32
-@minValue(7) @maxValue(35)
+@minValue(7)
+@maxValue(35)
 param backupRetentionDays int = 7
 
 resource postgres 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {

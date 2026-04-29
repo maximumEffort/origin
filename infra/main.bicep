@@ -187,6 +187,8 @@ module acrRoles 'modules/acr-roles.bicep' = {
   ]
 }
 
+// docIntel + storage dependencies are inferred via the `existing` resource
+// references in the module — no explicit dependsOn needed.
 module docIntelRoles 'modules/docintel-roles.bicep' = {
   name: 'docintel-roles'
   scope: rg
@@ -195,10 +197,6 @@ module docIntelRoles 'modules/docintel-roles.bicep' = {
     storageAccountName: storageAccountName
     containerAppPrincipalId: containerApp.outputs.principalId
   }
-  dependsOn: [
-    docIntel
-    storage
-  ]
 }
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
