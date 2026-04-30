@@ -9,8 +9,8 @@ interface Props {
   onPageChange: (page: number) => void;
   /** Optional. Render a page-size selector if provided. */
   onLimitChange?: (limit: number) => void;
-  /** Hide the whole component when there's nothing to paginate. Default: true. */
-  hideWhenSinglePage?: boolean;
+  /** Hide the whole component when total is 0. Default: true. */
+  hideWhenEmpty?: boolean;
   className?: string;
 }
 
@@ -19,10 +19,12 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
 /**
  * Compact pagination control for admin list views (#126).
  *
- * Shows: "Showing X-Y of Z   [< Prev] [1] [2] [3] ... [N] [Next >]"
+ * Shows: "Showing X-Y of Z   [← Prev] [1] [2] [3] ... [N] [Next →]"
  *
  * Page numbers collapse with leading/trailing ellipsis once there are
- * more than 7 pages so the row stays narrow.
+ * more than 7 pages so the row stays narrow. When totalPages <= 1, the
+ * Prev/Next nav hides but the count + per-page selector stay visible
+ * so the admin always sees how many records they're looking at.
  */
 export default function Pagination({
   page,
@@ -30,14 +32,15 @@ export default function Pagination({
   total,
   onPageChange,
   onLimitChange,
-  hideWhenSinglePage = true,
+  hideWhenEmpty = true,
   className = '',
 }: Props) {
-  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, limit)));
-  if (hideWhenSinglePage && totalPages <= 1 && total <= limit) return null;
+  if (hideWhenEmpty && total === 0) return null;
 
+  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, limit)));
   const start = total === 0 ? 0 : (page - 1) * limit + 1;
   const end = Math.min(page * limit, total);
+  const showNav = totalPages > 1;
   const pageNumbers = compactPageList(page, totalPages);
 
   return (
@@ -64,49 +67,53 @@ export default function Pagination({
           </label>
         )}
 
-        <button
-          type="button"
-          onClick={() => onPageChange(Math.max(1, page - 1))}
-          disabled={page <= 1}
-          aria-label="Previous page"
-          className="flex items-center gap-1 px-2 py-1.5 border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          <ChevronLeft size={14} /> Prev
-        </button>
+        {showNav && (
+          <>
+            <button
+              type="button"
+              onClick={() => onPageChange(Math.max(1, page - 1))}
+              disabled={page <= 1}
+              aria-label="Previous page"
+              className="flex items-center gap-1 px-2 py-1.5 border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={14} /> Prev
+            </button>
 
-        <ul className="flex items-center gap-1" role="navigation" aria-label="Pagination">
-          {pageNumbers.map((p, i) =>
-            p === 'ellipsis' ? (
-              <li key={`e-${i}`} className="px-2 text-gray-400" aria-hidden="true">…</li>
-            ) : (
-              <li key={p}>
-                <button
-                  type="button"
-                  onClick={() => onPageChange(p)}
-                  aria-current={p === page ? 'page' : undefined}
-                  aria-label={`Go to page ${p}`}
-                  className={`min-w-[32px] px-2 py-1 rounded-md border text-sm transition-colors ${
-                    p === page
-                      ? 'bg-brand text-white border-brand'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {p}
-                </button>
-              </li>
-            )
-          )}
-        </ul>
+            <ul className="flex items-center gap-1" role="navigation" aria-label="Pagination">
+              {pageNumbers.map((p, i) =>
+                p === 'ellipsis' ? (
+                  <li key={`e-${i}`} className="px-2 text-gray-400" aria-hidden="true">…</li>
+                ) : (
+                  <li key={p}>
+                    <button
+                      type="button"
+                      onClick={() => onPageChange(p)}
+                      aria-current={p === page ? 'page' : undefined}
+                      aria-label={`Go to page ${p}`}
+                      className={`min-w-[32px] px-2 py-1 rounded-md border text-sm transition-colors ${
+                        p === page
+                          ? 'bg-brand text-white border-brand'
+                          : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  </li>
+                )
+              )}
+            </ul>
 
-        <button
-          type="button"
-          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-          disabled={page >= totalPages}
-          aria-label="Next page"
-          className="flex items-center gap-1 px-2 py-1.5 border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          Next <ChevronRight size={14} />
-        </button>
+            <button
+              type="button"
+              onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+              disabled={page >= totalPages}
+              aria-label="Next page"
+              className="flex items-center gap-1 px-2 py-1.5 border border-gray-200 rounded-md text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next <ChevronRight size={14} />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
