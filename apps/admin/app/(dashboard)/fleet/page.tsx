@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, AlertTriangle, Search, Pencil, Trash2, Wrench, CheckCircle, XCircle, RotateCcw, Loader2 } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import VehicleImageManager from '@/components/VehicleImageManager';
+import Pagination from '@/components/Pagination';
 import { useData, Vehicle } from '@/lib/data-store';
 
 const BRANDS = [
@@ -37,6 +38,10 @@ export default function FleetPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
+  // #126 — client-side pagination over the filtered set.
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Vehicle, 'id'>>(emptyForm());
@@ -46,6 +51,23 @@ export default function FleetPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [statusAction, setStatusAction] = useState<{ id: string; brand: string; model: string; to: Vehicle['status'] } | null>(null);
+
+  const filtered = useMemo(
+    () => vehicles.filter(v => {
+      const matchesSearch = `${v.brand} ${v.model} ${v.plate}`.toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = filterStatus === 'ALL' || v.status === filterStatus;
+      return matchesSearch && matchesStatus;
+    }),
+    [vehicles, search, filterStatus],
+  );
+
+  // Reset to page 1 whenever the filter set changes, to avoid landing on a blank page.
+  useEffect(() => { setPage(1); }, [search, filterStatus, limit]);
+
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * limit, page * limit),
+    [filtered, page, limit],
+  );
 
   if (dataLoading) {
     return (
@@ -99,12 +121,6 @@ export default function FleetPage() {
       setSaving(false);
     }
   };
-
-  const filtered = vehicles.filter(v => {
-    const matchesSearch = `${v.brand} ${v.model} ${v.plate}`.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = filterStatus === 'ALL' || v.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
 
   const available = vehicles.filter(v => v.status === 'AVAILABLE').length;
   const leased = vehicles.filter(v => v.status === 'LEASED').length;
@@ -183,7 +199,7 @@ export default function FleetPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((v) => {
+              {paginated.map((v) => {
                 const insDays = daysUntil(v.insuranceExpiry);
                 const rtaDays = daysUntil(v.rtaExpiry);
                 return (
@@ -256,13 +272,22 @@ export default function FleetPage() {
                   </tr>
                 );
               })}
-              {filtered.length === 0 && (
+              {paginated.length === 0 && (
                 <tr><td colSpan={9} className="px-5 py-12 text-center text-gray-400">No vehicles found.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <Pagination
+        page={page}
+        limit={limit}
+        total={filtered.length}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+        className="mt-4"
+      />
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Edit Vehicle' : 'Add Vehicle'} wide>
         <div className="grid grid-cols-2 gap-4">
