@@ -39,7 +39,7 @@ def _parse_iso_dt(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-# ── Bookings ──────────────────────────────────────────────────────────────
+# ── Bookings ───────────────────────────────────────────────────────
 
 
 async def list_all_bookings(
@@ -154,7 +154,7 @@ async def reject_booking(
     return result
 
 
-# ── Customers & KYC ───────────────────────────────────────────────────────
+# ── Customers & KYC ──────────────────────────────────────────────────
 
 
 async def list_all_customers(
@@ -170,6 +170,10 @@ async def list_all_customers(
         where=where,
         include={
             "documents": True,
+            # #127 — frontend reads `_count.leases` for the activeLeases card.
+            # `_count: True` populates counts for every relation on the model;
+            # the mapper only reads bookings + leases so extras are inert.
+            "_count": True,
         },
         order={"createdAt": "desc"},
         skip=(page - 1) * limit,
@@ -274,7 +278,7 @@ async def reject_kyc(
     return updated
 
 
-# ── Lease creation from booking ───────────────────────────────────────────
+# ── Lease creation from booking ──────────────────────────────────────────────
 
 
 async def create_lease_from_booking(
@@ -389,7 +393,7 @@ async def create_lease_from_booking(
     return lease
 
 
-# ── Leases ────────────────────────────────────────────────────────────────
+# ── Leases ───────────────────────────────────────────────────────────
 
 
 async def list_all_leases(
@@ -433,7 +437,7 @@ async def list_all_leases(
     }
 
 
-# ── Fleet / Vehicles ──────────────────────────────────────────────────────
+# ── Fleet / Vehicles ──────────────────────────────────────────────────
 
 
 async def list_all_vehicles(
@@ -450,6 +454,9 @@ async def list_all_vehicles(
         include={
             "category": True,
             "images": {"where": {"isPrimary": True}, "take": 1},
+            # #127 — frontend reads `_count.bookings` / `_count.leases` on the
+            # vehicle list. Without this the value is permanently undefined.
+            "_count": True,
         },
         order={"createdAt": "desc"},
         skip=(page - 1) * limit,
@@ -629,7 +636,7 @@ async def set_vehicle_status(
     return result
 
 
-# ── Dashboard ─────────────────────────────────────────────────────────────
+# ── Dashboard ───────────────────────────────────────────────────────────
 
 
 async def get_dashboard_stats(db: Prisma) -> dict[str, Any]:
