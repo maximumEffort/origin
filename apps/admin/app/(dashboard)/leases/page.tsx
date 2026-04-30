@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Search, DollarSign, CheckCircle, Loader2 } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import Pagination from '@/components/Pagination';
 import { useData } from '@/lib/data-store';
 
 export default function LeasesPage() {
@@ -13,6 +14,26 @@ export default function LeasesPage() {
   const [paymentAction, setPaymentAction] = useState<{ leaseId: string; action: 'PAID' | 'OVERDUE' } | null>(null);
   const [terminateId, setTerminateId] = useState<string | null>(null);
 
+  // #126 — client-side pagination over the filtered set.
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+
+  const filtered = useMemo(
+    () => leases.filter(l => {
+      const matchesSearch = `${l.ref} ${l.customer} ${l.vehicle} ${l.plate}`.toLowerCase().includes(search.toLowerCase());
+      const matchesFilter = filter === 'ALL' || l.status === filter;
+      return matchesSearch && matchesFilter;
+    }),
+    [leases, search, filter],
+  );
+
+  useEffect(() => { setPage(1); }, [search, filter, limit]);
+
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * limit, page * limit),
+    [filtered, page, limit],
+  );
+
   if (dataLoading) {
     return (
       <div className="flex items-center justify-center py-20 text-gray-400">
@@ -20,12 +41,6 @@ export default function LeasesPage() {
       </div>
     );
   }
-
-  const filtered = leases.filter(l => {
-    const matchesSearch = `${l.ref} ${l.customer} ${l.vehicle} ${l.plate}`.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'ALL' || l.status === filter;
-    return matchesSearch && matchesFilter;
-  });
 
   const overdueLeases = leases.filter(l => l.nextPayment?.status === 'OVERDUE');
   const endingSoon = leases.filter(l => l.status === 'ACTIVE' && l.daysLeft <= 30);
@@ -88,7 +103,7 @@ export default function LeasesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((l) => (
+              {paginated.map((l) => (
                 <tr key={l.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-4 font-mono text-xs text-gray-500">{l.ref}</td>
                   <td className="px-5 py-4 font-semibold text-gray-900">{l.customer}</td>
@@ -144,13 +159,22 @@ export default function LeasesPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {paginated.length === 0 && (
                 <tr><td colSpan={9} className="px-5 py-12 text-center text-gray-400">No leases found.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <Pagination
+        page={page}
+        limit={limit}
+        total={filtered.length}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+        className="mt-4"
+      />
 
       {/* Mark payment confirm */}
       <ConfirmDialog

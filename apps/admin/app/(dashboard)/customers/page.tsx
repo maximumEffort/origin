@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Search, FileCheck, FileX, Clock, Plus, Pencil, Trash2, CheckCircle, ScanLine, Loader2 } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import Pagination from '@/components/Pagination';
 import { useData, Customer } from '@/lib/data-store';
 
 const docLabels = ['emirates_id', 'driving_licence', 'visa', 'passport'] as const;
@@ -31,6 +32,24 @@ export default function CustomersPage() {
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
 
+  // #126 — client-side pagination over the filtered set.
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+
+  const filtered = useMemo(
+    () => customers.filter(c =>
+      `${c.name} ${c.email} ${c.phone} ${c.nationality}`.toLowerCase().includes(search.toLowerCase())
+    ),
+    [customers, search],
+  );
+
+  useEffect(() => { setPage(1); }, [search, limit]);
+
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * limit, page * limit),
+    [filtered, page, limit],
+  );
+
   if (dataLoading) {
     return (
       <div className="flex items-center justify-center py-20 text-gray-400">
@@ -38,10 +57,6 @@ export default function CustomersPage() {
       </div>
     );
   }
-
-  const filtered = customers.filter(c =>
-    `${c.name} ${c.email} ${c.phone} ${c.nationality}`.toLowerCase().includes(search.toLowerCase())
-  );
 
   const openAdd = () => {
     setEditingId(null);
@@ -104,7 +119,7 @@ export default function CustomersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((c) => (
+              {paginated.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-4">
                     <button onClick={() => setDetailCustomer(c)} className="text-left hover:text-brand transition-colors">
@@ -152,13 +167,22 @@ export default function CustomersPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {paginated.length === 0 && (
                 <tr><td colSpan={7} className="px-5 py-12 text-center text-gray-400">No customers found.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <Pagination
+        page={page}
+        limit={limit}
+        total={filtered.length}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+        className="mt-4"
+      />
 
       {/* Add/Edit Modal */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Edit Customer' : 'Add Customer'}>

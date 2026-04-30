@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle, XCircle, Clock, Search, Eye, FileText, Loader2 } from 'lucide-react';
 import StatusBadge from '@/components/StatusBadge';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import Pagination from '@/components/Pagination';
 import { useData, Booking } from '@/lib/data-store';
 import { api } from '@/lib/api';
 
@@ -17,6 +18,26 @@ export default function BookingsPage() {
   const [leaseCreating, setLeaseCreating] = useState(false);
   const [leaseError, setLeaseError] = useState('');
 
+  // #126 — client-side pagination over the filtered set.
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+
+  const filtered = useMemo(
+    () => bookings.filter(b => {
+      const matchesFilter = filter === 'All' || b.status === filter.toUpperCase();
+      const matchesSearch = `${b.ref} ${b.customer} ${b.vehicle}`.toLowerCase().includes(search.toLowerCase());
+      return matchesFilter && matchesSearch;
+    }),
+    [bookings, filter, search],
+  );
+
+  useEffect(() => { setPage(1); }, [filter, search, limit]);
+
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * limit, page * limit),
+    [filtered, page, limit],
+  );
+
   if (dataLoading) {
     return (
       <div className="flex items-center justify-center py-20 text-gray-400">
@@ -24,12 +45,6 @@ export default function BookingsPage() {
       </div>
     );
   }
-
-  const filtered = bookings.filter(b => {
-    const matchesFilter = filter === 'All' || b.status === filter.toUpperCase();
-    const matchesSearch = `${b.ref} ${b.customer} ${b.vehicle}`.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
 
   const pending = bookings.filter(b => b.status === 'SUBMITTED').length;
 
@@ -80,7 +95,7 @@ export default function BookingsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((b) => (
+              {paginated.map((b) => (
                 <tr key={b.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-5 py-4 font-mono text-xs text-gray-500">{b.ref}</td>
                   <td className="px-5 py-4">
@@ -134,13 +149,22 @@ export default function BookingsPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {paginated.length === 0 && (
                 <tr><td colSpan={8} className="px-5 py-12 text-center text-gray-400">No bookings found.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <Pagination
+        page={page}
+        limit={limit}
+        total={filtered.length}
+        onPageChange={setPage}
+        onLimitChange={setLimit}
+        className="mt-4"
+      />
 
       {/* Booking Detail Modal */}
       <Modal open={!!viewBooking} onClose={() => setViewBooking(null)} title={`Booking ${viewBooking?.ref ?? ''}`}>
