@@ -5,4 +5,4 @@ the migration window; the frontends point at one or the other via
 NEXT_PUBLIC_API_URL.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
