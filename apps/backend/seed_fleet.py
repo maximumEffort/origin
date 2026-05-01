@@ -210,6 +210,30 @@ async def seed() -> None:
     await db.connect()
 
     try:
+        country = await db.country.find_unique(where={"code": "AE"})
+        if country is None:
+            country = await db.country.create(
+                data={
+                    "id": "country-ae",
+                    "code": "AE",
+                    "name": "United Arab Emirates",
+                    "defaultCurrencyCode": "AED",
+                    "vatRate": Decimal("0.0500"),
+                    "phoneRegex": r"^\+9715\d{8}$",
+                    "enabledPaymentGateways": ["STRIPE", "CHECKOUT_COM", "TABBY"],
+                    "kycConfig": {
+                        "ocrProvider": "azure_document_intelligence",
+                        "requiresDocumentExpiry": True,
+                    },
+                    "productFlags": {
+                        "rental": True,
+                        "purchase": False,
+                        "leaseToOwn": False,
+                        "fleetB2B": False,
+                    },
+                }
+            )
+
         # ── 1. Upsert categories ────────────────────────────────
         cat_map: dict[str, str] = {}  # nameEn -> id
 
@@ -239,6 +263,8 @@ async def seed() -> None:
             await db.vehicle.create(
                 data={
                     "vin": v["vin"],
+                    "countryId": country.id,
+                    "currencyCode": country.defaultCurrencyCode,
                     "plateNumber": v["plateNumber"],
                     "brand": v["brand"],
                     "model": v["model"],
@@ -249,9 +275,9 @@ async def seed() -> None:
                     "colour": v["colour"],
                     "seats": v["seats"],
                     "status": "AVAILABLE",
-                    "dailyRateAed": v["dailyRateAed"],
-                    "monthlyRateAed": v["monthlyRateAed"],
-                    "depositAmountAed": v["depositAmountAed"],
+                    "dailyRate": v["dailyRateAed"],
+                    "monthlyRate": v["monthlyRateAed"],
+                    "depositAmount": v["depositAmountAed"],
                     "mileageLimitMonthly": v["mileageLimitMonthly"],
                     "downPaymentPct": Decimal("0.20"),
                 }

@@ -31,6 +31,9 @@ from origin_backend.common.request_context import RequestContextMiddleware
 from origin_backend.config import settings
 from origin_backend.contact.router import router as contact_router
 from origin_backend.customers.router import router as customers_router
+from origin_backend.gateways.admin_api.router import router as modular_admin_router
+from origin_backend.gateways.public_api.router import router as modular_public_router
+from origin_backend.gateways.webhook_receiver.router import router as modular_webhook_router
 from origin_backend.health.router import router as health_router
 from origin_backend.images.router import router as images_router
 from origin_backend.kyc.router import router as kyc_admin_router
@@ -100,6 +103,12 @@ app.include_router(admin_router, prefix="/v1")
 app.include_router(images_router, prefix="/v1")  # /v1/admin/vehicles/:id/images
 app.include_router(kyc_admin_router, prefix="/v1")
 app.include_router(checkout_webhook_router, prefix="/v1")
+
+# Modular enterprise API surface. Existing /v1 routes remain mounted during
+# migration so functionality can move behind the new boundaries incrementally.
+app.include_router(modular_public_router, prefix="/v2")
+app.include_router(modular_admin_router, prefix="/v2")
+app.include_router(modular_webhook_router, prefix="/v2")
 
 
 def validate_startup_settings(s: object) -> None:

@@ -100,6 +100,13 @@ enum ServiceType {
   LEASE
 }
 
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
 enum BookingStatus {
   DRAFT
   SUBMITTED
@@ -192,6 +199,80 @@ enum LogLevel {
   CRITICAL
 }
 
+// Country foundation.
+
+model Country {
+  id                     String            @id @default(uuid())
+  code                   String            @unique @db.Char(2)
+  name                   String
+  defaultCurrencyCode    String            @db.Char(3)
+  vatRate                Decimal           @db.Decimal(4, 4)
+  phoneRegex             String?
+  defaultLanguage        Language          @default(en)
+  enabledPaymentGateways Json              @default("[]")
+  kycConfig              Json              @default("{}")
+  productFlags           Json              @default("{}")
+  isActive               Boolean           @default(true)
+  legalEntities          LegalEntity[]
+  kycDocumentTypes       KycDocumentType[]
+  customers              Customer[]
+  vehicles               Vehicle[]
+  bookings               Booking[]
+  leases                 Lease[]
+  payments               Payment[]
+  invoices               Invoice[]
+  outboxEvents           OutboxEvent[]
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  @@map("countries")
+}
+
+model LegalEntity {
+  id                    String   @id @default(uuid())
+  countryId             String
+  country               Country  @relation(fields: [countryId], references: [id])
+  name                  String
+  tradeLicenceNumber    String?
+  taxRegistrationNumber String?
+  address               String?
+  city                  String?
+  contactEmail          String?
+  contactPhone          String?
+  invoicePrefix         String   @default("INV")
+  isDefault             Boolean  @default(false)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([countryId])
+  @@map("legal_entities")
+}
+
+model KycDocumentType {
+  id                String   @id @default(uuid())
+  countryId         String
+  country           Country  @relation(fields: [countryId], references: [id])
+  code              String
+  labelEn           String
+  labelAr           String?
+  labelZh           String?
+  isRequired        Boolean  @default(false)
+  requiresExpiry    Boolean  @default(false)
+  ocrProvider       String?
+  ocrModel          String?
+  acceptedMimeTypes Json     @default("[]")
+  config            Json     @default("{}")
+  sortOrder         Int      @default(0)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([countryId, code])
+  @@index([countryId])
+  @@map("kyc_document_types")
+}
+
 model VehicleCategory {
   id       String    @id @default(uuid())
   nameEn   String
@@ -205,6 +286,8 @@ model VehicleCategory {
 
 model Vehicle {
   id                    String          @id @default(uuid())
+  countryId             String
+  country               Country         @relation(fields: [countryId], references: [id])
   vin                   String          @unique
   plateNumber           String          @unique
   brand                 Brand
@@ -217,11 +300,12 @@ model Vehicle {
   colour                String
   seats                 Int
   status                VehicleStatus   @default(AVAILABLE)
-  priceAed              Decimal?        @db.Decimal(12, 2)
-  dailyRateAed          Decimal         @db.Decimal(10, 2)
-  monthlyRateAed        Decimal         @db.Decimal(10, 2)
-  leaseMonthlyAed       Decimal?        @db.Decimal(10, 2)
-  depositAmountAed      Decimal?        @db.Decimal(10, 2)
+  currencyCode          String          @default("AED") @db.Char(3)
+  price                 Decimal?        @db.Decimal(12, 2)
+  dailyRate             Decimal         @db.Decimal(10, 2)
+  monthlyRate           Decimal         @db.Decimal(10, 2)
+  leaseMonthly          Decimal?        @db.Decimal(10, 2)
+  depositAmount         Decimal?        @db.Decimal(10, 2)
   downPaymentPct        Decimal         @db.Decimal(4, 2) @default(0.20)
   mileageLimitMonthly   Int             @default(3000)
   rtaRegistrationExpiry DateTime?
@@ -236,7 +320,7 @@ model Vehicle {
   createdAt             DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
-  @@index([status, createdAt(sort: Desc)])
+  @@index([countryId, status, createdAt(sort: Desc)])
   @@map("vehicles")
 }
 
@@ -254,6 +338,8 @@ model VehicleImage {
 
 model Customer {
   id                  String            @id @default(uuid())
+  countryId           String
+  country             Country           @relation(fields: [countryId], references: [id])
   phone               String            @unique
   email               String?
   fullName            String
@@ -273,7 +359,7 @@ model Customer {
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 
-  @@index([kycStatus, createdAt(sort: Desc)])
+  @@index([countryId, kycStatus, createdAt(sort: Desc)])
   @@map("customers")
 }
 
@@ -308,6 +394,8 @@ model Document {
 
 model Booking {
   id                String        @id @default(uuid())
+  countryId         String
+  country           Country       @relation(fields: [countryId], references: [id])
   reference         String        @unique
   customerId        String
   customer          Customer      @relation(fields: [customerId], references: [id])
@@ -322,10 +410,11 @@ model Booking {
   durationDays      Int
   mileagePackage    Int
   addOns            Json          @default("{}")
-  quotedTotalAed    Decimal       @db.Decimal(10, 2)
-  vatAmountAed      Decimal       @db.Decimal(10, 2)
-  grandTotalAed     Decimal       @db.Decimal(10, 2)
-  depositAmountAed  Decimal       @db.Decimal(10, 2)
+  currencyCode      String        @default("AED") @db.Char(3)
+  quotedTotal       Decimal       @db.Decimal(10, 2)
+  vatAmount         Decimal       @db.Decimal(10, 2)
+  grandTotal        Decimal       @db.Decimal(10, 2)
+  depositAmount     Decimal       @db.Decimal(10, 2)
   depositPaid       Boolean       @default(false)
   status            BookingStatus @default(DRAFT)
   rejectionReason   String?
@@ -336,14 +425,16 @@ model Booking {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  @@index([customerId])
-  @@index([vehicleId])
-  @@index([status, createdAt(sort: Desc)])
+  @@index([countryId, customerId])
+  @@index([countryId, vehicleId])
+  @@index([countryId, status, createdAt(sort: Desc)])
   @@map("bookings")
 }
 
 model Lease {
   id                  String      @id @default(uuid())
+  countryId           String
+  country             Country     @relation(fields: [countryId], references: [id])
   reference           String      @unique
   bookingId           String      @unique
   booking             Booking     @relation(fields: [bookingId], references: [id])
@@ -354,10 +445,11 @@ model Lease {
   startDate           DateTime
   endDate             DateTime
   serviceType         ServiceType @default(RENT)
-  monthlyRateAed      Decimal     @db.Decimal(10, 2)
+  currencyCode        String      @default("AED") @db.Char(3)
+  monthlyRate         Decimal     @db.Decimal(10, 2)
   vatRate             Decimal     @db.Decimal(4, 4) @default(0.0500)
   mileageLimitMonthly Int
-  downPaymentAed      Decimal?    @db.Decimal(10, 2)
+  downPayment         Decimal?    @db.Decimal(10, 2)
   status              LeaseStatus @default(ACTIVE)
   renewalOfId         String?
   renewalOf           Lease?      @relation("LeaseRenewal", fields: [renewalOfId], references: [id])
@@ -369,22 +461,25 @@ model Lease {
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
-  @@index([customerId])
-  @@index([vehicleId])
-  @@index([status, createdAt(sort: Desc)])
+  @@index([countryId, customerId])
+  @@index([countryId, vehicleId])
+  @@index([countryId, status, createdAt(sort: Desc)])
   @@map("leases")
 }
 
 model Payment {
   id               String          @id @default(uuid())
+  countryId        String
+  country          Country         @relation(fields: [countryId], references: [id])
   leaseId          String
   lease            Lease           @relation(fields: [leaseId], references: [id])
   customerId       String
   customer         Customer        @relation(fields: [customerId], references: [id])
   type             PaymentType
-  amountAed        Decimal         @db.Decimal(10, 2)
-  vatAmountAed     Decimal         @db.Decimal(10, 2)
-  totalAed         Decimal         @db.Decimal(10, 2)
+  currencyCode     String          @default("AED") @db.Char(3)
+  amount           Decimal         @db.Decimal(10, 2)
+  vatAmount        Decimal         @db.Decimal(10, 2)
+  total            Decimal         @db.Decimal(10, 2)
   dueDate          DateTime
   paidAt           DateTime?
   status           PaymentStatus   @default(PENDING)
@@ -395,8 +490,8 @@ model Payment {
   invoice          Invoice?
   createdAt        DateTime        @default(now())
 
-  @@index([leaseId])
-  @@index([customerId])
+  @@index([countryId, leaseId])
+  @@index([countryId, customerId])
   @@index([leaseId, dueDate])
   @@index([status, dueDate])
   @@map("payments")
@@ -501,6 +596,8 @@ model CompanyEmployee {
 
 model Invoice {
   id              String            @id @default(uuid())
+  countryId       String
+  country         Country           @relation(fields: [countryId], references: [id])
   invoiceNumber   String            @unique
   customerId      String
   customer        Customer          @relation(fields: [customerId], references: [id])
@@ -512,10 +609,11 @@ model Invoice {
   payment         Payment?          @relation(fields: [paymentId], references: [id])
   periodStart     DateTime?
   periodEnd       DateTime?
-  subtotalAed     Decimal           @db.Decimal(10, 2)
+  currencyCode    String            @default("AED") @db.Char(3)
+  subtotal        Decimal           @db.Decimal(10, 2)
   vatRate         Decimal           @db.Decimal(4, 4) @default(0.0500)
-  vatAmountAed    Decimal           @db.Decimal(10, 2)
-  totalAed        Decimal           @db.Decimal(10, 2)
+  vatAmount       Decimal           @db.Decimal(10, 2)
+  total           Decimal           @db.Decimal(10, 2)
   vatTrn          String?
   status          InvoiceStatus     @default(DRAFT)
   issuedAt        DateTime?
@@ -527,7 +625,7 @@ model Invoice {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  @@index([customerId])
+  @@index([countryId, customerId])
   @@index([companyId])
   @@index([leaseId])
   @@map("invoices")
@@ -539,12 +637,33 @@ model InvoiceLineItem {
   invoice      Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   description  String
   quantity     Int     @default(1)
-  unitPriceAed Decimal @db.Decimal(10, 2)
-  totalAed     Decimal @db.Decimal(10, 2)
+  unitPrice    Decimal @db.Decimal(10, 2)
+  total        Decimal @db.Decimal(10, 2)
   sortOrder    Int     @default(0)
 
   @@index([invoiceId])
   @@map("invoice_line_items")
+}
+
+model OutboxEvent {
+  id             String            @id @default(uuid())
+  countryId      String?
+  country        Country?          @relation(fields: [countryId], references: [id])
+  eventType      String
+  aggregateType  String
+  aggregateId    String
+  payload        Json
+  status         OutboxEventStatus @default(PENDING)
+  attempts       Int               @default(0)
+  lastError      String?
+  availableAt    DateTime          @default(now())
+  processedAt    DateTime?
+  createdAt      DateTime          @default(now())
+
+  @@index([status, availableAt])
+  @@index([eventType])
+  @@index([countryId])
+  @@map("outbox_events")
 }
 
 // ── Audit & Error Logs ─────────────────────────────────────────

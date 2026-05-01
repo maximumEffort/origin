@@ -57,6 +57,10 @@ def mock_prisma() -> MagicMock:
     """Return a MagicMock that quacks like a connected Prisma client."""
     mock = MagicMock()
     mock.otpcode = _model_mock()
+    mock.country = _model_mock()
+    mock.legalentity = _model_mock()
+    mock.kycdocumenttype = _model_mock()
+    mock.outboxevent = _model_mock()
     mock.customer = _model_mock()
     mock.document = _model_mock()
     mock.adminuser = _model_mock()
