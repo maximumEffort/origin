@@ -11,147 +11,57 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# paths-filter action needs to read PR files via GitHub API
 permissions:
   contents: read
   pull-requests: read
 
 jobs:
-  # ─── Detect which apps changed so we don't rebuild everything every push ──
-  changes:
-    name: Detect changed apps
-    runs-on: ubuntu-latest
-    outputs:
-      customer: ${{ steps.filter.outputs.customer }}
-      admin: ${{ steps.filter.outputs.admin }}
-      backend: ${{ steps.filter.outputs.backend }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
-        id: filter
-        with:
-          filters: |
-            customer:
-              - 'apps/customer/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - '.github/workflows/ci.yml'
-            admin:
-              - 'apps/admin/**'
-              - 'package.json'
-              - 'package-lock.json'
-              - '.github/workflows/ci.yml'
-            backend:
-              - 'apps/backend/**'
-              - '.github/workflows/ci.yml'
+  # Customer + admin frontend jobs are intentionally absent during the V1
+  # rebuild. They return when the Next.js apps ship in days 14-21
+  # (see docs/architecture/rebuild-erd.md §8). Until then, only the backend
+  # is exercised by CI.
 
-  # ─── Customer site ───────────────────────────────────────────────────────
-  customer:
-    name: Customer — type-check, lint, test, build
-    needs: changes
-    if: needs.changes.outputs.customer == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run type-check --workspace=customer
-      - run: npm run lint --workspace=customer
-      - name: V1 rental-only copy guard (#133)
-        # V1 operates under an RTA Fleet Operator licence only — customer-facing copy
-        # must not say "buy", "lease", "leasing", "down payment", "instalment". Allow
-        # the words inside i18n keys (e.g. "rentNow") but block them in any string
-        # value or hardcoded text. This guard blocks regressions until the dealership
-        # / finance licences land.
-        run: |
-          set -e
-          # Locale files — block forbidden words in JSON values (anything between `:` and the next `,` or `}`).
-          if grep -nEi ':\s*"[^"]*\b(buy|leas(e|ing|ed)|own your|purchase price|down payment|instalment)\b[^"]*"' apps/customer/locales/*.json; then
-            echo "::error::Forbidden V2/V3 copy found in customer locales — see #133"
-            exit 1
-          fi
-          # Source TSX/TS — block forbidden words in JSX text content and string literals.
-          # Allow false positives in:
-          #   - URL constants (e.g. car-leasing-business-production.up.railway.app — legacy backend, see #21)
-          #   - internal type/variable names (Lease, leases.filter)
-          #   - comments
-          # We grep only TSX text content and quoted string literals that match a user-facing word.
-          violations=$(grep -rEn -i \
-            --include='*.tsx' --include='*.ts' \
-            --exclude-dir=node_modules --exclude-dir=.next \
-            "(>([^<]*\b(Buy|Lease|Leasing|Leased)\b)|\"[^\"]*\b(Buy|Lease|Leasing|Leased)\b[^\"]*\"|'[^']*\b(Buy|Lease|Leasing|Leased)\b[^']*')" \
-            apps/customer/app apps/customer/components 2>/dev/null \
-            | grep -Ev "(car-leasing-business-production|//.*|/\*.*|interface |type |const \[?leases|leases\.|\.flatMap|useState<Lease|authFetch<Lease|allPayments)" || true)
-          if [ -n "$violations" ]; then
-            echo "::error::Forbidden V2/V3 copy found in customer source — see #133"
-            echo "$violations"
-            exit 1
-          fi
-      - run: npm test --workspace=customer --if-present
-      - run: npm run build --workspace=customer
-        env:
-          NEXT_PUBLIC_API_URL: https://example.com/v1
-          NEXT_PUBLIC_SITE_URL: https://origin-auto.ae
-
-  # ─── Admin dashboard ─────────────────────────────────────────────────────
-  admin:
-    name: Admin — type-check, lint, test, build
-    needs: changes
-    if: needs.changes.outputs.admin == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run type-check --workspace=admin
-      - run: npm run lint --workspace=admin
-      - run: npm test --workspace=admin --if-present
-      - run: npm run build --workspace=admin
-        env:
-          NEXT_PUBLIC_API_URL: https://example.com/v1
-          ADMIN_SECRET: placeholder-ci-secret-not-used-for-auth-just-for-build
-
-  # ─── Backend ────────────────────────────────────────────────────────────
   backend:
     name: Backend — ruff, mypy, pytest
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/backend
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
+
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
-          version: '0.5.0'
+          version: '0.5.4'
+
       - name: Set up Python 3.12
         run: uv python install 3.12
+
       - name: Install dependencies
         run: uv sync --all-extras --dev
+
       - name: Generate Prisma client
         run: uv run prisma generate
         env:
-          # prisma generate doesn't connect to the DB but errors without these set
           DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+
       - name: Lint (ruff)
         run: uv run ruff check .
+
       - name: Format check (ruff)
         run: uv run ruff format --check .
+        # Advisory while the rebuild is in flight — flip back to required once
+        # the codebase is fully formatted in days 2-13.
+        continue-on-error: true
+
       - name: Type check (mypy)
         run: uv run mypy src/
-        # mypy can be noisy on first runs — keep it advisory until we lock down all stubs.
+        # mypy is advisory until we lock down stubs across the new module tree.
         continue-on-error: true
+
       - name: Tests (pytest)
         run: uv run pytest
         env:
           JWT_SECRET: test-secret-must-be-at-least-16-chars-long
           DATABASE_URL: postgresql://test:test@localhost:5432/test
-

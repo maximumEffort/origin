@@ -14,24 +14,17 @@ dependencies = [
   "argon2-cffi>=23.1.0",
   "httpx>=0.28.0",
   "python-ulid>=3.0.0",
-  "stripe>=11.0.0",
-  "twilio>=9.3.0",
-  "sendgrid>=6.11.0",
-  "azure-storage-blob>=12.24.0",
-  "azure-ai-documentintelligence>=1.0.0",
-  "azure-identity>=1.19.0",
-  "phonenumbers>=8.13.0",
-  "tenacity>=9.0.0",
 ]
+# Day-1 minimal. External-service SDKs (stripe, twilio, sendgrid, azure-blob,
+# azure-ai-documentintelligence, azure-identity, phonenumbers, tenacity) added
+# as their consuming modules ship in days 2-13 per docs/architecture/rebuild-erd.md §8.
 
 [dependency-groups]
 dev = [
   "pytest>=8.3.0",
   "pytest-asyncio>=0.24.0",
-  "pytest-cov>=6.0.0",
   "ruff>=0.7.0",
   "mypy>=1.13.0",
-  "respx>=0.21.0",
 ]
 
 [tool.uv]

@@ -10,19 +10,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
-# Build deps for prisma engine + psycopg + native packages
+# Build deps for prisma engine
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates openssl \
     && rm -rf /var/lib/apt/lists/*
 
-# uv for dependency management — pinned to a known-good version
+# uv for dependency management — pinned
 COPY --from=ghcr.io/astral-sh/uv:0.5.4 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Install deps first for layer caching
-COPY pyproject.toml uv.lock* ./
-RUN uv sync --frozen --no-dev || uv sync --no-dev
+# Install deps first for layer caching. uv.lock may not be present on first
+# build after the rebuild — fall through to fresh resolution.
+COPY pyproject.toml ./
+COPY uv.lock* ./
+RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
 
 # Copy source
 COPY src ./src
@@ -30,8 +32,9 @@ COPY prisma ./prisma
 COPY start.sh ./start.sh
 RUN chmod +x ./start.sh
 
-# Generate Prisma client at build time so first request isn't slow
-RUN uv run prisma generate
+# Note: `prisma generate` runs at startup (see start.sh) rather than at build
+# time. Keeps the build deterministic; engine binary is pulled on first boot
+# and cached on the volume.
 
 ENV PORT=8080
 EXPOSE 8080
