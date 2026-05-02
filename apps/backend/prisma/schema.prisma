@@ -327,7 +327,7 @@ model Country {
   code                   String   @unique @db.Char(2)
   name                   String
   defaultCurrencyCode    String   @map("default_currency_code") @db.Char(3)
-  vatRate                Decimal  @map("vat_rate") @db.Decimal(4, 4)
+  vatRate                Float    @map("vat_rate") @db.Decimal(4, 4)
   phoneRegex             String?  @map("phone_regex")
   defaultLanguage        Language @default(en) @map("default_language")
   enabledPaymentGateways Json     @default("[]") @map("enabled_payment_gateways")
@@ -801,7 +801,7 @@ model PromoCode {
   countryId     String   @map("country_id")
   code          String
   discountKind  String   @map("discount_kind") // PERCENT, FIXED
-  discountValue Decimal  @map("discount_value") @db.Decimal(10, 2)
+  discountValue Float    @map("discount_value") @db.Decimal(10, 2)
   validFrom     DateTime @map("valid_from") @db.Date
   validTo       DateTime? @map("valid_to") @db.Date
   maxUses       Int?     @map("max_uses")
@@ -863,7 +863,7 @@ model InvoiceLine {
   quantity       Int
   unitAmountMinor BigInt @map("unit_amount_minor")
   lineTotalMinor BigInt  @map("line_total_minor")
-  vatRate        Decimal @map("vat_rate") @db.Decimal(4, 4)
+  vatRate        Float   @map("vat_rate") @db.Decimal(4, 4)
   taxCode        String? @map("tax_code")
   sortOrder      Int     @default(0) @map("sort_order")
 

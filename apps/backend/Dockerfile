@@ -21,11 +21,10 @@ COPY --from=ghcr.io/astral-sh/uv:0.5.4 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Install deps first for layer caching. uv.lock may not be present on first
-# build after the rebuild — fall through to fresh resolution.
+# Install deps first for layer caching. No uv.lock is committed yet — uv will
+# resolve fresh on each build until we commit one (slower but reliable).
 COPY pyproject.toml ./
-COPY uv.lock* ./
-RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
+RUN uv sync
 
 # Copy source
 COPY src ./src
