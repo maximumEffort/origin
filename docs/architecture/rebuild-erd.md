@@ -1,8 +1,8 @@
 # Origin — Rebuild ERD & Module Boundaries (V1)
 
-_Draft v0.2 — 2026-05-02. This document is the gating artifact before the rebuild starts. Nothing destructive runs until this is signed off._
+_Draft v0.3 — 2026-05-02. This document is the gating artifact before the rebuild starts. Nothing destructive runs until this is signed off._
 
-_Revision history: v0.1 initial draft; v0.2 adds party model (B2C + B2B), `payments.kind`, denormalization rule (§3.5), outbox payload contract (§4.12)._
+_Revision history: v0.1 initial draft; v0.2 adds party model (B2C + B2B), `payments.kind`, denormalization rule (§3.5), outbox payload contract (§4.12); v0.3 adds `consents` table for PDPL audit trail, `correlation_id` for end-to-end tracing across outbox + comms, `vehicle_images.country_id`, argon2id parameter doc-string._
 
 Snapshot of the pre-rebuild codebase: tag `pre-rebuild-2026-05-02` at commit `e296ff9` (also tip of `origin/main` at the time of writing — the commit ref is permanent regardless of the tag).
 
@@ -199,7 +199,7 @@ KYC docs hang off `parties` (not `customers`) because organizations also have KY
 | `country_id` | `TEXT` FK | a user belongs to one country at a time; multi-country staff get duplicated rows |
 | `email` | `TEXT` UNIQUE | |
 | `phone_e164` | `TEXT` NULL | |
-| `password_hash` | `TEXT` | argon2id |
+| `password_hash` | `TEXT` | argon2id; parameters self-encoded in hash. Target: `m=65536, t=3, p=4` (~150ms on B1ms tier). Lives in `platform.identity.passwords` module, not schema. |
 | `role` | `UserRole` enum | `SUPER_ADMIN`, `ADMIN`, `SALES`, `FLEET_MANAGER` |
 | `is_active` | `BOOLEAN` | |
 | `last_login_at` | `TIMESTAMP(3)` NULL | |
@@ -269,6 +269,29 @@ Unique: `(country_id, trade_licence_number) WHERE trade_licence_number IS NOT NU
 | audit cols | | |
 
 Unique: `(organization_id, customer_id)`. Index: `(customer_id)` — answers "what orgs is this person a member of?".
+
+**`consents`** — append-mostly audit trail of communication consents per party. Powers PDPL/GDPR compliance: when did this person consent, via what surface, when did they withdraw.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `TEXT` PK | |
+| `party_id` | `TEXT` FK → `parties.id` | |
+| `channel` | `ConsentChannel` enum | `EMAIL`, `SMS`, `WHATSAPP`, `PHONE_CALL`, `POST` |
+| `purpose` | `ConsentPurpose` enum | `MARKETING`, `SERVICE_UPDATES`, `RESEARCH` |
+| `granted_at` | `TIMESTAMP(3)` NULL | |
+| `withdrawn_at` | `TIMESTAMP(3)` NULL | |
+| `source` | `ConsentSource` enum | `REGISTRATION`, `PROFILE_UPDATE`, `ADMIN_IMPORT`, `UNSUBSCRIBE_LINK`, `INBOUND_REQUEST` |
+| `evidence_blob_url` | `TEXT` NULL | screenshot / signed form (for double-opt-in or written consent) |
+| `ip_address`, `user_agent` | `TEXT` NULL | |
+| audit cols | | |
+
+Index: `(party_id, channel, purpose)`, `(withdrawn_at) WHERE withdrawn_at IS NULL`.
+
+Send-time rule (enforced in `services/communications`):
+- `purpose = TRANSACTIONAL` (booking confirmation, OTP, receipt) bypasses consent — lawful basis is contract performance.
+- `purpose = NOTIFICATION` / `MARKETING` requires an active grant: latest row for `(party_id, channel, purpose=MARKETING)` has `granted_at IS NOT NULL AND withdrawn_at IS NULL`. Otherwise `communication_logs.suppressed_reason = 'CONSENT_MISSING'`.
+
+`customers.marketing_opt_in` becomes a derived flag (denormalized for UI speed) — flips by an outbox subscriber on the latest `consents` row, per §3.5 one-writer rule.
 
 **`otp_codes`** — verification codes (request log; Twilio Verify is the prod path).
 
@@ -364,6 +387,7 @@ Index: `(country_id, status)`, `(brand, model)`.
 |---|---|---|
 | `id` | `TEXT` PK | |
 | `vehicle_id` | `TEXT` FK | |
+| `country_id` | `TEXT` FK | denormalised from vehicle, immutable. Future-proof for per-country blob storage when KSA/Egypt expansion forces data residency. |
 | `blob_url` | `TEXT` | public container |
 | `sort_order` | `INTEGER` | |
 | `alt_en`, `alt_ar`, `alt_zh` | `TEXT` NULL | |
@@ -629,25 +653,31 @@ When `started_at < completed_at AND completed_at IS NULL`, a corresponding `vehi
 
 ### 4.10 `services/communications`
 
-**`communication_logs`** — every outbound message.
+**`communication_logs`** — every outbound message attempt (including suppressed).
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `TEXT` PK | |
 | `country_id` | `TEXT` FK NULL | |
+| `correlation_id` | `TEXT` NULL | matches outbox `correlation_id` / HTTP `X-Request-ID` |
+| `party_id` | `TEXT` FK NULL | who's being addressed (anonymous comms allowed) |
 | `kind` | `CommunicationKind` enum | `EMAIL`, `SMS`, `WHATSAPP` |
+| `purpose` | `CommunicationPurpose` enum | `TRANSACTIONAL`, `NOTIFICATION`, `MARKETING` |
 | `template_code` | `TEXT` | `BOOKING_CONFIRMATION`, `OTP`, `PAYMENT_DUE`, etc. |
 | `recipient_email`, `recipient_phone` | `TEXT` NULL | one or the other |
 | `subject` | `TEXT` NULL | |
 | `body_preview` | `TEXT` | first 500 chars |
 | `provider` | `CommunicationProvider` enum | `SENDGRID`, `TWILIO_SMS`, `TWILIO_WHATSAPP` |
 | `provider_message_id` | `TEXT` NULL | |
-| `status` | `CommunicationStatus` enum | `QUEUED`, `SENT`, `DELIVERED`, `FAILED`, `BOUNCED` |
+| `status` | `CommunicationStatus` enum | `QUEUED`, `SENT`, `DELIVERED`, `FAILED`, `BOUNCED`, `SUPPRESSED` |
+| `suppressed_reason` | `TEXT` NULL | `CONSENT_MISSING`, `HARD_BOUNCE_BLOCKLISTED`, `RATE_LIMIT`, etc. — set when `status='SUPPRESSED'` |
 | `sent_at`, `delivered_at`, `failed_at` | `TIMESTAMP(3)` NULL | |
 | `error_message` | `TEXT` NULL | |
 | audit cols | | |
 
-Index: `(template_code, sent_at DESC)`.
+Index: `(template_code, sent_at DESC)`, `(party_id, sent_at DESC)`, `(correlation_id)`.
+
+Suppressed rows are recorded explicitly — "we'd have sent X but didn't because Y". Auditable evidence that we honoured a withdrawn consent.
 
 ---
 
@@ -677,6 +707,7 @@ Index: `(template_code, sent_at DESC)`.
 |---|---|---|
 | `id` | `TEXT` PK | |
 | `country_id` | `TEXT` FK NULL | |
+| `correlation_id` | `TEXT` NULL | matches `X-Request-ID` of the originating HTTP request — links event to user action and downstream effects |
 | `event_type` | `TEXT` | `BOOKING_SUBMITTED`, `LEASE_STARTED`, `KYC_APPROVED` |
 | `aggregate_type` | `TEXT` | `Booking`, `Lease`, `Customer` |
 | `aggregate_id` | `TEXT` | |
@@ -688,7 +719,9 @@ Index: `(template_code, sent_at DESC)`.
 | `processed_at` | `TIMESTAMP(3)` NULL | |
 | `created_at` | `TIMESTAMP(3)` | append-only |
 
-Index: `(status, available_at)`, `(event_type)`.
+Index: `(status, available_at)`, `(event_type)`, `(correlation_id)`.
+
+End-to-end trace: `X-Request-ID` (HTTP) → `outbox_events.correlation_id` → `communication_logs.correlation_id` → `audit_logs.request_id` → `error_logs.request_id`. Single id threads through every system effect of one user click.
 
 Worker process: a long-running async task in the same Container App (or a sidecar Container App later) polls `WHERE status='PENDING' AND available_at <= now()` with `FOR UPDATE SKIP LOCKED`, dispatches to subscribers (in-process service functions registered at startup), updates status. Exponential backoff on failure; dead-letter after N attempts.
 
@@ -786,7 +819,11 @@ PaymentProvider        ENUM('STRIPE', 'CHECKOUT_COM', 'PAYTABS', 'CASH', 'BANK_T
 RefundStatus           ENUM('PENDING', 'SUCCEEDED', 'FAILED')
 CommunicationKind      ENUM('EMAIL', 'SMS', 'WHATSAPP')
 CommunicationProvider  ENUM('SENDGRID', 'TWILIO_SMS', 'TWILIO_WHATSAPP')
-CommunicationStatus    ENUM('QUEUED', 'SENT', 'DELIVERED', 'FAILED', 'BOUNCED')
+CommunicationStatus    ENUM('QUEUED', 'SENT', 'DELIVERED', 'FAILED', 'BOUNCED', 'SUPPRESSED')
+CommunicationPurpose   ENUM('TRANSACTIONAL', 'NOTIFICATION', 'MARKETING')
+ConsentChannel         ENUM('EMAIL', 'SMS', 'WHATSAPP', 'PHONE_CALL', 'POST')
+ConsentPurpose         ENUM('MARKETING', 'SERVICE_UPDATES', 'RESEARCH')
+ConsentSource          ENUM('REGISTRATION', 'PROFILE_UPDATE', 'ADMIN_IMPORT', 'UNSUBSCRIBE_LINK', 'INBOUND_REQUEST')
 OutboxEventStatus      ENUM('PENDING', 'PROCESSING', 'PROCESSED', 'FAILED')
 ActorKind              ENUM('USER', 'CUSTOMER', 'SYSTEM')
 ServiceType            ENUM('RENT', 'PURCHASE', 'LEASE_TO_OWN')
