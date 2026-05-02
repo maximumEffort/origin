@@ -17,11 +17,11 @@ from origin_backend.core.messaging.events import (
 )
 
 __all__ = [
-    "BOOKING_SUBMITTED",
-    "BOOKING_CONFIRMED",
     "BOOKING_CANCELLED",
-    "LEASE_STARTED",
-    "LEASE_MONTHLY_BILLING_DUE",
+    "BOOKING_CONFIRMED",
+    "BOOKING_SUBMITTED",
     "LEASE_COMPLETED",
+    "LEASE_MONTHLY_BILLING_DUE",
+    "LEASE_STARTED",
     "LEASE_TERMINATED",
 ]

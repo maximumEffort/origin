@@ -44,7 +44,9 @@ class UnauthorizedError(DomainError):
     code = "UNAUTHORIZED"
 
 
-def _envelope(code: str, message: str, *, request_id: str | None, details: dict | None = None) -> dict:
+def _envelope(
+    code: str, message: str, *, request_id: str | None, details: dict | None = None
+) -> dict:
     return {
         "error": {
             "code": code,

@@ -14,7 +14,9 @@ class Money:
         if not isinstance(self.amount_minor, int):
             raise TypeError("amount_minor must be int (no floats)")
         if len(self.currency_code) != 3 or not self.currency_code.isupper():
-            raise ValueError(f"currency_code must be 3-char uppercase ISO 4217, got {self.currency_code!r}")
+            raise ValueError(
+                f"currency_code must be 3-char uppercase ISO 4217, got {self.currency_code!r}"
+            )
 
     def __add__(self, other: Money) -> Money:
         if other.currency_code != self.currency_code:
