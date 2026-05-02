@@ -1,2 +1,0 @@
-"""Dormant purchase product shell."""
-

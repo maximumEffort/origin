@@ -1,14 +1,12 @@
+// Origin backend schema — V1 genesis (rebuild 2026-05-02).
+// Source of truth: docs/architecture/rebuild-erd.md (v0.5).
+// Convention: snake_case tables/columns at the DB layer (@map / @@map),
+// camelCase fields in the Prisma client.
+
 generator client {
-  // Python Prisma client. Same schema file as the Node backend so the database
-  // stays the single source of truth during the migration window.
-  // Docs: https://prisma-client-py.readthedocs.io/
-  provider                   = "prisma-client-py"
-  recursive_type_depth       = 5
-  interface                  = "asyncio"
-  partial_type_generator     = "prisma/partials.py"
-  // Origin uses Decimal for currency fields (vehicle prices, payments, etc.).
-  // Prisma Python requires opt-in for Decimal support.
-  enable_experimental_decimal = "true"
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
+  interface            = "asyncio"
 }
 
 datasource db {
@@ -16,77 +14,167 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────
+
+enum Language {
+  en
+  ar
+  zh_CN @map("zh-CN")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  SALES
+  FLEET_MANAGER
+}
+
+enum ResidencyStatus {
+  RESIDENT
+  VISITOR
+  GCC_RESIDENT
+}
+
+enum KycStatus {
+  NOT_STARTED
+  SUBMITTED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum KycDocStatus {
+  UPLOADED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum OcrStatus {
+  NOT_STARTED
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+enum OcrJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum OcrProvider {
+  AZURE_DI
+  LOCAL
+}
+
+enum OtpIdentityKind {
+  EMAIL
+  PHONE
+}
+
+enum OtpProvider {
+  TWILIO_VERIFY
+  LOCAL
+}
+
+enum SubjectKind {
+  USER
+  CUSTOMER
+}
+
+enum SessionRevokeReason {
+  LOGOUT
+  ROTATED
+  REPLAY_DETECTED
+  ADMIN_FORCE
+  EXPIRED
+}
+
+enum PartyKind {
+  INDIVIDUAL
+  ORGANIZATION
+}
+
+enum OrganizationMemberRole {
+  OWNER
+  AUTHORIZED_SIGNATORY
+  BOOKER
+  ACCOUNTS_PAYABLE
+}
+
 enum Brand {
-  BYD
-  HAVAL
-  GWM
-  CHERY
-  OMODA
-  GEELY
-  JAECOO
   NIO
   VOYAH
   ZEEKR
-  DONGFENG
-  BESTUNE
+  BYD
+  XPENG
+  LI_AUTO
+  DENZA
+  MG
   HONGQI
-  FORTING
-  WEY
-  GREAT_WALL
 }
 
-enum FuelType {
-  ELECTRIC
+enum BodyType {
+  SUV
+  SEDAN
+  MPV
+  COUPE
+  CROSSOVER
+  WAGON
+}
+
+enum Powertrain {
+  EV
+  PHEV
   HYBRID
-  PETROL
-  DIESEL
+  ICE
 }
 
 enum Transmission {
   AUTOMATIC
   MANUAL
+  SINGLE_SPEED
 }
 
 enum VehicleStatus {
   AVAILABLE
-  LEASED
+  RESERVED
+  RENTED
   MAINTENANCE
   RETIRED
 }
 
-enum Language {
-  en
-  ar
-  zh
+enum HoldReason {
+  BOOKING
+  LEASE
+  MAINTENANCE
+  MANUAL_BLOCK
 }
 
-enum KycStatus {
-  PENDING
+enum HoldReferenceKind {
+  BOOKING
+  LEASE
+  MAINTENANCE
+  NONE
+}
+
+enum RentalTier {
+  SHORT_TERM
+  LONG_TERM
+}
+
+enum BookingStatus {
+  DRAFT
   SUBMITTED
-  APPROVED
-  REJECTED
-}
-
-enum DocumentType {
-  EMIRATES_ID
-  DRIVING_LICENCE
-  VISA
-  PASSPORT
-}
-
-enum DocumentStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  CONFIRMED
+  CANCELLED
   EXPIRED
-}
-
-enum OcrStatus {
-  NOT_STARTED
-  PROCESSING
-  COMPLETED
-  FAILED
-  SKIPPED
 }
 
 enum LeaseType {
@@ -94,10 +182,120 @@ enum LeaseType {
   LONG_TERM
 }
 
-enum ServiceType {
-  SELL
-  RENT
-  LEASE
+enum LeaseStatus {
+  ACTIVE
+  COMPLETED
+  TERMINATED
+  DEFAULTED
+}
+
+enum MilestoneKind {
+  START
+  MONTHLY_BILLING
+  RETURN_REMINDER
+  RETURN_COMPLETED
+  COMPLETION
+}
+
+enum MileageSource {
+  PICKUP
+  RETURN
+  MID_LEASE
+  SELF_REPORT
+}
+
+enum MaintenanceKind {
+  SERVICE
+  REPAIR
+  INSPECTION
+  TYRE_CHANGE
+  BATTERY_CHECK
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  OVERDUE
+  VOID
+}
+
+enum PaymentKind {
+  DEPOSIT
+  INVOICE_PAYMENT
+  PENALTY
+  MANUAL_CREDIT
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+  CHECKOUT_COM
+  PAYTABS
+  CASH
+  BANK_TRANSFER
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum CommunicationKind {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum CommunicationProvider {
+  SENDGRID
+  TWILIO_SMS
+  TWILIO_WHATSAPP
+}
+
+enum CommunicationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+  SUPPRESSED
+}
+
+enum CommunicationPurpose {
+  TRANSACTIONAL
+  NOTIFICATION
+  MARKETING
+}
+
+enum ConsentChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+  PHONE_CALL
+  POST
+}
+
+enum ConsentPurpose {
+  MARKETING
+  SERVICE_UPDATES
+  RESEARCH
+}
+
+enum ConsentSource {
+  REGISTRATION
+  PROFILE_UPDATE
+  ADMIN_IMPORT
+  UNSUBSCRIBE_LINK
+  INBOUND_REQUEST
 }
 
 enum OutboxEventStatus {
@@ -107,603 +305,963 @@ enum OutboxEventStatus {
   FAILED
 }
 
-enum BookingStatus {
-  DRAFT
-  SUBMITTED
-  APPROVED
-  REJECTED
-  CANCELLED
-  CONVERTED
+enum ActorKind {
+  USER
+  CUSTOMER
+  SYSTEM
 }
 
-enum LeaseStatus {
-  ACTIVE
-  COMPLETED
-  TERMINATED_EARLY
-  RENEWED
+// Forward-compat per CLAUDE.md. NO TABLE uses this column in V1.
+enum ServiceType {
+  RENT
+  PURCHASE
+  LEASE_TO_OWN
 }
 
-enum PaymentType {
-  DEPOSIT
-  MONTHLY
-  PENALTY
-  REFUND
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  OVERDUE
-  WAIVED
-  REFUNDED
-}
-
-enum PaymentMethod {
-  CARD
-  APPLE_PAY
-  GOOGLE_PAY
-  BANK_TRANSFER
-}
-
-enum PaymentGateway {
-  CHECKOUT_COM
-  PAYTABS
-  TABBY
-}
-
-enum NotificationChannel {
-  WHATSAPP
-  SMS
-  EMAIL
-  PUSH
-}
-
-enum NotificationStatus {
-  SENT
-  DELIVERED
-  FAILED
-}
-
-enum AdminRole {
-  SUPER_ADMIN
-  FLEET_MANAGER
-  SALES
-  FINANCE
-}
-
-enum CustomerType {
-  INDIVIDUAL
-  CORPORATE
-}
-
-enum CompanyRole {
-  ADMIN
-  DRIVER
-  FINANCE
-}
-
-enum InvoiceStatus {
-  DRAFT
-  ISSUED
-  PAID
-  CANCELLED
-  OVERDUE
-  VOID
-}
-
-enum LogLevel {
-  DEBUG
-  INFO
-  WARNING
-  ERROR
-  CRITICAL
-}
-
-// Country foundation.
+// ─────────────────────────────────────────────────────────────────────
+// platform/countries
+// ─────────────────────────────────────────────────────────────────────
 
 model Country {
-  id                     String            @id @default(uuid())
-  code                   String            @unique @db.Char(2)
+  id                     String   @id
+  code                   String   @unique @db.Char(2)
   name                   String
-  defaultCurrencyCode    String            @db.Char(3)
-  vatRate                Decimal           @db.Decimal(4, 4)
-  phoneRegex             String?
-  defaultLanguage        Language          @default(en)
-  enabledPaymentGateways Json              @default("[]")
-  kycConfig              Json              @default("{}")
-  productFlags           Json              @default("{}")
-  isActive               Boolean           @default(true)
-  legalEntities          LegalEntity[]
-  kycDocumentTypes       KycDocumentType[]
-  customers              Customer[]
-  vehicles               Vehicle[]
-  bookings               Booking[]
-  leases                 Lease[]
-  payments               Payment[]
-  invoices               Invoice[]
-  outboxEvents           OutboxEvent[]
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
+  defaultCurrencyCode    String   @map("default_currency_code") @db.Char(3)
+  vatRate                Decimal  @map("vat_rate") @db.Decimal(4, 4)
+  phoneRegex             String?  @map("phone_regex")
+  defaultLanguage        Language @default(en) @map("default_language")
+  enabledPaymentGateways Json     @default("[]") @map("enabled_payment_gateways")
+  kycConfig              Json     @default("{}") @map("kyc_config")
+  productFlags           Json     @default("{}") @map("product_flags")
+  isActive               Boolean  @default(true) @map("is_active")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt              DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy              String?  @map("created_by")
+  updatedBy              String?  @map("updated_by")
+
+  legalEntities       LegalEntity[]
+  kycDocumentTypes    KycDocumentType[]
+  users               User[]
+  parties             Party[]
+  customers           Customer[]
+  organizations       Organization[]
+  vehicles            Vehicle[]
+  vehicleImages       VehicleImage[]
+  availabilityHolds   VehicleAvailabilityHold[]
+  rentalRateCards     RentalRateCard[]
+  mileagePackages     MileagePackage[]
+  addOns              AddOn[]
+  promoCodes          PromoCode[]
+  invoices            Invoice[]
+  payments            Payment[]
+  rentalAgreements    RentalAgreement[]
+  termsDocuments      TermsDocument[]
+  bookings            Booking[]
+  leases              Lease[]
+  kycDocuments        KycDocument[]
+  communicationLogs   CommunicationLog[]
+  outboxEvents        OutboxEvent[]
+  auditLogs           AuditLog[]
+  errorLogs           ErrorLog[]
 
   @@map("countries")
 }
 
 model LegalEntity {
-  id                    String   @id @default(uuid())
-  countryId             String
-  country               Country  @relation(fields: [countryId], references: [id])
+  id                    String   @id
+  countryId             String   @map("country_id")
   name                  String
-  tradeLicenceNumber    String?
-  taxRegistrationNumber String?
+  tradeLicenceNumber    String?  @map("trade_licence_number")
+  taxRegistrationNumber String?  @map("tax_registration_number")
   address               String?
   city                  String?
-  contactEmail          String?
-  contactPhone          String?
-  invoicePrefix         String   @default("INV")
-  isDefault             Boolean  @default(false)
-  isActive              Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  contactEmail          String?  @map("contact_email")
+  contactPhone          String?  @map("contact_phone")
+  invoicePrefix         String   @default("INV") @map("invoice_prefix")
+  isDefault             Boolean  @default(false) @map("is_default")
+  isActive              Boolean  @default(true) @map("is_active")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy             String?  @map("created_by")
+  updatedBy             String?  @map("updated_by")
+
+  country  Country   @relation(fields: [countryId], references: [id])
+  vehicles Vehicle[]
+  invoices Invoice[]
+  leases   Lease[]
+  rentalAgreements RentalAgreement[]
+  termsDocuments   TermsDocument[]
 
   @@index([countryId])
   @@map("legal_entities")
 }
 
 model KycDocumentType {
-  id                String   @id @default(uuid())
-  countryId         String
-  country           Country  @relation(fields: [countryId], references: [id])
-  code              String
-  labelEn           String
-  labelAr           String?
-  labelZh           String?
-  isRequired        Boolean  @default(false)
-  requiresExpiry    Boolean  @default(false)
-  ocrProvider       String?
-  ocrModel          String?
-  acceptedMimeTypes Json     @default("[]")
-  config            Json     @default("{}")
-  sortOrder         Int      @default(0)
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String   @id
+  countryId          String   @map("country_id")
+  code               String
+  labelEn            String   @map("label_en")
+  labelAr            String?  @map("label_ar")
+  labelZh            String?  @map("label_zh")
+  isRequired         Boolean  @default(false) @map("is_required")
+  requiresExpiry     Boolean  @default(false) @map("requires_expiry")
+  ocrProvider        String?  @map("ocr_provider")
+  ocrModel           String?  @map("ocr_model")
+  acceptedMimeTypes  Json     @default("[]") @map("accepted_mime_types")
+  config             Json     @default("{}")
+  sortOrder          Int      @default(0) @map("sort_order")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  country Country @relation(fields: [countryId], references: [id])
 
   @@unique([countryId, code])
   @@index([countryId])
   @@map("kyc_document_types")
 }
 
-model VehicleCategory {
-  id       String    @id @default(uuid())
-  nameEn   String
-  nameAr   String
-  nameZh   String
-  icon     String?
-  vehicles Vehicle[]
+// ─────────────────────────────────────────────────────────────────────
+// platform/identity
+// ─────────────────────────────────────────────────────────────────────
 
-  @@map("vehicle_categories")
+model User {
+  id            String    @id
+  countryId     String    @map("country_id")
+  email         String    @unique
+  phoneE164     String?   @map("phone_e164")
+  passwordHash  String    @map("password_hash") // argon2id, params self-encoded
+  role          UserRole
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at") @db.Timestamp(3)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamp(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy     String?   @map("created_by")
+  updatedBy     String?   @map("updated_by")
+
+  country         Country @relation(fields: [countryId], references: [id])
+  reviewedKycDocs KycDocument[]    @relation("KycDocReviewer")
+  mileageReadings MileageReading[]
+
+  @@map("users")
 }
 
-model Vehicle {
-  id                    String          @id @default(uuid())
-  countryId             String
-  country               Country         @relation(fields: [countryId], references: [id])
-  vin                   String          @unique
-  plateNumber           String          @unique
-  brand                 Brand
-  model                 String
-  year                  Int
-  categoryId            String
-  category              VehicleCategory @relation(fields: [categoryId], references: [id])
-  fuelType              FuelType
-  transmission          Transmission    @default(AUTOMATIC)
-  colour                String
-  seats                 Int
-  status                VehicleStatus   @default(AVAILABLE)
-  currencyCode          String          @default("AED") @db.Char(3)
-  price                 Decimal?        @db.Decimal(12, 2)
-  dailyRate             Decimal         @db.Decimal(10, 2)
-  monthlyRate           Decimal         @db.Decimal(10, 2)
-  leaseMonthly          Decimal?        @db.Decimal(10, 2)
-  depositAmount         Decimal?        @db.Decimal(10, 2)
-  downPaymentPct        Decimal         @db.Decimal(4, 2) @default(0.20)
-  mileageLimitMonthly   Int             @default(3000)
-  rtaRegistrationExpiry DateTime?
-  insuranceExpiry       DateTime?
-  lastServiceDate       DateTime?
-  nextServiceDue        DateTime?
-  notes                 String?
-  images                VehicleImage[]
-  bookings              Booking[]
-  assignedBookings      Booking[]       @relation("AssignedVehicle")
-  leases                Lease[]
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+model Party {
+  id                    String    @id
+  countryId             String    @map("country_id")
+  kind                  PartyKind
+  displayName           String    @map("display_name")
+  taxRegistrationNumber String?   @map("tax_registration_number")
+  billingEmail          String?   @map("billing_email")
+  billingAddress        String?   @map("billing_address")
+  kycStatus             KycStatus @default(NOT_STARTED) @map("kyc_status")
+  deletedAt             DateTime? @map("deleted_at") @db.Timestamp(3)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy             String?   @map("created_by")
+  updatedBy             String?   @map("updated_by")
 
-  @@index([countryId, status, createdAt(sort: Desc)])
+  country      Country       @relation(fields: [countryId], references: [id])
+  customer     Customer?
+  organization Organization?
+  consents     Consent[]
+  kycDocuments KycDocument[]
+  bookings     Booking[]
+  leases       Lease[]
+  invoices     Invoice[]
+  payments     Payment[]
+  communicationLogs CommunicationLog[]
+
+  @@index([countryId, kind, kycStatus])
+  @@map("parties")
+}
+
+model Customer {
+  id                  String          @id // shared with parties.id
+  countryId           String          @map("country_id")
+  email               String
+  phoneE164           String          @map("phone_e164")
+  fullName            String          @map("full_name")
+  dob                 DateTime?       @db.Date
+  nationalityIso2     String?         @map("nationality_iso2") @db.Char(2)
+  residencyStatus     ResidencyStatus @map("residency_status")
+  preferredLanguage   Language        @default(en) @map("preferred_language")
+  marketingOptIn      Boolean         @default(false) @map("marketing_opt_in")
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt           DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy           String?         @map("created_by")
+  updatedBy           String?         @map("updated_by")
+
+  party                Party @relation(fields: [id], references: [id], onDelete: Cascade)
+  country              Country @relation(fields: [countryId], references: [id])
+  organizationMembers  OrganizationMember[]
+  signatoryFor         Organization[]       @relation("OrgPrimarySignatory")
+  bookedBookings       Booking[]            @relation("BookingBookedBy")
+  drivenLeases         Lease[]              @relation("LeasePrimaryDriver")
+
+  @@unique([countryId, email])
+  @@unique([countryId, phoneE164])
+  @@map("customers")
+}
+
+model Organization {
+  id                   String   @id // shared with parties.id
+  countryId            String   @map("country_id")
+  legalName            String   @map("legal_name")
+  tradeLicenceNumber   String?  @map("trade_licence_number")
+  industry             String?
+  employeeCountBand    String?  @map("employee_count_band")
+  paymentTermsDays     Int      @default(0) @map("payment_terms_days")
+  primarySignatoryId   String?  @map("primary_signatory_id")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy            String?  @map("created_by")
+  updatedBy            String?  @map("updated_by")
+
+  party             Party    @relation(fields: [id], references: [id], onDelete: Cascade)
+  country           Country  @relation(fields: [countryId], references: [id])
+  primarySignatory  Customer? @relation("OrgPrimarySignatory", fields: [primarySignatoryId], references: [id])
+  members           OrganizationMember[]
+
+  @@unique([countryId, tradeLicenceNumber])
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id              String                 @id
+  organizationId  String                 @map("organization_id")
+  customerId      String                 @map("customer_id")
+  role            OrganizationMemberRole
+  isActive        Boolean                @default(true) @map("is_active")
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy       String?                @map("created_by")
+  updatedBy       String?                @map("updated_by")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id])
+
+  @@unique([organizationId, customerId])
+  @@index([customerId])
+  @@map("organization_members")
+}
+
+model Consent {
+  id              String         @id
+  partyId         String         @map("party_id")
+  channel         ConsentChannel
+  purpose         ConsentPurpose
+  grantedAt       DateTime?      @map("granted_at") @db.Timestamp(3)
+  withdrawnAt     DateTime?      @map("withdrawn_at") @db.Timestamp(3)
+  source          ConsentSource
+  evidenceBlobUrl String?        @map("evidence_blob_url")
+  ipAddress       String?        @map("ip_address")
+  userAgent       String?        @map("user_agent")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy       String?        @map("created_by")
+  updatedBy       String?        @map("updated_by")
+
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+
+  @@index([partyId, channel, purpose])
+  @@map("consents")
+}
+
+model OtpCode {
+  id            String          @id
+  identityKind  OtpIdentityKind @map("identity_kind")
+  identity      String
+  codeHash      String?         @map("code_hash") // null when provider = TWILIO_VERIFY
+  provider      OtpProvider
+  providerSid   String?         @map("provider_sid")
+  expiresAt     DateTime        @map("expires_at") @db.Timestamp(3)
+  attempts      Int             @default(0)
+  consumedAt    DateTime?       @map("consumed_at") @db.Timestamp(3)
+  ipAddress     String?         @map("ip_address")
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  @@index([identity, expiresAt])
+  @@map("otp_codes")
+}
+
+model Session {
+  id                    String               @id
+  subjectKind           SubjectKind          @map("subject_kind")
+  subjectId             String               @map("subject_id")
+  refreshTokenHash      String               @map("refresh_token_hash")
+  rotatedFromSessionId  String?              @map("rotated_from_session_id")
+  expiresAt             DateTime             @map("expires_at") @db.Timestamp(3)
+  revokedAt             DateTime?            @map("revoked_at") @db.Timestamp(3)
+  revokeReason          SessionRevokeReason? @map("revoke_reason")
+  ipAddress             String?              @map("ip_address")
+  userAgent             String?              @map("user_agent")
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt             DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  rotatedFrom Session?  @relation("SessionRotation", fields: [rotatedFromSessionId], references: [id])
+  rotatedInto Session[] @relation("SessionRotation")
+
+  @@index([subjectKind, subjectId])
+  @@index([expiresAt])
+  @@index([rotatedFromSessionId])
+  @@map("sessions")
+}
+
+model KycDocument {
+  id                 String       @id
+  partyId            String       @map("party_id")
+  countryId          String       @map("country_id")
+  documentTypeCode   String       @map("document_type_code")
+  blobUrl            String       @map("blob_url")
+  mimeType           String       @map("mime_type")
+  fileSizeBytes      BigInt       @map("file_size_bytes")
+  expiresOn          DateTime?    @map("expires_on") @db.Date
+  status             KycDocStatus @default(UPLOADED)
+  ocrStatus          OcrStatus    @default(NOT_STARTED) @map("ocr_status")
+  ocrPayload         Json         @default("{}") @map("ocr_payload")
+  reviewerUserId     String?      @map("reviewer_user_id")
+  reviewedAt         DateTime?    @map("reviewed_at") @db.Timestamp(3)
+  rejectReason       String?      @map("reject_reason")
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt          DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy          String?      @map("created_by")
+  updatedBy          String?      @map("updated_by")
+
+  party    Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  country  Country  @relation(fields: [countryId], references: [id])
+  reviewer User?    @relation("KycDocReviewer", fields: [reviewerUserId], references: [id])
+  ocrJobs  OcrJob[]
+
+  @@index([partyId])
+  @@index([status, countryId])
+  @@map("kyc_documents")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// platform/inventory
+// ─────────────────────────────────────────────────────────────────────
+
+model Vehicle {
+  id              String        @id
+  countryId       String        @map("country_id")
+  legalEntityId   String        @map("legal_entity_id")
+  brand           Brand
+  model           String
+  modelYear       Int           @map("model_year")
+  bodyType        BodyType      @map("body_type")
+  powertrain      Powertrain
+  trim            String?
+  plateNumber     String        @unique @map("plate_number")
+  vin             String?       @unique
+  color           String
+  transmission    Transmission
+  seats           Int
+  status          VehicleStatus @default(AVAILABLE)
+  odometerKm      Int           @default(0) @map("odometer_km")
+  primaryImageUrl String?       @map("primary_image_url")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy       String?       @map("created_by")
+  updatedBy       String?       @map("updated_by")
+
+  country     Country     @relation(fields: [countryId], references: [id])
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id])
+  images      VehicleImage[]
+  holds       VehicleAvailabilityHold[]
+  rateCards   RentalRateCard[]
+  bookings    Booking[]
+  leases      Lease[]
+  maintenance VehicleMaintenanceRecord[]
+
+  @@index([countryId, status])
+  @@index([brand, model])
   @@map("vehicles")
 }
 
 model VehicleImage {
-  id        String  @id @default(uuid())
-  vehicleId String
-  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  url       String
-  isPrimary Boolean @default(false)
-  sortOrder Int     @default(0)
+  id        String   @id
+  vehicleId String   @map("vehicle_id")
+  countryId String   @map("country_id")
+  blobUrl   String   @map("blob_url")
+  sortOrder Int      @default(0) @map("sort_order")
+  altEn     String?  @map("alt_en")
+  altAr     String?  @map("alt_ar")
+  altZh     String?  @map("alt_zh")
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy String?  @map("created_by")
+  updatedBy String?  @map("updated_by")
 
-  @@index([vehicleId])
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  country Country @relation(fields: [countryId], references: [id])
+
+  @@index([vehicleId, sortOrder])
   @@map("vehicle_images")
 }
 
-model Customer {
-  id                  String            @id @default(uuid())
-  countryId           String
-  country             Country           @relation(fields: [countryId], references: [id])
-  phone               String            @unique
-  email               String?
-  fullName            String
-  nationality         String?
-  preferredLanguage   Language          @default(en)
-  customerType        CustomerType      @default(INDIVIDUAL)
-  kycStatus           KycStatus         @default(PENDING)
-  kycRejectionReason  String?
-  whatsappOptIn       Boolean           @default(false)
-  documents           Document[]
-  bookings            Booking[]
-  leases              Lease[]
-  payments            Payment[]
-  invoices            Invoice[]
-  companyEmployees    CompanyEmployee[]
-  notifications       NotificationLog[]
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
+model VehicleAvailabilityHold {
+  id              String            @id
+  vehicleId       String            @map("vehicle_id")
+  countryId       String            @map("country_id")
+  startAt         DateTime          @map("start_at") @db.Timestamp(3)
+  endAt           DateTime          @map("end_at") @db.Timestamp(3)
+  reason          HoldReason
+  referenceKind   HoldReferenceKind @default(NONE) @map("reference_kind")
+  referenceId     String?           @map("reference_id")
+  notes           String?
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy       String?           @map("created_by")
+  updatedBy       String?           @map("updated_by")
 
-  @@index([countryId, kycStatus, createdAt(sort: Desc)])
-  @@map("customers")
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  country Country @relation(fields: [countryId], references: [id])
+
+  @@index([vehicleId, startAt, endAt])
+  @@map("vehicle_availability_holds")
 }
 
-model Document {
-  id              String         @id @default(uuid())
-  customerId      String
-  customer        Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  type            DocumentType
-  fileUrl         String
-  expiryDate      DateTime?
-  status          DocumentStatus @default(PENDING)
-  rejectionReason String?
-  uploadedAt      DateTime       @default(now())
-  reviewedAt      DateTime?
-  reviewedBy      String?
-  reviewer        AdminUser?     @relation(fields: [reviewedBy], references: [id])
+// ─────────────────────────────────────────────────────────────────────
+// platform/pricing
+// ─────────────────────────────────────────────────────────────────────
 
-  ocrStatus         OcrStatus @default(NOT_STARTED)
-  ocrProvider       String?
-  ocrModel          String?
-  ocrFields         Json?
-  ocrConfidence     Float?
-  ocrRequestedAt    DateTime?
-  ocrCompletedAt    DateTime?
-  ocrFailureReason  String?
-  reviewerOverrides Json?
+model RentalRateCard {
+  id               String     @id
+  countryId        String     @map("country_id")
+  vehicleId        String?    @map("vehicle_id")
+  tier             RentalTier
+  dailyRateMinor   BigInt     @map("daily_rate_minor")
+  monthlyRateMinor BigInt     @map("monthly_rate_minor")
+  currencyCode     String     @map("currency_code") @db.Char(3)
+  validFrom        DateTime   @map("valid_from") @db.Date
+  validTo          DateTime?  @map("valid_to") @db.Date
+  isActive         Boolean    @default(true) @map("is_active")
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt        DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy        String?    @map("created_by")
+  updatedBy        String?    @map("updated_by")
 
-  @@index([customerId])
-  @@index([ocrStatus])
-  @@map("documents")
+  country Country  @relation(fields: [countryId], references: [id])
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+
+  @@index([countryId, vehicleId, tier, validFrom])
+  @@map("rental_rate_cards")
 }
+
+model MileagePackage {
+  id                       String   @id
+  countryId                String   @map("country_id")
+  name                     String
+  includedKmPerMonth       Int      @map("included_km_per_month")
+  overageRatePerKmMinor    BigInt   @map("overage_rate_per_km_minor")
+  currencyCode             String   @map("currency_code") @db.Char(3)
+  sortOrder                Int      @default(0) @map("sort_order")
+  isActive                 Boolean  @default(true) @map("is_active")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy                String?  @map("created_by")
+  updatedBy                String?  @map("updated_by")
+
+  country  Country   @relation(fields: [countryId], references: [id])
+  bookings Booking[]
+
+  @@index([countryId, isActive])
+  @@map("mileage_packages")
+}
+
+model AddOn {
+  id              String   @id
+  countryId       String   @map("country_id")
+  code            String
+  labelEn         String   @map("label_en")
+  labelAr         String?  @map("label_ar")
+  labelZh         String?  @map("label_zh")
+  kind            String
+  priceMinor      BigInt   @map("price_minor")
+  currencyCode    String   @map("currency_code") @db.Char(3)
+  billingCadence  String   @map("billing_cadence") // ONCE, DAILY, MONTHLY
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy       String?  @map("created_by")
+  updatedBy       String?  @map("updated_by")
+
+  country Country @relation(fields: [countryId], references: [id])
+
+  @@unique([countryId, code])
+  @@map("add_ons")
+}
+
+model PromoCode {
+  id            String   @id
+  countryId     String   @map("country_id")
+  code          String
+  discountKind  String   @map("discount_kind") // PERCENT, FIXED
+  discountValue Decimal  @map("discount_value") @db.Decimal(10, 2)
+  validFrom     DateTime @map("valid_from") @db.Date
+  validTo       DateTime? @map("valid_to") @db.Date
+  maxUses       Int?     @map("max_uses")
+  usedCount     Int      @default(0) @map("used_count")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy     String?  @map("created_by")
+  updatedBy     String?  @map("updated_by")
+
+  country Country @relation(fields: [countryId], references: [id])
+
+  @@unique([countryId, code])
+  @@map("promo_codes")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// platform/billing
+// ─────────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id             String        @id
+  countryId      String        @map("country_id")
+  legalEntityId  String        @map("legal_entity_id")
+  partyId        String        @map("party_id")
+  leaseId        String?       @map("lease_id")
+  invoiceNumber  String        @unique @map("invoice_number")
+  issuedAt       DateTime      @map("issued_at") @db.Timestamp(3)
+  dueAt          DateTime      @map("due_at") @db.Timestamp(3)
+  currencyCode   String        @map("currency_code") @db.Char(3)
+  subtotalMinor  BigInt        @map("subtotal_minor")
+  vatMinor       BigInt        @map("vat_minor")
+  totalMinor     BigInt        @map("total_minor")
+  status         InvoiceStatus @default(DRAFT)
+  pdfBlobUrl     String?       @map("pdf_blob_url")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy      String?       @map("created_by")
+  updatedBy      String?       @map("updated_by")
+
+  country     Country     @relation(fields: [countryId], references: [id])
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id])
+  party       Party       @relation(fields: [partyId], references: [id])
+  lease       Lease?      @relation(fields: [leaseId], references: [id])
+  lines       InvoiceLine[]
+  payments    Payment[]
+
+  @@index([partyId, status])
+  @@index([legalEntityId, issuedAt])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id             String  @id
+  invoiceId      String  @map("invoice_id")
+  descriptionEn  String  @map("description_en")
+  descriptionAr  String? @map("description_ar")
+  descriptionZh  String? @map("description_zh")
+  quantity       Int
+  unitAmountMinor BigInt @map("unit_amount_minor")
+  lineTotalMinor BigInt  @map("line_total_minor")
+  vatRate        Decimal @map("vat_rate") @db.Decimal(4, 4)
+  taxCode        String? @map("tax_code")
+  sortOrder      Int     @default(0) @map("sort_order")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_lines")
+}
+
+model Payment {
+  id                  String          @id
+  countryId           String          @map("country_id")
+  partyId             String          @map("party_id")
+  kind                PaymentKind
+  invoiceId           String?         @map("invoice_id")
+  leaseId             String?         @map("lease_id")
+  provider            PaymentProvider
+  providerPaymentId   String?         @map("provider_payment_id")
+  amountMinor         BigInt          @map("amount_minor")
+  currencyCode        String          @map("currency_code") @db.Char(3)
+  status              PaymentStatus   @default(PENDING)
+  capturedAt          DateTime?       @map("captured_at") @db.Timestamp(3)
+  metadata            Json            @default("{}")
+  createdAt           DateTime        @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt           DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy           String?         @map("created_by")
+  updatedBy           String?         @map("updated_by")
+
+  country Country  @relation(fields: [countryId], references: [id])
+  party   Party    @relation(fields: [partyId], references: [id])
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+  lease   Lease?   @relation(fields: [leaseId], references: [id])
+  refunds Refund[]
+
+  @@index([partyId, capturedAt])
+  @@index([invoiceId])
+  @@index([leaseId, kind])
+  @@map("payments")
+}
+
+model PaymentIntent {
+  id                String          @id
+  paymentId         String?         @map("payment_id")
+  provider          PaymentProvider
+  providerIntentId  String          @unique @map("provider_intent_id")
+  clientSecret      String?         @map("client_secret")
+  amountMinor       BigInt          @map("amount_minor")
+  currencyCode      String          @map("currency_code") @db.Char(3)
+  status            String
+  expiresAt         DateTime?       @map("expires_at") @db.Timestamp(3)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy         String?         @map("created_by")
+  updatedBy         String?         @map("updated_by")
+
+  @@map("payment_intents")
+}
+
+model Refund {
+  id              String       @id
+  paymentId       String       @map("payment_id")
+  amountMinor     BigInt       @map("amount_minor")
+  currencyCode    String       @map("currency_code") @db.Char(3)
+  reason          String
+  providerRefundId String?     @map("provider_refund_id")
+  status          RefundStatus @default(PENDING)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy       String?      @map("created_by")
+  updatedBy       String?      @map("updated_by")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("refunds")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// platform/agreements
+// ─────────────────────────────────────────────────────────────────────
+
+model RentalAgreement {
+  id              String   @id
+  countryId       String   @map("country_id")
+  legalEntityId   String   @map("legal_entity_id")
+  leaseId         String   @unique @map("lease_id")
+  version         String
+  pdfBlobUrl      String   @map("pdf_blob_url")
+  signedAt        DateTime @map("signed_at") @db.Timestamp(3)
+  signedIp        String?  @map("signed_ip")
+  signatureMethod String   @map("signature_method")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy       String?  @map("created_by")
+  updatedBy       String?  @map("updated_by")
+
+  country     Country     @relation(fields: [countryId], references: [id])
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id])
+  lease       Lease       @relation(fields: [leaseId], references: [id])
+
+  @@map("rental_agreements")
+}
+
+model TermsDocument {
+  id              String   @id
+  countryId       String   @map("country_id")
+  legalEntityId   String   @map("legal_entity_id")
+  kind            String // TOS, PRIVACY, RENTAL_AGREEMENT_TEMPLATE
+  version         String
+  contentMd       String   @map("content_md")
+  effectiveFrom   DateTime @map("effective_from") @db.Date
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy       String?  @map("created_by")
+  updatedBy       String?  @map("updated_by")
+
+  country     Country     @relation(fields: [countryId], references: [id])
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id])
+
+  @@unique([countryId, legalEntityId, kind, version])
+  @@map("terms_documents")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// products/rental
+// ─────────────────────────────────────────────────────────────────────
 
 model Booking {
-  id                String        @id @default(uuid())
-  countryId         String
-  country           Country       @relation(fields: [countryId], references: [id])
-  reference         String        @unique
-  customerId        String
-  customer          Customer      @relation(fields: [customerId], references: [id])
-  vehicleId         String?
-  vehicle           Vehicle?      @relation(fields: [vehicleId], references: [id])
-  assignedVehicleId String?
-  assignedVehicle   Vehicle?      @relation("AssignedVehicle", fields: [assignedVehicleId], references: [id])
-  leaseType         LeaseType
-  serviceType       ServiceType   @default(RENT)
-  startDate         DateTime
-  endDate           DateTime
-  durationDays      Int
-  mileagePackage    Int
-  addOns            Json          @default("{}")
-  currencyCode      String        @default("AED") @db.Char(3)
-  quotedTotal       Decimal       @db.Decimal(10, 2)
-  vatAmount         Decimal       @db.Decimal(10, 2)
-  grandTotal        Decimal       @db.Decimal(10, 2)
-  depositAmount     Decimal       @db.Decimal(10, 2)
-  depositPaid       Boolean       @default(false)
-  status            BookingStatus @default(DRAFT)
-  rejectionReason   String?
-  pickupLocation    String?
-  dropoffLocation   String?
-  notes             String?
-  lease             Lease?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                    String        @id
+  countryId             String        @map("country_id")
+  reference             String        @unique
+  partyId               String        @map("party_id")
+  bookedByCustomerId    String        @map("booked_by_customer_id")
+  vehicleId             String        @map("vehicle_id")
+  status                BookingStatus @default(DRAFT)
+  startDate             DateTime      @map("start_date") @db.Date
+  endDate               DateTime      @map("end_date") @db.Date
+  durationDays          Int           @map("duration_days")
+  mileagePackageId      String?       @map("mileage_package_id")
+  addOns                Json          @default("[]") @map("add_ons")
+  pickupLocation        String?       @map("pickup_location")
+  dropoffLocation       String?       @map("dropoff_location")
+  notes                 String?
+  currencyCode          String        @map("currency_code") @db.Char(3)
+  subtotalMinor         BigInt        @map("subtotal_minor")
+  vatMinor              BigInt        @map("vat_minor")
+  depositMinor          BigInt        @map("deposit_minor")
+  totalMinor            BigInt        @map("total_minor")
+  submittedAt           DateTime?     @map("submitted_at") @db.Timestamp(3)
+  confirmedAt           DateTime?     @map("confirmed_at") @db.Timestamp(3)
+  cancelledAt           DateTime?     @map("cancelled_at") @db.Timestamp(3)
+  expiredAt             DateTime?     @map("expired_at") @db.Timestamp(3)
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy             String?       @map("created_by")
+  updatedBy             String?       @map("updated_by")
 
-  @@index([countryId, customerId])
-  @@index([countryId, vehicleId])
-  @@index([countryId, status, createdAt(sort: Desc)])
+  country         Country         @relation(fields: [countryId], references: [id])
+  party           Party           @relation(fields: [partyId], references: [id])
+  bookedBy        Customer        @relation("BookingBookedBy", fields: [bookedByCustomerId], references: [id])
+  vehicle         Vehicle         @relation(fields: [vehicleId], references: [id])
+  mileagePackage  MileagePackage? @relation(fields: [mileagePackageId], references: [id])
+  lease           Lease?
+
+  @@index([partyId, status])
+  @@index([bookedByCustomerId, status])
+  @@index([vehicleId, startDate, endDate])
   @@map("bookings")
 }
 
 model Lease {
-  id                  String      @id @default(uuid())
-  countryId           String
-  country             Country     @relation(fields: [countryId], references: [id])
-  reference           String      @unique
-  bookingId           String      @unique
-  booking             Booking     @relation(fields: [bookingId], references: [id])
-  customerId          String
-  customer            Customer    @relation(fields: [customerId], references: [id])
-  vehicleId           String
-  vehicle             Vehicle     @relation(fields: [vehicleId], references: [id])
-  startDate           DateTime
-  endDate             DateTime
-  serviceType         ServiceType @default(RENT)
-  currencyCode        String      @default("AED") @db.Char(3)
-  monthlyRate         Decimal     @db.Decimal(10, 2)
-  vatRate             Decimal     @db.Decimal(4, 4) @default(0.0500)
-  mileageLimitMonthly Int
-  downPayment         Decimal?    @db.Decimal(10, 2)
-  status              LeaseStatus @default(ACTIVE)
-  renewalOfId         String?
-  renewalOf           Lease?      @relation("LeaseRenewal", fields: [renewalOfId], references: [id])
-  renewals            Lease[]     @relation("LeaseRenewal")
-  agreementPdfUrl     String?
-  notes               String?
-  payments            Payment[]
-  invoices            Invoice[]
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  id                       String      @id
+  countryId                String      @map("country_id")
+  legalEntityId            String      @map("legal_entity_id")
+  bookingId                String      @unique @map("booking_id")
+  partyId                  String      @map("party_id")
+  primaryDriverCustomerId  String      @map("primary_driver_customer_id")
+  vehicleId                String      @map("vehicle_id")
+  leaseType                LeaseType   @map("lease_type")
+  status                   LeaseStatus @default(ACTIVE)
+  startDate                DateTime    @map("start_date") @db.Date
+  endDate                  DateTime    @map("end_date") @db.Date
+  actualEndDate            DateTime?   @map("actual_end_date") @db.Date
+  currencyCode             String      @map("currency_code") @db.Char(3)
+  monthlyRateMinor         BigInt      @map("monthly_rate_minor")
+  dailyRateMinor           BigInt      @map("daily_rate_minor")
+  depositHeldMinor         BigInt      @map("deposit_held_minor")
+  depositRefundedMinor     BigInt      @default(0) @map("deposit_refunded_minor")
+  includedKmPerMonth       Int         @map("included_km_per_month")
+  overageRatePerKmMinor    BigInt      @map("overage_rate_per_km_minor")
+  createdAt                DateTime    @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt                DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy                String?     @map("created_by")
+  updatedBy                String?     @map("updated_by")
 
-  @@index([countryId, customerId])
-  @@index([countryId, vehicleId])
-  @@index([countryId, status, createdAt(sort: Desc)])
+  country         Country         @relation(fields: [countryId], references: [id])
+  legalEntity     LegalEntity     @relation(fields: [legalEntityId], references: [id])
+  booking         Booking         @relation(fields: [bookingId], references: [id])
+  party           Party           @relation(fields: [partyId], references: [id])
+  primaryDriver   Customer        @relation("LeasePrimaryDriver", fields: [primaryDriverCustomerId], references: [id])
+  vehicle         Vehicle         @relation(fields: [vehicleId], references: [id])
+  invoices        Invoice[]
+  payments        Payment[]
+  milestones      LeaseMilestone[]
+  mileageReadings MileageReading[]
+  agreement       RentalAgreement?
+
+  @@index([partyId, status])
+  @@index([primaryDriverCustomerId, status])
+  @@index([vehicleId, status])
   @@map("leases")
 }
 
-model Payment {
-  id               String          @id @default(uuid())
-  countryId        String
-  country          Country         @relation(fields: [countryId], references: [id])
-  leaseId          String
-  lease            Lease           @relation(fields: [leaseId], references: [id])
-  customerId       String
-  customer         Customer        @relation(fields: [customerId], references: [id])
-  type             PaymentType
-  currencyCode     String          @default("AED") @db.Char(3)
-  amount           Decimal         @db.Decimal(10, 2)
-  vatAmount        Decimal         @db.Decimal(10, 2)
-  total            Decimal         @db.Decimal(10, 2)
-  dueDate          DateTime
-  paidAt           DateTime?
-  status           PaymentStatus   @default(PENDING)
-  paymentMethod    PaymentMethod?
-  gateway          PaymentGateway?
-  gatewayReference String?
-  invoicePdfUrl    String?
-  invoice          Invoice?
-  createdAt        DateTime        @default(now())
+model LeaseMilestone {
+  id          String        @id
+  leaseId     String        @map("lease_id")
+  kind        MilestoneKind
+  dueAt       DateTime      @map("due_at") @db.Timestamp(3)
+  completedAt DateTime?     @map("completed_at") @db.Timestamp(3)
+  payload     Json          @default("{}")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
 
-  @@index([countryId, leaseId])
-  @@index([countryId, customerId])
-  @@index([leaseId, dueDate])
-  @@index([status, dueDate])
-  @@map("payments")
+  lease Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  @@index([leaseId, kind])
+  @@map("lease_milestones")
 }
 
-model NotificationLog {
-  id              String              @id @default(uuid())
-  customerId      String
-  customer        Customer            @relation(fields: [customerId], references: [id])
-  channel         NotificationChannel
-  template        String
-  language        Language
-  contentSnapshot String
-  status          NotificationStatus  @default(SENT)
-  sentAt          DateTime            @default(now())
-  metadata        Json                @default("{}")
+model MileageReading {
+  id                  String        @id
+  leaseId             String        @map("lease_id")
+  recordedAt          DateTime      @map("recorded_at") @db.Timestamp(3)
+  odometerKm          Int           @map("odometer_km")
+  source              MileageSource
+  recordedByUserId    String?       @map("recorded_by_user_id")
+  evidenceBlobUrl     String?       @map("evidence_blob_url")
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt           DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
 
-  @@index([customerId])
-  @@map("notification_logs")
+  lease       Lease @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+  recordedBy  User? @relation(fields: [recordedByUserId], references: [id])
+
+  @@index([leaseId, recordedAt])
+  @@map("mileage_readings")
 }
 
-model AdminUser {
-  id        String      @id @default(uuid())
-  email     String      @unique
-  password  String
-  fullName  String
-  role      AdminRole   @default(SALES)
-  isActive  Boolean     @default(true)
-  documents Document[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+// ─────────────────────────────────────────────────────────────────────
+// products/fleet_management
+// ─────────────────────────────────────────────────────────────────────
 
-  @@map("admin_users")
+model VehicleMaintenanceRecord {
+  id           String          @id
+  vehicleId    String          @map("vehicle_id")
+  kind         MaintenanceKind
+  startedAt    DateTime        @map("started_at") @db.Timestamp(3)
+  completedAt  DateTime?       @map("completed_at") @db.Timestamp(3)
+  odometerKm   Int             @map("odometer_km")
+  costMinor    BigInt          @map("cost_minor")
+  currencyCode String          @map("currency_code") @db.Char(3)
+  vendor       String?
+  notes        String?
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+  createdBy    String?         @map("created_by")
+  updatedBy    String?         @map("updated_by")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([vehicleId, startedAt])
+  @@map("vehicle_maintenance_records")
 }
 
-model ContactInquiry {
-  id        String   @id @default(uuid())
-  name      String
-  email     String
-  phone     String?
-  subject   String?
-  message   String
-  createdAt DateTime @default(now())
+// ─────────────────────────────────────────────────────────────────────
+// services/communications
+// ─────────────────────────────────────────────────────────────────────
 
-  @@map("contact_inquiries")
+model CommunicationLog {
+  id                String                @id
+  countryId         String?               @map("country_id")
+  correlationId     String?               @map("correlation_id")
+  partyId           String?               @map("party_id")
+  kind              CommunicationKind
+  purpose           CommunicationPurpose
+  templateCode      String                @map("template_code")
+  recipientEmail    String?               @map("recipient_email")
+  recipientPhone    String?               @map("recipient_phone")
+  subject           String?
+  bodyPreview       String                @map("body_preview")
+  provider          CommunicationProvider
+  providerMessageId String?               @map("provider_message_id")
+  status            CommunicationStatus   @default(QUEUED)
+  suppressedReason  String?               @map("suppressed_reason")
+  sentAt            DateTime?             @map("sent_at") @db.Timestamp(3)
+  deliveredAt       DateTime?             @map("delivered_at") @db.Timestamp(3)
+  failedAt          DateTime?             @map("failed_at") @db.Timestamp(3)
+  errorMessage      String?               @map("error_message")
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  country Country? @relation(fields: [countryId], references: [id])
+  party   Party?   @relation(fields: [partyId], references: [id])
+
+  @@index([templateCode, sentAt])
+  @@index([partyId, sentAt])
+  @@index([correlationId])
+  @@map("communication_logs")
 }
 
-model OtpCode {
-  id        String   @id @default(uuid())
-  phone     String
-  otpHash   String
-  expiresAt DateTime
-  verified  Boolean  @default(false)
-  createdAt DateTime @default(now())
+// ─────────────────────────────────────────────────────────────────────
+// services/intelligence
+// ─────────────────────────────────────────────────────────────────────
 
-  @@index([phone, expiresAt])
-  @@map("otp_codes")
+model OcrJob {
+  id              String       @id
+  kycDocumentId   String       @map("kyc_document_id")
+  provider        OcrProvider
+  model           String
+  status          OcrJobStatus @default(QUEUED)
+  output          Json         @default("{}")
+  errorMessage    String?      @map("error_message")
+  startedAt       DateTime?    @map("started_at") @db.Timestamp(3)
+  completedAt     DateTime?    @map("completed_at") @db.Timestamp(3)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamp(3)
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp(3)
+
+  kycDocument KycDocument @relation(fields: [kycDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([kycDocumentId])
+  @@map("ocr_jobs")
 }
 
-// ── Corporate Accounts ─────────────────────────────────────────
-
-model Company {
-  id                 String            @id @default(uuid())
-  name               String
-  tradeLicenceNumber String?           @unique
-  crNumber           String?
-  vatTrn             String?
-  address            String?
-  city               String?           @default("Dubai")
-  contactEmail       String?
-  contactPhone       String?
-  billingEmail       String?
-  discountPct        Decimal           @db.Decimal(4, 2) @default(0.00)
-  creditTermDays     Int               @default(0)
-  isActive           Boolean           @default(true)
-  employees          CompanyEmployee[]
-  invoices           Invoice[]
-  notes              String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-
-  @@map("companies")
-}
-
-model CompanyEmployee {
-  id         String      @id @default(uuid())
-  companyId  String
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customerId String
-  customer   Customer    @relation(fields: [customerId], references: [id])
-  role       CompanyRole @default(DRIVER)
-  isActive   Boolean     @default(true)
-  createdAt  DateTime    @default(now())
-
-  @@unique([companyId, customerId])
-  @@index([companyId])
-  @@index([customerId])
-  @@map("company_employees")
-}
-
-// ── Invoices ───────────────────────────────────────────────────
-
-model Invoice {
-  id              String            @id @default(uuid())
-  countryId       String
-  country         Country           @relation(fields: [countryId], references: [id])
-  invoiceNumber   String            @unique
-  customerId      String
-  customer        Customer          @relation(fields: [customerId], references: [id])
-  companyId       String?
-  company         Company?          @relation(fields: [companyId], references: [id])
-  leaseId         String?
-  lease           Lease?            @relation(fields: [leaseId], references: [id])
-  paymentId       String?           @unique
-  payment         Payment?          @relation(fields: [paymentId], references: [id])
-  periodStart     DateTime?
-  periodEnd       DateTime?
-  currencyCode    String            @default("AED") @db.Char(3)
-  subtotal        Decimal           @db.Decimal(10, 2)
-  vatRate         Decimal           @db.Decimal(4, 4) @default(0.0500)
-  vatAmount       Decimal           @db.Decimal(10, 2)
-  total           Decimal           @db.Decimal(10, 2)
-  vatTrn          String?
-  status          InvoiceStatus     @default(DRAFT)
-  issuedAt        DateTime?
-  dueDate         DateTime?
-  paidAt          DateTime?
-  pdfUrl          String?
-  notes           String?
-  lineItems       InvoiceLineItem[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-
-  @@index([countryId, customerId])
-  @@index([companyId])
-  @@index([leaseId])
-  @@map("invoices")
-}
-
-model InvoiceLineItem {
-  id           String  @id @default(uuid())
-  invoiceId    String
-  invoice      Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  description  String
-  quantity     Int     @default(1)
-  unitPrice    Decimal @db.Decimal(10, 2)
-  total        Decimal @db.Decimal(10, 2)
-  sortOrder    Int     @default(0)
-
-  @@index([invoiceId])
-  @@map("invoice_line_items")
-}
+// ─────────────────────────────────────────────────────────────────────
+// core/messaging — outbox event bus
+// ─────────────────────────────────────────────────────────────────────
 
 model OutboxEvent {
-  id             String            @id @default(uuid())
-  countryId      String?
-  country        Country?          @relation(fields: [countryId], references: [id])
-  eventType      String
-  aggregateType  String
-  aggregateId    String
-  payload        Json
-  status         OutboxEventStatus @default(PENDING)
-  attempts       Int               @default(0)
-  lastError      String?
-  availableAt    DateTime          @default(now())
-  processedAt    DateTime?
-  createdAt      DateTime          @default(now())
+  id              String            @id
+  countryId       String?           @map("country_id")
+  correlationId   String?           @map("correlation_id")
+  eventType       String            @map("event_type")
+  aggregateType   String            @map("aggregate_type")
+  aggregateId     String            @map("aggregate_id")
+  payload         Json
+  status          OutboxEventStatus @default(PENDING)
+  attempts        Int               @default(0)
+  lastError       String?           @map("last_error")
+  availableAt     DateTime          @default(now()) @map("available_at") @db.Timestamp(3)
+  processedAt     DateTime?         @map("processed_at") @db.Timestamp(3)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamp(3)
+
+  country Country? @relation(fields: [countryId], references: [id])
 
   @@index([status, availableAt])
   @@index([eventType])
-  @@index([countryId])
+  @@index([correlationId])
   @@map("outbox_events")
 }
 
-// ── Audit & Error Logs ─────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────
+// core/observability — append-only logs
+// ─────────────────────────────────────────────────────────────────────
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  userId     String?
-  userType   String?
-  action     String
-  entityType String?
-  entityId   String?
-  oldValue   Json?
-  newValue   Json?
-  ipAddress  String?
-  userAgent  String?
-  metadata   Json?    @default("{}")
-  createdAt  DateTime @default(now())
+  id          String     @id
+  countryId   String?    @map("country_id")
+  actorKind   ActorKind  @map("actor_kind")
+  actorId     String?    @map("actor_id")
+  action      String
+  targetKind  String?    @map("target_kind")
+  targetId    String?    @map("target_id")
+  payload     Json       @default("{}")
+  ipAddress   String?    @map("ip_address")
+  userAgent   String?    @map("user_agent")
+  requestId   String?    @map("request_id")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamp(3)
 
-  @@index([userId])
-  @@index([entityType, entityId])
-  @@index([action])
-  @@index([createdAt])
+  country Country? @relation(fields: [countryId], references: [id])
+
+  @@index([actorKind, actorId, createdAt])
+  @@index([targetKind, targetId, createdAt])
+  @@index([requestId])
   @@map("audit_logs")
 }
 
 model ErrorLog {
-  id         String   @id @default(uuid())
-  level      LogLevel @default(ERROR)
+  id         String   @id
+  countryId  String?  @map("country_id")
+  requestId  String?  @map("request_id")
+  statusCode Int      @map("status_code")
+  route      String
+  method     String
   message    String
-  stackTrace String?
-  endpoint   String?
-  method     String?
-  statusCode Int?
-  userId     String?
-  requestId  String?
-  metadata   Json?    @default("{}")
-  createdAt  DateTime @default(now())
+  stack      String?
+  payload    Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(3)
 
-  @@index([level])
+  country Country? @relation(fields: [countryId], references: [id])
+
   @@index([createdAt])
-  @@index([endpoint])
+  @@index([requestId])
   @@map("error_logs")
 }

@@ -1,47 +1,47 @@
-"""Transactional outbox helpers.
+"""Outbox event bus.
 
-Domain services call this inside the same database transaction as their state
-change. A worker can later process `outbox_events` without losing side effects.
+Modules emit events via `enqueue()`. A worker process drains pending events,
+dispatches to in-process subscribers, exponential backoff on failure.
+
+V1: worker runs in the same Container App as the API. V1.5: split out to a
+sidecar Container App when load justifies it.
+
+See docs/architecture/rebuild-erd.md §4.12 for the payload contract:
+- Payload is denormalized for subscribers, NOT a snapshot of the source row.
+- Hard cap: 8 KB per payload.
+- Money fields use {amount_minor, currency_code}.
 """
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from dataclasses import dataclass
 from typing import Any
 
+from origin_backend.core.kernel.ids import new_id
+from origin_backend.core.persistence import get_db
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, slots=True)
 class OutboxMessage:
     event_type: str
     aggregate_type: str
     aggregate_id: str
     payload: dict[str, Any]
     country_id: str | None = None
+    correlation_id: str | None = None
 
 
-async def enqueue(db: Any, message: OutboxMessage) -> Any:
-    return await db.outboxevent.create(
+async def enqueue(message: OutboxMessage) -> None:
+    """Persist an event to the outbox. Called from inside a service-layer transaction."""
+    db = get_db()
+    await db.outboxevent.create(
         data={
+            "id": new_id(),
             "countryId": message.country_id,
+            "correlationId": message.correlation_id,
             "eventType": message.event_type,
             "aggregateType": message.aggregate_type,
             "aggregateId": message.aggregate_id,
             "payload": message.payload,
-            "status": "PENDING",
-            "availableAt": datetime.now(UTC),
         }
     )
-
-
-def event_payload(**values: Any) -> dict[str, Any]:
-    payload: dict[str, Any] = {}
-    for key, value in values.items():
-        if hasattr(value, "isoformat"):
-            payload[key] = value.isoformat()
-        elif hasattr(value, "__dataclass_fields__"):
-            payload[key] = asdict(value)
-        else:
-            payload[key] = value
-    return payload
-

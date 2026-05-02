@@ -1,2 +1,0 @@
-"""HTTP API gateway packages."""
-

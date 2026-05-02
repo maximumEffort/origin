@@ -1,2 +1,0 @@
-"""Internal admin modular API."""
-

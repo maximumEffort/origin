@@ -1,2 +1,0 @@
-"""Rental product module."""
-

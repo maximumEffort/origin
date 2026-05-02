@@ -1,28 +1,20 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
 .venv/
 venv/
+.env
+.env.local
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
-
-# Prisma Python
-src/origin_backend/generated/
-
-# Environment
-.env
-.env.local
-
-# Local KYC uploads (dev fallback only — never commit customer PII)
-uploads/
-
-# Distribution
-build/
-dist/
 *.egg-info/
+dist/
+build/
+node_modules/
+
+# Prisma generated client (regenerated on build)
+src/origin_backend/generated/
+src/prisma/

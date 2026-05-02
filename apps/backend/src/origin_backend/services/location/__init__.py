@@ -1,2 +1,0 @@
-"""Location and maps adapters."""
-

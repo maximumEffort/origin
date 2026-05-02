@@ -1,21 +1,14 @@
 {
   "name": "origin",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Origin \u2014 Chinese EV car rental platform for Dubai/UAE. Customer site, admin dashboard, and backend API.",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "description": "Origin \u2014 Chinese EV car rental platform for Dubai/UAE. V1 rebuild (2026-05-02). Backend live; customer + admin frontends scheduled for days 14-21 per docs/architecture/rebuild-erd.md \u00a78.",
+  "workspaces": [],
   "scripts": {
-    "customer:dev": "npm run dev --workspace=customer",
-    "customer:build": "npm run build --workspace=customer",
-    "admin:dev": "npm run dev --workspace=admin",
-    "admin:build": "npm run build --workspace=admin",
-    "build": "npm run build --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
-    "type-check": "npm run type-check --workspaces --if-present",
-    "test": "npm test --workspaces --if-present"
+    "lint": "echo 'frontends not yet rebuilt \u2014 see docs/architecture/rebuild-erd.md \u00a78'",
+    "type-check": "echo 'frontends not yet rebuilt'",
+    "build": "echo 'frontends not yet rebuilt'",
+    "test": "echo 'use uv run pytest in apps/backend'"
   },
   "engines": {
     "node": ">=20.0.0"
