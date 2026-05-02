@@ -1,8 +1,8 @@
 # Origin — Rebuild ERD & Module Boundaries (V1)
 
-_Draft v0.3 — 2026-05-02. This document is the gating artifact before the rebuild starts. Nothing destructive runs until this is signed off._
+_Draft v0.4 — 2026-05-02. This document is the gating artifact before the rebuild starts. Nothing destructive runs until this is signed off._
 
-_Revision history: v0.1 initial draft; v0.2 adds party model (B2C + B2B), `payments.kind`, denormalization rule (§3.5), outbox payload contract (§4.12); v0.3 adds `consents` table for PDPL audit trail, `correlation_id` for end-to-end tracing across outbox + comms, `vehicle_images.country_id`, argon2id parameter doc-string._
+_Revision history: v0.1 initial draft; v0.2 adds party model (B2C + B2B), `payments.kind`, denormalization rule (§3.5), outbox payload contract (§4.12); v0.3 adds `consents` table for PDPL audit trail, `correlation_id` for end-to-end tracing, `vehicle_images.country_id`, argon2id params; v0.4 adds session refresh-token rotation (`rotated_from_session_id`), Powertrain/ServiceType clarifying notes, organizations soft-delete invariant, KYC route facade documentation._
 
 Snapshot of the pre-rebuild codebase: tag `pre-rebuild-2026-05-02` at commit `e296ff9` (also tip of `origin/main` at the time of writing — the commit ref is permanent regardless of the tag).
 
@@ -257,6 +257,8 @@ Unique: `(country_id, email)`, `(country_id, phone_e164)`. Same email/phone allo
 
 Unique: `(country_id, trade_licence_number) WHERE trade_licence_number IS NOT NULL`.
 
+**Soft-delete invariant** (enforced at the service layer, not via DB trigger): a customer who holds an active `primary_signatory_id` on any non-deleted organization cannot be soft-deleted until the role is reassigned. The `parties.deleted_at` write path checks this rule and returns a structured error if the invariant would break. DB triggers are intentionally avoided — silent FK rewriting on soft-delete is hard to debug.
+
 **`organization_members`** — humans authorised to act on behalf of an organization.
 
 | Column | Type | Notes |
@@ -311,7 +313,7 @@ Send-time rule (enforced in `services/communications`):
 
 Index: `(identity, expires_at)`.
 
-**`sessions`** — JWT/refresh management.
+**`sessions`** — JWT/refresh management. Refresh-token rotation supported via `rotated_from_session_id`.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -319,12 +321,16 @@ Index: `(identity, expires_at)`.
 | `subject_kind` | `SubjectKind` enum | `USER` (staff) or `CUSTOMER` (individual person) |
 | `subject_id` | `TEXT` | `users.id` or `customers.id` |
 | `refresh_token_hash` | `TEXT` | sha256 |
+| `rotated_from_session_id` | `TEXT` FK → `sessions.id` NULL | set on rotation; the previous session that issued this one |
 | `expires_at` | `TIMESTAMP(3)` | |
-| `revoked_at` | `TIMESTAMP(3)` NULL | |
+| `revoked_at` | `TIMESTAMP(3)` NULL | non-null after rotation OR explicit logout OR replay detection |
+| `revoke_reason` | `SessionRevokeReason` enum NULL | `LOGOUT`, `ROTATED`, `REPLAY_DETECTED`, `ADMIN_FORCE`, `EXPIRED` |
 | `ip_address`, `user_agent` | `TEXT` NULL | |
 | audit cols | | |
 
-Index: `(subject_kind, subject_id)`, `(expires_at)`.
+Index: `(subject_kind, subject_id)`, `(expires_at)`, `(rotated_from_session_id)`.
+
+V1: refresh just extends the session in place (no rotation). V1.1 turns on rotation: each refresh creates a new session row with `rotated_from_session_id = old.id`, marks the old `revoked_at = NOW(), revoke_reason = 'ROTATED'`. Reuse of an already-rotated refresh token = `REPLAY_DETECTED` → revoke entire chain. Schema is ready; logic ships in V1.1.
 
 A session subject is always a **person** (staff or individual customer). When a customer acts on behalf of an organization, the API resolves it via an `X-Acting-As-Organization-Id` header → checked against `organization_members` → the resulting booking carries `party_id = organization.id` and `booked_by_customer_id = customer.id`. Sessions never authenticate as an organization directly.
 
@@ -796,11 +802,15 @@ OcrProvider            ENUM('AZURE_DI', 'LOCAL')
 OtpIdentityKind        ENUM('EMAIL', 'PHONE')
 OtpProvider            ENUM('TWILIO_VERIFY', 'LOCAL')
 SubjectKind            ENUM('USER', 'CUSTOMER')
+SessionRevokeReason    ENUM('LOGOUT', 'ROTATED', 'REPLAY_DETECTED', 'ADMIN_FORCE', 'EXPIRED')
 PartyKind              ENUM('INDIVIDUAL', 'ORGANIZATION')
 OrganizationMemberRole ENUM('OWNER', 'AUTHORIZED_SIGNATORY', 'BOOKER', 'ACCOUNTS_PAYABLE')
 Brand                  ENUM('NIO', 'VOYAH', 'ZEEKR', 'BYD', 'XPENG', 'LI_AUTO', 'DENZA', 'MG', 'HONGQI')
 BodyType               ENUM('SUV', 'SEDAN', 'MPV', 'COUPE', 'CROSSOVER', 'WAGON')
 Powertrain             ENUM('EV', 'PHEV', 'HYBRID', 'ICE')
+                       -- EV: battery-only. PHEV: plug-in hybrid (chargeable + ICE).
+                       -- HYBRID: HEV (regen-only, no plug). ICE: combustion-only.
+                       -- Customer-facing "EV only" filter MUST exclude PHEV.
 Transmission           ENUM('AUTOMATIC', 'MANUAL', 'SINGLE_SPEED')
 VehicleStatus          ENUM('AVAILABLE', 'RESERVED', 'RENTED', 'MAINTENANCE', 'RETIRED')
 HoldReason             ENUM('BOOKING', 'LEASE', 'MAINTENANCE', 'MANUAL_BLOCK')
@@ -827,6 +837,11 @@ ConsentSource          ENUM('REGISTRATION', 'PROFILE_UPDATE', 'ADMIN_IMPORT', 'U
 OutboxEventStatus      ENUM('PENDING', 'PROCESSING', 'PROCESSED', 'FAILED')
 ActorKind              ENUM('USER', 'CUSTOMER', 'SYSTEM')
 ServiceType            ENUM('RENT', 'PURCHASE', 'LEASE_TO_OWN')
+                       -- Forward-compat per CLAUDE.md ("do not remove enum values").
+                       -- NO TABLE USES THIS COLUMN in V1: each products/* module owns
+                       -- its own tables (bookings/leases live in rental, future purchase
+                       -- module will own its own purchases table). The discriminator is
+                       -- the table name, not a column. Enum kept as a registry.
 ```
 
 ---
@@ -905,6 +920,8 @@ ServiceType            ENUM('RENT', 'PURCHASE', 'LEASE_TO_OWN')
 All `/api/admin/v1/*` requires `Authorization: Bearer <jwt>` with role claim. Roles per-route in a single decorator table — no scattered ad-hoc checks.
 
 All `/api/v1/*` requires either an authenticated session cookie or anonymous browse (vehicles only).
+
+**KYC route facade:** `/customers/{id}/kyc/*` and `/organizations/{id}/kyc/*` are admin-UI ergonomics. Because `customers.id = parties.id` and `organizations.id = parties.id` (shared PK from the table-inheritance pattern in §4.2), both routes resolve to the same underlying query: `kyc_documents WHERE party_id = {id}`. The two routes exist so the admin UI can keep B2C and B2B navigation separate; they are not separate data paths. A dual-role person (B2C customer who is also a B2B signatory) has docs queryable via either route — it's the same `party_id`.
 
 ---
 
