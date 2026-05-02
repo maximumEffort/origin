@@ -1,8 +1,8 @@
 # Origin — Rebuild ERD & Module Boundaries (V1)
 
-_Draft v0.4 — 2026-05-02. This document is the gating artifact before the rebuild starts. Nothing destructive runs until this is signed off._
+_Draft v0.5 — 2026-05-02. This document is the gating artifact before the rebuild starts. Nothing destructive runs until this is signed off._
 
-_Revision history: v0.1 initial draft; v0.2 adds party model (B2C + B2B), `payments.kind`, denormalization rule (§3.5), outbox payload contract (§4.12); v0.3 adds `consents` table for PDPL audit trail, `correlation_id` for end-to-end tracing, `vehicle_images.country_id`, argon2id params; v0.4 adds session refresh-token rotation (`rotated_from_session_id`), Powertrain/ServiceType clarifying notes, organizations soft-delete invariant, KYC route facade documentation._
+_Revision history: v0.1 initial draft; v0.2 adds party model (B2C + B2B), `payments.kind`, denormalization rule (§3.5), outbox payload contract (§4.12); v0.3 adds `consents` table for PDPL audit trail, `correlation_id` for end-to-end tracing, `vehicle_images.country_id`, argon2id params; v0.4 adds session refresh-token rotation (`rotated_from_session_id`), Powertrain/ServiceType clarifying notes, organizations soft-delete invariant, KYC route facade documentation; v0.5 adds input normalization rule (§3.6), country-coded booking reference, vehicle blob path convention._
 
 Snapshot of the pre-rebuild codebase: tag `pre-rebuild-2026-05-02` at commit `e296ff9` (also tip of `origin/main` at the time of writing — the commit ref is permanent regardless of the tag).
 
@@ -105,7 +105,7 @@ updated_by  TEXT          NULL
 ### 3.4 IDs
 
 - Primary keys: ULIDs as `TEXT`. Sortable by time, URL-safe, no plaintext info leak.
-- `Booking.reference`: human-friendly `BK-{YEAR}-{8HEX}` retained for customer-facing display.
+- `Booking.reference`: human-friendly `BK-{COUNTRY_ISO2}-{YEAR}-{8HEX}` (e.g. `BK-AE-2026-A1B2C3D4`). Country prefix aids support triage when reporting eventually spans multiple markets; collision-free via random hex tail. Generation logic only, no schema column for the prefix.
 - `Invoice.invoice_number`: per-legal-entity sequence, formatted by `legal_entity.invoice_prefix`.
 
 ### 3.5 Denormalization rule
@@ -118,6 +118,17 @@ If a denormalized timestamp is added for query performance (e.g. `bookings.depos
 2. **Reconciliation job.** A nightly task compares denormalized fields against their source-table-derived ground truth and flags drift to `error_logs` for ops review.
 
 This keeps denormalization a performance optimization, not a time bomb.
+
+### 3.6 Input normalization
+
+Inputs are normalized at the API boundary, before they touch the database:
+
+- **Email**: lowercase + trim. The DB UNIQUE constraint catches collisions only if both writes pre-normalize. `Admin@Origin-Auto.AE` and `admin@origin-auto.ae` are the same identity.
+- **Phone**: validated and rewritten into E.164 format (`+9715...`) using `country.phone_regex`. Stored normalized; display formatting is a frontend concern.
+- **Trade licence number**: trimmed, uppercased, internal whitespace collapsed.
+- **Names**: trimmed, internal whitespace collapsed; case preserved.
+
+Normalization lives in DTO validators in `gateways/*/schemas.py`. Service-layer functions assume normalized input — they don't re-normalize. This makes the rule auditable: search the gateway for `normalize_email` and you see every entry point.
 
 ---
 
@@ -394,13 +405,15 @@ Index: `(country_id, status)`, `(brand, model)`.
 | `id` | `TEXT` PK | |
 | `vehicle_id` | `TEXT` FK | |
 | `country_id` | `TEXT` FK | denormalised from vehicle, immutable. Future-proof for per-country blob storage when KSA/Egypt expansion forces data residency. |
-| `blob_url` | `TEXT` | public container |
+| `blob_url` | `TEXT` | public container; path convention below |
 | `sort_order` | `INTEGER` | |
 | `alt_en`, `alt_ar`, `alt_zh` | `TEXT` NULL | |
 | `is_primary` | `BOOLEAN` | |
 | audit cols | | |
 
 Index: `(vehicle_id, sort_order)`.
+
+**Blob path convention:** `{country_iso2_lower}/vehicles/{vehicle_id}/{image_id}.{ext}`. V1 example: `ae/vehicles/01J5K.../01J5L....jpg` inside the public `vehicle-imagery` container of `stororiginproduaenorth`. When KSA/Egypt expansion happens, the `{country_iso2_lower}` prefix lets a single migration script route blobs to the correct per-country storage account by parsing the path. Generation logic lives in `services/storage` (a thin adapter over Azure Blob), not in `platform/inventory` — the inventory module hands a payload to storage and gets back a URL.
 
 **`vehicle_availability_holds`** — single source of truth for "is this car free between X and Y?".
 
