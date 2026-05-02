@@ -1,6 +1,8 @@
 # Origin — Rebuild ERD & Module Boundaries (V1)
 
-_Draft: 2026-05-02. This document is the gating artifact before the rebuild starts. Nothing destructive runs until this is signed off._
+_Draft v0.2 — 2026-05-02. This document is the gating artifact before the rebuild starts. Nothing destructive runs until this is signed off._
+
+_Revision history: v0.1 initial draft; v0.2 adds party model (B2C + B2B), `payments.kind`, denormalization rule (§3.5), outbox payload contract (§4.12)._
 
 Snapshot of the pre-rebuild codebase: tag `pre-rebuild-2026-05-02` at commit `e296ff9` (also tip of `origin/main` at the time of writing — the commit ref is permanent regardless of the tag).
 
@@ -36,7 +38,7 @@ core/                 primitives, no domain logic
 
 platform/             cross-cutting capabilities used by every product
   countries/          Country config, legal entities, KYC doc types
-  identity/           Customers, internal users, OTP, sessions, KYC docs
+  identity/           Parties (B2C + B2B), customers, organizations, internal users, OTP, sessions, KYC docs
   inventory/          Vehicles, images, availability holds
   pricing/            Rate cards, mileage packages, add-ons, promo codes
   billing/            Invoices, payments, refunds, payment intents
@@ -106,6 +108,17 @@ updated_by  TEXT          NULL
 - `Booking.reference`: human-friendly `BK-{YEAR}-{8HEX}` retained for customer-facing display.
 - `Invoice.invoice_number`: per-legal-entity sequence, formatted by `legal_entity.invoice_prefix`.
 
+### 3.5 Denormalization rule
+
+Source of truth for derived state (e.g. "is this booking's deposit paid?") is **always the source table** — `payments`, not a boolean on `bookings`. Computed booleans on transactional rows are forbidden.
+
+If a denormalized timestamp is added for query performance (e.g. `bookings.deposit_paid_at`), it follows two rules:
+
+1. **Exactly one writer.** Only the corresponding outbox subscriber (e.g. `PAYMENT_SUCCEEDED`) writes the field. Never the booking endpoint, the admin UI, the webhook handler, or a manual fix-up script.
+2. **Reconciliation job.** A nightly task compares denormalized fields against their source-table-derived ground truth and flags drift to `error_logs` for ops review.
+
+This keeps denormalization a performance optimization, not a time bomb.
+
 ---
 
 ## 4. ERD by module
@@ -170,48 +183,101 @@ Unique: `(country_id, code)`.
 
 ### 4.2 `platform/identity`
 
+The identity layer has three concerns:
+
+1. **Internal staff** (`users`) — Origin employees with admin access. Separate auth path; never a counterparty to a contract.
+2. **External counterparties** (`parties`) — anyone who can be the legal counterparty to a booking, lease, or invoice. The base table; satellites are `customers` (individuals) and `organizations` (B2B).
+3. **Auth** (`otp_codes`, `sessions`) — verification codes and JWT/refresh records.
+
+KYC docs hang off `parties` (not `customers`) because organizations also have KYC obligations (trade licence, signatory's EID).
+
 **`users`** — internal staff (admin, sales, fleet_manager, super_admin).
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `TEXT` PK | |
-| `country_id` | `TEXT` FK | a user is a citizen of one country at a time; multi-country staff get duplicated rows |
+| `country_id` | `TEXT` FK | a user belongs to one country at a time; multi-country staff get duplicated rows |
 | `email` | `TEXT` UNIQUE | |
 | `phone_e164` | `TEXT` NULL | |
 | `password_hash` | `TEXT` | argon2id |
 | `role` | `UserRole` enum | `SUPER_ADMIN`, `ADMIN`, `SALES`, `FLEET_MANAGER` |
 | `is_active` | `BOOLEAN` | |
 | `last_login_at` | `TIMESTAMP(3)` NULL | |
+| `deleted_at` | `TIMESTAMP(3)` NULL | soft delete |
 | audit cols | | |
 
-**`customers`** — end users.
+**`parties`** — the legal counterparty to a booking, lease, or invoice. Both individuals and organizations have a row here.
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | `TEXT` PK | |
-| `country_id` | `TEXT` FK | resident country |
-| `email` | `TEXT` | |
-| `phone_e164` | `TEXT` | |
+| `id` | `TEXT` PK | shared with the satellite row in `customers` or `organizations` |
+| `country_id` | `TEXT` FK | resident or registration country |
+| `kind` | `PartyKind` enum | `INDIVIDUAL`, `ORGANIZATION` |
+| `display_name` | `TEXT` | full name or legal name |
+| `tax_registration_number` | `TEXT` NULL | UAE TRN, etc. |
+| `billing_email` | `TEXT` NULL | invoice destination |
+| `billing_address` | `TEXT` NULL | |
+| `kyc_status` | `KycStatus` enum | aggregate KYC state for the party |
+| `deleted_at` | `TIMESTAMP(3)` NULL | soft delete |
+| audit cols | | |
+
+Index: `(country_id, kind, kyc_status)`.
+
+**`customers`** — individual person profile. Satellite of `parties` for `kind = 'INDIVIDUAL'`. Login identities live here.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `TEXT` PK / FK → `parties.id` | shared key (table inheritance pattern) |
+| `country_id` | `TEXT` FK | denormalised from `parties.country_id`, immutable after insert |
+| `email` | `TEXT` | login identity |
+| `phone_e164` | `TEXT` | login identity |
 | `full_name` | `TEXT` | |
 | `dob` | `DATE` NULL | |
 | `nationality_iso2` | `CHAR(2)` NULL | |
 | `residency_status` | `ResidencyStatus` enum | `RESIDENT`, `VISITOR`, `GCC_RESIDENT` |
-| `kyc_status` | `KycStatus` enum | `NOT_STARTED`, `SUBMITTED`, `IN_REVIEW`, `APPROVED`, `REJECTED` |
 | `preferred_language` | `Language` enum | |
 | `marketing_opt_in` | `BOOLEAN` | |
-| `deleted_at` | `TIMESTAMP(3)` NULL | soft delete |
 | audit cols | | |
 
-Unique: `(country_id, email)`, `(country_id, phone_e164)`. Customers from different countries can share an email.
+Unique: `(country_id, email)`, `(country_id, phone_e164)`. Same email/phone allowed across different countries.
 
-**`otp_codes`** — verification codes.
+**`organizations`** — company profile. Satellite of `parties` for `kind = 'ORGANIZATION'`. V1 admin can create these; customer-facing org-booking flows ship in V1.x (issue #91).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `TEXT` PK / FK → `parties.id` | shared key |
+| `country_id` | `TEXT` FK | denormalised, immutable |
+| `legal_name` | `TEXT` | "Acme Trading LLC" |
+| `trade_licence_number` | `TEXT` NULL | UAE trade licence |
+| `industry` | `TEXT` NULL | free text or ISIC code |
+| `employee_count_band` | `TEXT` NULL | `1-10`, `11-50`, `51-200`, `200+` |
+| `payment_terms_days` | `INTEGER` NOT NULL DEFAULT `0` | 0 = upfront, 30 = net-30 |
+| `primary_signatory_id` | `TEXT` FK → `customers.id` NULL | the human authorised to sign on behalf |
+| audit cols | | |
+
+Unique: `(country_id, trade_licence_number) WHERE trade_licence_number IS NOT NULL`.
+
+**`organization_members`** — humans authorised to act on behalf of an organization.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `TEXT` PK | |
+| `organization_id` | `TEXT` FK → `organizations.id` | |
+| `customer_id` | `TEXT` FK → `customers.id` | the human (also a party in their own right) |
+| `role` | `OrganizationMemberRole` enum | `OWNER`, `AUTHORIZED_SIGNATORY`, `BOOKER`, `ACCOUNTS_PAYABLE` |
+| `is_active` | `BOOLEAN` | |
+| audit cols | | |
+
+Unique: `(organization_id, customer_id)`. Index: `(customer_id)` — answers "what orgs is this person a member of?".
+
+**`otp_codes`** — verification codes (request log; Twilio Verify is the prod path).
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `TEXT` PK | |
 | `identity_kind` | `OtpIdentityKind` enum | `EMAIL`, `PHONE` |
 | `identity` | `TEXT` | the email or E.164 phone |
-| `code_hash` | `TEXT` | bcrypt of the 6-digit code (Twilio Verify is the prod path; this table is the dev fallback) |
+| `code_hash` | `TEXT` NULL | bcrypt of the 6-digit code (LOCAL provider only); null for Twilio Verify |
 | `provider` | `OtpProvider` enum | `TWILIO_VERIFY`, `LOCAL` |
 | `provider_sid` | `TEXT` NULL | Twilio Verify SID |
 | `expires_at` | `TIMESTAMP(3)` | |
@@ -227,8 +293,8 @@ Index: `(identity, expires_at)`.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `TEXT` PK | matches JWT `jti` |
-| `subject_kind` | `SubjectKind` enum | `USER`, `CUSTOMER` |
-| `subject_id` | `TEXT` | |
+| `subject_kind` | `SubjectKind` enum | `USER` (staff) or `CUSTOMER` (individual person) |
+| `subject_id` | `TEXT` | `users.id` or `customers.id` |
 | `refresh_token_hash` | `TEXT` | sha256 |
 | `expires_at` | `TIMESTAMP(3)` | |
 | `revoked_at` | `TIMESTAMP(3)` NULL | |
@@ -237,18 +303,20 @@ Index: `(identity, expires_at)`.
 
 Index: `(subject_kind, subject_id)`, `(expires_at)`.
 
-**`kyc_documents`** — uploaded KYC files.
+A session subject is always a **person** (staff or individual customer). When a customer acts on behalf of an organization, the API resolves it via an `X-Acting-As-Organization-Id` header → checked against `organization_members` → the resulting booking carries `party_id = organization.id` and `booked_by_customer_id = customer.id`. Sessions never authenticate as an organization directly.
+
+**`kyc_documents`** — uploaded KYC files. Hangs off `parties` so both individuals and organizations are covered.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `TEXT` PK | |
-| `customer_id` | `TEXT` FK | |
+| `party_id` | `TEXT` FK → `parties.id` | who the doc is about |
 | `country_id` | `TEXT` FK | denormalised for query speed |
 | `document_type_code` | `TEXT` | resolves to `(country_id, code)` on `kyc_document_types` |
 | `blob_url` | `TEXT` | Azure Blob private container URL |
 | `mime_type` | `TEXT` | |
 | `file_size_bytes` | `BIGINT` | |
-| `expires_on` | `DATE` NULL | document expiry (DL, EID) |
+| `expires_on` | `DATE` NULL | document expiry (DL, EID, trade licence) |
 | `status` | `KycDocStatus` enum | `UPLOADED`, `IN_REVIEW`, `APPROVED`, `REJECTED` |
 | `ocr_status` | `OcrStatus` enum | `NOT_STARTED`, `QUEUED`, `RUNNING`, `SUCCEEDED`, `FAILED`, `SKIPPED` |
 | `ocr_payload` | `JSONB` | parsed fields from OCR |
@@ -257,7 +325,9 @@ Index: `(subject_kind, subject_id)`, `(expires_at)`.
 | `reject_reason` | `TEXT` NULL | |
 | audit cols | | |
 
-Index: `(customer_id)`, `(status, country_id)`.
+Index: `(party_id)`, `(status, country_id)`.
+
+For an individual customer: `party_id` = the customer's own party row. For an organization: trade licence sits under the org's `party_id`; the authorised signatory's personal docs (EID, DL) live under their own `party_id` as a customer. Org KYC approval requires both the org's docs **and** the signatory's docs to be `APPROVED`.
 
 ---
 
@@ -347,13 +417,96 @@ Index: `(country_id, vehicle_id, tier, valid_from)`.
 
 ### 4.5 `platform/billing`
 
-**`invoices`**, **`invoice_lines`**, **`payments`**, **`payment_intents`**, **`refunds`**.
+**`invoices`** — billable obligation issued by a legal entity to a party.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `TEXT` PK | |
+| `country_id` | `TEXT` FK | |
+| `legal_entity_id` | `TEXT` FK | which entity issues |
+| `party_id` | `TEXT` FK → `parties.id` | who is billed |
+| `lease_id` | `TEXT` FK NULL | the lease this invoice belongs to (rental V1) |
+| `invoice_number` | `TEXT` UNIQUE | `INV-2026-000001`, per-legal-entity sequence |
+| `issued_at` | `TIMESTAMP(3)` | |
+| `due_at` | `TIMESTAMP(3)` | |
+| `currency_code` | `CHAR(3)` | |
+| `subtotal_minor`, `vat_minor`, `total_minor` | `BIGINT` | |
+| `status` | `InvoiceStatus` enum | `DRAFT`, `ISSUED`, `PAID`, `OVERDUE`, `VOID` |
+| `pdf_blob_url` | `TEXT` NULL | rendered PDF |
+| audit cols | | |
+
+Index: `(party_id, status)`, `(legal_entity_id, issued_at DESC)`, partial `(due_at) WHERE status IN ('ISSUED', 'OVERDUE')`.
+
+**`invoice_lines`** — line items.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `TEXT` PK | |
+| `invoice_id` | `TEXT` FK | |
+| `description_en`, `description_ar`, `description_zh` | `TEXT` | trilingual |
+| `quantity` | `INTEGER` | |
+| `unit_amount_minor` | `BIGINT` | |
+| `line_total_minor` | `BIGINT` | derived but stored |
+| `vat_rate` | `DECIMAL(4,4)` | snapshot at issuance |
+| `tax_code` | `TEXT` NULL | for FTA-compliant invoicing |
+| `sort_order` | `INTEGER` | |
+
+**`payments`** — money received from a party, regardless of what it pays for.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `TEXT` PK | |
+| `country_id` | `TEXT` FK | |
+| `party_id` | `TEXT` FK | who paid |
+| `kind` | `PaymentKind` enum | `DEPOSIT`, `INVOICE_PAYMENT`, `PENALTY`, `MANUAL_CREDIT` |
+| `invoice_id` | `TEXT` FK NULL | required when `kind = 'INVOICE_PAYMENT'`; null otherwise |
+| `lease_id` | `TEXT` FK NULL | required when `kind = 'DEPOSIT'` (deposit is per-lease) |
+| `provider` | `PaymentProvider` enum | `STRIPE`, `CHECKOUT_COM`, `PAYTABS`, `CASH`, `BANK_TRANSFER` |
+| `provider_payment_id` | `TEXT` NULL | Stripe `pi_xxx`, etc. |
+| `amount_minor` | `BIGINT` | |
+| `currency_code` | `CHAR(3)` | |
+| `status` | `PaymentStatus` enum | `PENDING`, `SUCCEEDED`, `FAILED`, `REFUNDED`, `PARTIALLY_REFUNDED` |
+| `captured_at` | `TIMESTAMP(3)` NULL | |
+| `metadata` | `JSONB` | provider-specific extras |
+| audit cols | | |
+
+Constraints: `(kind = 'INVOICE_PAYMENT') ↔ (invoice_id IS NOT NULL)`; `(kind = 'DEPOSIT') ↔ (lease_id IS NOT NULL)`. Enforced via `CHECK` clauses.
+
+Index: `(party_id, captured_at DESC)`, `(invoice_id)`, `(lease_id, kind)`. Unique partial: `(provider, provider_payment_id) WHERE provider_payment_id IS NOT NULL` — protects against double-recording the same Stripe payment.
+
+**`payment_intents`** — provider-side intent record (3DS, off-session, etc.).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `TEXT` PK | |
+| `payment_id` | `TEXT` FK NULL | linked once captured |
+| `provider` | `PaymentProvider` enum | |
+| `provider_intent_id` | `TEXT` UNIQUE | Stripe `pi_xxx` |
+| `client_secret` | `TEXT` NULL | held briefly; cleared on webhook resolution |
+| `amount_minor` | `BIGINT` | |
+| `currency_code` | `CHAR(3)` | |
+| `status` | `TEXT` | provider-specific status echo |
+| `expires_at` | `TIMESTAMP(3)` NULL | |
+| audit cols | | |
+
+**`refunds`** — refund issued against a payment.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `TEXT` PK | |
+| `payment_id` | `TEXT` FK | |
+| `amount_minor` | `BIGINT` | |
+| `currency_code` | `CHAR(3)` | |
+| `reason` | `TEXT` | |
+| `provider_refund_id` | `TEXT` NULL | |
+| `status` | `RefundStatus` enum | `PENDING`, `SUCCEEDED`, `FAILED` |
+| audit cols | | |
 
 Key design points:
-- `invoices.legal_entity_id NOT NULL` — every invoice is issued by a specific legal entity (Shanghai Car Rental LLC for UAE rental, Origin West Asia Trading for trading, etc.). Footer/TRN/branding flows from this.
-- `invoice_number` is generated per-legal-entity from a sequence: `INV-2026-000001`. Sequences are per legal entity, not global.
-- `payments` rows always carry `(amount_minor, currency_code)` and `provider`. A `payment` may be linked to many `invoices` (multi-invoice batch payment) via `payment_invoice_links` if needed — defer until V1.1.
-- `payment_intents` is the Stripe-shaped concept (3DS, off-session, etc.). It's our row, the provider's `PaymentIntent` object is referenced by id.
+- `invoices.legal_entity_id NOT NULL` — every invoice is issued by a specific legal entity (Shanghai Car Rental LLC for UAE rental, etc.). Footer/TRN/branding flows from this.
+- `invoice_number` generated per-legal-entity from a sequence: `INV-2026-000001`. Sequences are per legal entity, not global.
+- Multi-invoice batch payment (`payment_invoice_links`) is **deferred to V1.1**; V1 keeps the simple "one payment, one obligation" link via `kind` + `invoice_id`/`lease_id`.
+- Payment state is sourced from `payments.status` via webhook updates only — never written from booking endpoints or admin UI directly. See §3.5.
 
 ---
 
@@ -368,14 +521,15 @@ Both keyed by `(country_id, legal_entity_id, version)`. `effective_from` makes "
 
 ### 4.7 `products/rental`
 
-**`bookings`** — pre-lease quote that the customer is reserving.
+**`bookings`** — pre-lease quote that a party is reserving.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `TEXT` PK | |
 | `country_id` | `TEXT` FK | |
 | `reference` | `TEXT` UNIQUE | `BK-2026-A1B2C3D4` |
-| `customer_id` | `TEXT` FK | |
+| `party_id` | `TEXT` FK → `parties.id` | the legal counterparty (individual or organization) |
+| `booked_by_customer_id` | `TEXT` FK → `customers.id` | the human who clicked "book"; equals `party_id` for B2C, an org member for B2B |
 | `vehicle_id` | `TEXT` FK | |
 | `status` | `BookingStatus` enum | `DRAFT`, `SUBMITTED`, `CONFIRMED`, `CANCELLED`, `EXPIRED` |
 | `start_date`, `end_date` | `DATE` | inclusive/exclusive |
@@ -389,7 +543,7 @@ Both keyed by `(country_id, legal_entity_id, version)`. `effective_from` makes "
 | `submitted_at`, `confirmed_at`, `cancelled_at`, `expired_at` | `TIMESTAMP(3)` NULL | |
 | audit cols | | |
 
-Index: `(customer_id, status)`, `(vehicle_id, start_date, end_date)`.
+Index: `(party_id, status)`, `(booked_by_customer_id, status)`, `(vehicle_id, start_date, end_date)`.
 
 **`leases`** — confirmed rental contract.
 
@@ -399,7 +553,8 @@ Index: `(customer_id, status)`, `(vehicle_id, start_date, end_date)`.
 | `country_id` | `TEXT` FK | |
 | `legal_entity_id` | `TEXT` FK | |
 | `booking_id` | `TEXT` FK UNIQUE | one lease per booking |
-| `customer_id` | `TEXT` FK | |
+| `party_id` | `TEXT` FK → `parties.id` | the legal counterparty |
+| `primary_driver_customer_id` | `TEXT` FK → `customers.id` | the person physically using the car (= `party_id` for B2C; nominated org member for B2B) |
 | `vehicle_id` | `TEXT` FK | |
 | `lease_type` | `LeaseType` enum | `SHORT_TERM` (<30d), `LONG_TERM` (≥30d) |
 | `status` | `LeaseStatus` enum | `ACTIVE`, `COMPLETED`, `TERMINATED`, `DEFAULTED` |
@@ -412,7 +567,7 @@ Index: `(customer_id, status)`, `(vehicle_id, start_date, end_date)`.
 | `overage_rate_per_km_minor` | `BIGINT` | snapshotted |
 | audit cols | | |
 
-Index: `(customer_id, status)`, `(vehicle_id, status)`.
+Index: `(party_id, status)`, `(primary_driver_customer_id, status)`, `(vehicle_id, status)`.
 
 **`lease_milestones`** — scheduled events (monthly billing, return reminder, completion).
 
@@ -538,13 +693,21 @@ Index: `(status, available_at)`, `(event_type)`.
 Worker process: a long-running async task in the same Container App (or a sidecar Container App later) polls `WHERE status='PENDING' AND available_at <= now()` with `FOR UPDATE SKIP LOCKED`, dispatches to subscribers (in-process service functions registered at startup), updates status. Exponential backoff on failure; dead-letter after N attempts.
 
 Subscribers (V1):
-- `BOOKING_SUBMITTED` → email customer; SMS customer; admin notification
+- `BOOKING_SUBMITTED` → email party; SMS booker; admin notification
 - `BOOKING_CONFIRMED` → create lease; email rental agreement; charge deposit
-- `KYC_APPROVED` → email customer; admin notification
-- `LEASE_STARTED` → email customer; create month-1 invoice
-- `LEASE_MONTHLY_BILLING_DUE` → create invoice; email customer
-- `PAYMENT_SUCCEEDED` → mark invoice paid; email receipt
-- `PAYMENT_FAILED` → email customer; admin notification
+- `KYC_APPROVED` → email party; admin notification
+- `LEASE_STARTED` → email party; create month-1 invoice
+- `LEASE_MONTHLY_BILLING_DUE` → create invoice; email party
+- `PAYMENT_SUCCEEDED` → mark invoice paid (or `bookings.deposit_paid_at`); email receipt
+- `PAYMENT_FAILED` → email party; admin notification
+
+**Payload contract:**
+
+- Payloads contain **what subscribers need to act**, no more, no less: aggregate id plus the denormalized fields a subscriber would otherwise look up (recipient email/phone for notifications, currency + amount for receipts, vehicle plate for confirmation copy).
+- Payloads are **not snapshots of the source row**. Drop fields no subscriber needs.
+- **Hard cap: 8 KB per payload.** If a subscriber needs more, it queries by id.
+- Every event type has a typed schema in `core/messaging/events.py` and a registered list of subscribers. Adding an event type without subscribers is a code smell flagged in CI.
+- Payloads serialize money as `{ "amount_minor": 10000, "currency_code": "AED" }`, never as a single number.
 
 ---
 
@@ -600,6 +763,8 @@ OcrProvider            ENUM('AZURE_DI', 'LOCAL')
 OtpIdentityKind        ENUM('EMAIL', 'PHONE')
 OtpProvider            ENUM('TWILIO_VERIFY', 'LOCAL')
 SubjectKind            ENUM('USER', 'CUSTOMER')
+PartyKind              ENUM('INDIVIDUAL', 'ORGANIZATION')
+OrganizationMemberRole ENUM('OWNER', 'AUTHORIZED_SIGNATORY', 'BOOKER', 'ACCOUNTS_PAYABLE')
 Brand                  ENUM('NIO', 'VOYAH', 'ZEEKR', 'BYD', 'XPENG', 'LI_AUTO', 'DENZA', 'MG', 'HONGQI')
 BodyType               ENUM('SUV', 'SEDAN', 'MPV', 'COUPE', 'CROSSOVER', 'WAGON')
 Powertrain             ENUM('EV', 'PHEV', 'HYBRID', 'ICE')
@@ -615,6 +780,7 @@ MilestoneKind          ENUM('START', 'MONTHLY_BILLING', 'RETURN_REMINDER', 'RETU
 MileageSource          ENUM('PICKUP', 'RETURN', 'MID_LEASE', 'SELF_REPORT')
 MaintenanceKind        ENUM('SERVICE', 'REPAIR', 'INSPECTION', 'TYRE_CHANGE', 'BATTERY_CHECK')
 InvoiceStatus          ENUM('DRAFT', 'ISSUED', 'PAID', 'OVERDUE', 'VOID')
+PaymentKind            ENUM('DEPOSIT', 'INVOICE_PAYMENT', 'PENALTY', 'MANUAL_CREDIT')
 PaymentStatus          ENUM('PENDING', 'SUCCEEDED', 'FAILED', 'REFUNDED', 'PARTIALLY_REFUNDED')
 PaymentProvider        ENUM('STRIPE', 'CHECKOUT_COM', 'PAYTABS', 'CASH', 'BANK_TRANSFER')
 RefundStatus           ENUM('PENDING', 'SUCCEEDED', 'FAILED')
@@ -661,9 +827,16 @@ ServiceType            ENUM('RENT', 'PURCHASE', 'LEASE_TO_OWN')
   /dashboard                          GET                                          KPIs, SUM in DB
   /customers                          GET, POST
   /customers/{id}                     GET, PATCH
-  /customers/{id}/kyc                 GET                                          KYC review surface
+  /customers/{id}/kyc                 GET                                          KYC review surface (lists docs via party)
   /customers/{id}/kyc/{docId}/approve POST
   /customers/{id}/kyc/{docId}/reject  POST
+  /organizations                      GET, POST                                    B2B accounts (admin-only in V1; customer flows V1.x)
+  /organizations/{id}                 GET, PATCH
+  /organizations/{id}/members         GET, POST
+  /organizations/{id}/members/{mId}   PATCH, DELETE
+  /organizations/{id}/kyc             GET                                          org KYC review (trade licence, etc.)
+  /organizations/{id}/kyc/{docId}/approve POST
+  /organizations/{id}/kyc/{docId}/reject  POST
   /vehicles                           GET, POST
   /vehicles/{id}                      GET, PATCH, DELETE
   /vehicles/{id}/images               GET, POST
@@ -720,9 +893,9 @@ Schema supports multi-currency from day 0 (every money field carries its currenc
 
 ### D4. Soft-delete scope
 
-I've put `deleted_at` on `customers` only. Leases, bookings, invoices, payments are append-only-ish — never delete, only state-transition. Vehicles are `RETIRED`, not deleted.
+`deleted_at` lives on `parties` (so customer + organization deletion goes through one column) and on `users`. Leases, bookings, invoices, payments are append-only-ish — never deleted, only state-transitioned. Vehicles are `RETIRED`, not deleted.
 
-**Recommendation:** soft-delete only on `customers` and `users`. Everything else is state-machined.
+**Recommendation:** soft-delete only on `parties` (covers individuals and orgs) and `users`. Everything else is state-machined.
 
 ### D5. Outbox worker — same Container App or sidecar?
 
