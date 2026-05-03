@@ -1,5 +1,9 @@
 # ADR-0002: KYC OCR data flow — Azure Document Intelligence
 
+> **⚠️ Partially superseded by the 2026-05-02 rebuild.** The Phase A schema described here was **dropped** when `pg-origin-prod-uaenorth.public` was wiped. The new V1 schema in [`docs/architecture/rebuild-erd.md`](../architecture/rebuild-erd.md) reuses the same Azure Document Intelligence data-flow shape (this ADR's diagrams + sequence are still valid), but the table layout is different (`kyc_documents` now hangs off `parties.id`, has `correlation_id`; OCR jobs are in `services/intelligence`). The `KYC_OCR_ENABLED` feature flag still applies. See [`docs/STATUS.md`](../STATUS.md) for current state.
+
+---
+
 **Status:** Accepted — Phase A (backend) and Phase B (admin UI) shipped 2026-04-26. Phase C (customer pre-fill) deferred pending real upload pipeline. Feature flag `KYC_OCR_ENABLED=false` in production. See `docs/STATUS.md`.
 **Date:** 2026-04-26 (proposed) · 2026-04-26 (Phase A+B merged)
 **Deciders:** Amr (Engineering), Bella Ma (GM, MENA Region)

@@ -1,4 +1,6 @@
-# Phase 6 — Integrations Setup Guide
+> **⚠️ STALE — pre-rebuild (before 2026-05-02).** This document describes the v0 codebase that was wiped during the rebuild. It is kept for historical reference but is **not current**. For the live state see [`STATUS.md`](STATUS.md); for V1 design see [`architecture/rebuild-erd.md`](architecture/rebuild-erd.md).
+
+---# Phase 6 — Integrations Setup Guide
 
 This guide walks through setting up all third-party services for the [Company Name] platform.
 

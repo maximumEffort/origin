@@ -1,4 +1,6 @@
-# Runbook: Azure UAE North Cutover
+> **⚠️ STALE — pre-rebuild (before 2026-05-02).** This document describes the v0 codebase that was wiped during the rebuild. It is kept for historical reference but is **not current**. For the live state see [`../STATUS.md`](../STATUS.md); for V1 design see [`../architecture/rebuild-erd.md`](../architecture/rebuild-erd.md).
+
+---# Runbook: Azure UAE North Cutover
 
 Implements the five-phase cutover plan from [ADR-0001](../adr/0001-azure-uae-north-architecture.md).
 

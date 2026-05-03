@@ -8,6 +8,8 @@
 
 ---
 
+> **Current state (read first): [`docs/STATUS.md`](docs/STATUS.md).** The codebase was rebuilt from scratch on 2026-05-02. The pre-rebuild snapshot is at commit `e296ff9`. The V1 design source of truth is [`docs/architecture/rebuild-erd.md`](docs/architecture/rebuild-erd.md). Several `docs/*.md` files describe the v0 codebase and carry a STALE banner — read them as historical reference only.
+
 ---
 
 ## V1 Scope — Rental Only

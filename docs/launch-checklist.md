@@ -1,4 +1,6 @@
-# Launch Checklist — Origin Car Rental Platform
+> **⚠️ STALE — pre-rebuild (before 2026-05-02).** This document describes the v0 codebase that was wiped during the rebuild. It is kept for historical reference but is **not current**. For the live state see [`STATUS.md`](STATUS.md); for V1 design see [`architecture/rebuild-erd.md`](architecture/rebuild-erd.md).
+
+---# Launch Checklist — Origin Car Rental Platform
 
 > ⚠ **This checklist (dated 2026-03-31) is a generic V0 reference template.** Many items
 > below are now done; some describe a stack that no longer matches reality (NestJS,
